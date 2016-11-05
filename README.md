@@ -35,6 +35,7 @@ The available caching policies are:
 # Parameters of caching policies
 
 no parameters:
+
 1. LRU
 2. FIFO
 3. GDS
@@ -42,6 +43,7 @@ no parameters:
 6. LFUDA
 
 one parameter:
+
 2. Filter-LRU (N: - admit after N requests)
 3. Threshold-LRU (t: - the size threshold)
 4. ExpProb-LRU (c: the size which has a 50% chance of being admitted (used to determine the exponential family))
