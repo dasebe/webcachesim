@@ -15,7 +15,6 @@ using namespace std;
  LFUDACache* lclfuda;
  S2LRUCache* lcs2lru;
  S4LRUCache* lcs4lru;
- InfiniteCache* lcinfinite;
 
  function< bool(long int, long int) > reqFun;
 
@@ -81,12 +80,6 @@ int initCaches (const string cacheType, const long long cache_size, const long d
       lcs4lru = new S4LRUCache(cache_size - floor(cache_size*param/100.0),floor(cache_size*param/100.0/3),floor(cache_size*param/100.0/3),floor(cache_size*param/100.0/3));
       reqFun = [&] (long int id, long int size) { return lcs4lru->request(id,size); };
       tch = dynamic_cast<Cache*> (lcs4lru);
-    }
-  else if (cacheType == "Infinite")
-    {
-      lcinfinite = new InfiniteCache(cache_size);
-      reqFun = [&] (long int id, long int size) { return lcinfinite->request(id,size); };
-      tch = dynamic_cast<Cache*> (lcinfinite);
     }
   else {
     cerr << "wrong cache type: " << cacheType << endl;

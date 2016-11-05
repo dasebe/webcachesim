@@ -153,11 +153,12 @@ public:
   ~LRUCache(){}
 
   bool lookup (const long cur_req) const {
+
     return(cache_map.count(cur_req)>0);
   }
 
-  void evict (const long cur_req, const long size) {
-    if(cache_map.count(cur_req)>0) {
+  void evict (const long cur_req) {
+    if(lookup(cur_req)) {
       list_iterator_t lit = cache_map[cur_req];
       cache_map.erase(cur_req);
       current_size -= get<1>(*lit);
@@ -177,8 +178,8 @@ public:
 	  return(true);
 	}
 	else { // inconsistent size -> treat as miss and delete inconsistent entry
-	  cerr << "cache state/request inconsistency" << endl;
-	  throw 1;
+	  evict(cur_req);
+	  cerr << "deleted outdated object" << endl;
 	}
       }
     miss(cur_req, size);
@@ -201,7 +202,6 @@ public:
 
 class FIFOCache: public LRUCache {
 protected:
-  default_random_engine generator;
   virtual void hit(unordered_map<long, list_iterator_t>::const_iterator it, long size) {
     Cache::hit(size);
   }
@@ -209,6 +209,9 @@ public:
   FIFOCache(long long cs): LRUCache(cs) {}
   ~FIFOCache(){}
 };
+
+
+
 
 
 /*
@@ -277,6 +280,20 @@ public:
 
   ~GreedyDualBase(){}
 
+  bool lookup (const long cur_req) const {
+    return(cache_map.count(cur_req)>0);
+  }
+
+  void evict (const long cur_req) {
+    if(lookup(cur_req)) {
+      map_iterator_t lit = cache_map[cur_req];
+      object_t obj = lit->second;
+      cache_map.erase(cur_req);
+      current_size -= get<1>(obj);
+      value_map.erase(lit);
+    }
+  }
+
   bool request (const long cur_req, long size) {
     if (cache_map.count(cur_req) > 0) {
 	if (size == get<1>(get<1>(*(cache_map[cur_req]))) ) {
@@ -286,8 +303,8 @@ public:
 	  return(true);
 	} else {
 	  // inconsistent size -> treat as miss and delete inconsistent entry
-	  cerr << "cache state/request inconsistency" << endl;
-	  throw 1;
+	  evict(cur_req);
+	  cerr << "deleted outdated object" << endl;
 	}
     }
     miss(cur_req, size);
@@ -341,8 +358,8 @@ public:
 	return(true);
       } else {
 	// inconsistent size -> treat as miss and delete inconsistent entry
-	cerr << "cache state/request inconsistency" << endl;
-	throw 1;
+	evict(cur_req);
+	cerr << "deleted outdated object" << endl;
       }
     }
     reqs_map[cur_req]=1; //reset bec. reqs_map not updated when element removed
@@ -352,8 +369,11 @@ public:
 };
 
 
+
+
+
 /*
-  LRUK
+  LRU-K policy
 */
 
 class LRUKCache: public GreedyDualBase {
@@ -416,8 +436,8 @@ public:
 	return(true);
       } else {
 	// inconsistent size -> treat as miss and delete inconsistent entry
-	cerr << "cache state/request inconsistency" << endl;
-	throw 1;
+	evict(cur_req);
+	cerr << "deleted outdated object" << endl;
       }
     }
     refs_map[cur_req].push(curtime);
@@ -455,8 +475,8 @@ public:
 	return(true);
       } else {
 	// inconsistent size -> treat as miss and delete inconsistent entry
-	cerr << "cache state/request inconsistency" << endl;
-	throw 1;
+	evict(cur_req);
+	cerr << "deleted outdated object" << endl;
       }
     }
     reqs_map[cur_req]=1; //reset bec. reqs_map not updated when element removed
@@ -506,9 +526,9 @@ public:
 
   ~S2LRUCache(){}
 
-  void evict (const long cur_req, const long size) {
-    previous.evict(cur_req,size);
-    LRUCache::evict(cur_req,size);
+  void evict (const long cur_req) {
+    previous.evict(cur_req);
+    LRUCache::evict(cur_req);
   }
 
   bool lookup2nd (const long cur_req) {
@@ -517,10 +537,8 @@ public:
 
   bool request (const long cur_req, const long size) {
     if(previous.lookup(cur_req)) { // found in previous layer
-      //      cerr << "MOVE UP 1->2"  << endl;
-      previous.evict(cur_req, size); //delete in previous
+      previous.evict(cur_req); //delete in previous
       miss(cur_req, size); //admit to current
-      //      assert(LRUCache::lookup(cur_req));
       LOG("h",101,cur_req,size);
       return(LRUCache::request(cur_req, size)); //hit in current
     } else if(LRUCache::lookup(cur_req)) {// found in current
@@ -576,9 +594,9 @@ public:
 
 ~S3LRUCache(){}
 
-  void evict (const long cur_req, const long size) {
-    previous.evict(cur_req,size);
-    LRUCache::evict(cur_req,size);
+  void evict (const long cur_req) {
+    previous.evict(cur_req);
+    LRUCache::evict(cur_req);
   }
 
   bool lookup3rd (const long cur_req) {
@@ -588,7 +606,7 @@ public:
   bool request (const long cur_req, const long size) {
     if(previous.lookup2nd(cur_req)) { // found in previous
       //      cerr << "MOVE UP 2->3"  << endl;
-      previous.evict(cur_req, size); //delete in previous
+      previous.evict(cur_req); //delete in previous
       miss(cur_req, size); //admit to current
       //      assert(LRUCache::lookup(cur_req));
       LOG("h",102,cur_req,size);
@@ -649,14 +667,14 @@ public:
   ~S4LRUCache(){}
 
   void evict (const long cur_req, const long size) {
-    previous.evict(cur_req,size);
-    LRUCache::evict(cur_req,size);
+    previous.evict(cur_req);
+    LRUCache::evict(cur_req);
   }
 
   bool request (const long cur_req, const long size) {
     if(previous.lookup3rd(cur_req)) { // found in previous
       //      cerr << "MOVE UP 3->4"  << endl;
-      previous.evict(cur_req, size); //delete in previous
+      previous.evict(cur_req); //delete in previous
       miss(cur_req, size); //admit to current
       LOG("h",103,cur_req,size);
       //      assert(LRUCache::lookup(cur_req));
@@ -670,29 +688,5 @@ public:
       return(true);
     }
     return(false);
-  }
-};
-
-
-/*
-  Infinite Cache implementation
-*/
-
-class InfiniteCache: public Cache {
-protected:
-  unordered_set<long> cache;
-public:
-  InfiniteCache(long long cs): Cache(cs) {}
-
-  ~InfiniteCache(){}
-
-  bool request (const long cur_req, const long size) {
-    if (cache.count(cur_req)>0) {
-      Cache::hit(size);
-      return (true);
-    } else {
-      cache.insert(cur_req);
-      return(false);
-    }
   }
 };
