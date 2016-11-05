@@ -179,7 +179,7 @@ public:
 	}
 	else { // inconsistent size -> treat as miss and delete inconsistent entry
 	  evict(cur_req);
-	  cerr << "deleted outdated object" << endl;
+	  //	  cerr << "deleted outdated object" << endl;
 	}
       }
     miss(cur_req, size);
@@ -304,7 +304,7 @@ public:
 	} else {
 	  // inconsistent size -> treat as miss and delete inconsistent entry
 	  evict(cur_req);
-	  cerr << "deleted outdated object" << endl;
+	  //	  cerr << "deleted outdated object" << endl;
 	}
     }
     miss(cur_req, size);
@@ -359,7 +359,7 @@ public:
       } else {
 	// inconsistent size -> treat as miss and delete inconsistent entry
 	evict(cur_req);
-	cerr << "deleted outdated object" << endl;
+	//	cerr << "deleted outdated object" << endl;
       }
     }
     reqs_map[cur_req]=1; //reset bec. reqs_map not updated when element removed
@@ -437,7 +437,7 @@ public:
       } else {
 	// inconsistent size -> treat as miss and delete inconsistent entry
 	evict(cur_req);
-	cerr << "deleted outdated object" << endl;
+	//	cerr << "deleted outdated object" << endl;
       }
     }
     refs_map[cur_req].push(curtime);
@@ -476,7 +476,7 @@ public:
       } else {
 	// inconsistent size -> treat as miss and delete inconsistent entry
 	evict(cur_req);
-	cerr << "deleted outdated object" << endl;
+	//	cerr << "deleted outdated object" << endl;
       }
     }
     reqs_map[cur_req]=1; //reset bec. reqs_map not updated when element removed
