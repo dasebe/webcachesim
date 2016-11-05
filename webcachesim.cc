@@ -1,5 +1,4 @@
 #include <fstream>
-#include <unordered_map>
 #include "helper/cache_definitions.cpp"
 
 int main (int argc, char* argv[])
@@ -27,8 +26,6 @@ int main (int argc, char* argv[])
   long reqs = 0, bytes = 0;
   long t, id, size;
   bool logStatistics=false;
-  unordered_map<long, long> obj_sizes;
-  long skipcounter = 0;
 
   cerr << "running..." << endl;
 
@@ -42,33 +39,19 @@ int main (int argc, char* argv[])
 	  logStatistics = true;
 	  tch->startStatistics();
 	}
-      
+
+      // log statistics
       if (logStatistics)
 	{
-	  // check if already seen object
-	  if (obj_sizes.count(id)>0)
-	    {
-	      // if object size changed, skip requqest
-	      if (obj_sizes[id] != size)
-
-		{
-		  skipcounter++;
-		  continue;
-		}
-	    }
-	  else
-	    obj_sizes[id] = size;
-	  // not skipped, so count this request
 	  reqs++;
 	  bytes += size;
 	}
+
       // request
       reqFun(id, size);
     }
 
   infile.close();
-  cerr << t << " skipped " << skipcounter << endl;
-
   cout << t <<  " " << cacheType << " " << cache_size << " " << param << " " << tch->getHits() << " " << reqs << endl;
 
   return 0;
