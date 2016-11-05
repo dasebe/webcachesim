@@ -52,7 +52,7 @@ int main (int argc, char* argv[])
     }
 
   infile.close();
-  cout << t <<  " " << cacheType << " " << cache_size << " " << param << " " << tch->getHits() << " " << reqs << endl;
+  cout << t <<  " " << cacheType << " " << sizeExp << " " << param << " " << tch->getHits() << " " << reqs << " " << bytes << endl;
 
   return 0;
 }

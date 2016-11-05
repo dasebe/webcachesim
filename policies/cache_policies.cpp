@@ -690,3 +690,76 @@ public:
     return(false);
   }
 };
+
+
+
+/*
+  ThLRU: LRU eviction with a size admission threshold
+*/
+
+class ThLRUCache: public LRUCache {
+protected:
+  double sthreshold;
+
+  virtual void miss(const long cur_req, const long size) {
+    // admit if size < threshold
+    bool dec_adm = size<sthreshold;
+    if (dec_adm)
+      LRUCache::miss(cur_req, size);
+  }
+
+public:
+  ThLRUCache(long long cs, double sth): LRUCache(cs), sthreshold(sth) {}
+
+  ThLRUCache(const ThLRUCache& rhs): LRUCache(rhs) { /* copy constructor*/
+    this->sthreshold = rhs.getPar();
+  }
+
+  ~ThLRUCache(){}
+
+  void setPars(double sth) {
+    sthreshold = sth;
+  }
+
+  double getPar() const {
+    return (sthreshold);
+  }
+};
+
+
+
+/*
+  ExpLRU: LRU eviction with size-aware probabilistic cache admission
+*/
+
+class ExpLRU: public LRUCache {
+protected:
+  default_random_engine generator;
+  double sthreshold;
+
+  virtual void miss(const long cur_req, const long size) {
+    // admit to cache with probablity that is exponentially decreasing with size
+    double admissionprob = exp(-size/ sthreshold);
+    bernoulli_distribution admissioncoin(admissionprob);
+    const bool dec_adm = (admissioncoin(generator));
+    if (dec_adm)
+      LRUCache::miss(cur_req, size);
+  }
+
+public:
+  ExpLRU(long long cs, double sth): LRUCache(cs), sthreshold(sth) {}
+
+  ExpLRU(const ExpLRU& rhs): LRUCache(rhs) { /* copy constructor*/
+    this->sthreshold = rhs.getSthreshold();
+  }
+
+  ~ExpLRU(){}
+
+  void setPars(double sth) {
+    sthreshold = sth;
+  }
+
+  double getSthreshold() const {
+    return (sthreshold);
+  }
+};
