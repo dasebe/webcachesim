@@ -1,8 +1,9 @@
-# webcachesim: a simple C++ framework for simulating web caching policies
+# webcachesim:
+## a simple C++ framework for simulating web caching policies
 
 The webcachesimsource simulator replays a request trace, and you can configure several caching policies, the cache size, policy parameters, and a warm-up period before hit statistics are gathered.
 
-# Request trace format
+## Request trace format
 
 Request traces must be given in a space-separated format with three colums
 - time should be a long int, but can be arbitrary (for future TTL feature, not currently in use)
@@ -17,7 +18,7 @@ Request traces must be given in a space-separated format with three colums
 |   4  |  3  |  14  |
 |   4  |  1 |  120 |
 
-# Available caching policies
+## Available caching policies
 The available caching policies are:
 
 1. LRU (least-recently used eviction)
@@ -32,7 +33,7 @@ The available caching policies are:
 7. S2LRU (segmented LRU, two segments)
 8. S4LRU (segmented LRU, four segments)
 
-# Parameters of caching policies
+## Parameters of caching policies
 
 no parameters:
 
