@@ -15,6 +15,8 @@ using namespace std;
  LFUDACache* lclfuda;
  S2LRUCache* lcs2lru;
  S4LRUCache* lcs4lru;
+ ThLRUCache* lchtlru;
+ ExpLRU* lcexplru;
 
  function< bool(long int, long int) > reqFun;
 
@@ -80,6 +82,18 @@ int initCaches (const string cacheType, const long long cache_size, const long d
       lcs4lru = new S4LRUCache(cache_size - floor(cache_size*param/100.0),floor(cache_size*param/100.0/3),floor(cache_size*param/100.0/3),floor(cache_size*param/100.0/3));
       reqFun = [&] (long int id, long int size) { return lcs4lru->request(id,size); };
       tch = dynamic_cast<Cache*> (lcs4lru);
+    }
+  else if (cacheType == "ThLRU")
+    {
+      lchtlru = new ThLRUCache(cache_size, pow(2.0,param));
+      reqFun = [&] (long int id, long int size) { return lchtlru->request(id,size); };
+      tch = dynamic_cast<Cache*> (lchtlru);
+    }
+  else if (cacheType == "ExpLRU")
+    {
+      lcexplru = new ExpLRU(cache_size,pow(2.0,param));
+      reqFun = [&] (long int id, long int size) { return lcexplru->request(id,size); };
+      tch = dynamic_cast<Cache*> (lcexplru);
     }
   else {
     cerr << "wrong cache type: " << cacheType << endl;
