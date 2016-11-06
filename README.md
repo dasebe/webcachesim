@@ -51,3 +51,14 @@ one parameter:
 5. LRU-K (K: K-th reference in the past)
 7. S2LRU (s: fraction of capacity assigned to first segment)
 8. S4LRU (s: fraction of capacity assigned to first segment, rest is shared equally by other segments)
+
+## Example:
+
+Download a public 1999 request trace ([trace description](http://www.cs.bu.edu/techreports/abstracts/1999-011)), rewrite it into our format, and run the simulator.
+
+    wget http://www.cs.bu.edu/techreports/1999-011-usertrace-98.gz
+    gunzip 1999-011-usertrace-98.gz
+    g++ -o rewrite -std=c++11 ../helpers/rewrite_trace_http.cc
+    ./rewrite 1999-011-usertrace-98 trace.txt
+    make
+    ./webcachesim trace.txt LRU 30 0 10
