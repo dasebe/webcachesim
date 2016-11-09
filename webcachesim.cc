@@ -1,5 +1,5 @@
 #include <fstream>
-#include "helpers/cache_definitions.cpp"
+#include "policies/lru_variants.cc"
 
 int main (int argc, char* argv[])
 {
@@ -18,9 +18,9 @@ int main (int argc, char* argv[])
 
   const long long cache_size  = pow(2.0,sizeExp);
 
-
-  if(initCaches(cacheType,cache_size,param)!=0)
-    return 1;
+  unique_ptr<Cache> webcache = move(Cache::create_unique("LRU"));
+  webcache->I_am();
+  return 1;
 
   ifstream infile;
   long reqs = 0, bytes = 0;
@@ -37,7 +37,7 @@ int main (int argc, char* argv[])
 	{
 	  cerr << "statistics started" << endl;
 	  logStatistics = true;
-	  tch->startStatistics();
+	  webcache->startStatistics();
 	}
 
       // log statistics
@@ -48,11 +48,11 @@ int main (int argc, char* argv[])
 	}
 
       // request
-      reqFun(id, size);
+      webcache->request(id, size);
     }
 
   infile.close();
-  cout << t <<  " " << cacheType << " " << sizeExp << " " << param << " " << tch->getHits() << " " << reqs << " " << bytes << endl;
+  cout << t <<  " " << cacheType << " " << sizeExp << " " << param << " " << webcache->getHits() << " " << reqs << " " << bytes << endl;
 
   return 0;
 }
