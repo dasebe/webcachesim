@@ -1,13 +1,21 @@
+#include <unordered_map>
+#include <map>
+#include <unordered_set>
+#include <vector>
+#include <queue>
+#include <list>
+#include <tuple>
+#include <assert.h>
+#include <random>
+#include "cache.h"
 
-
-
+typedef multimap<long double, object_t>::iterator map_iterator_t;
 
 
 /*
-  greedy dual implementation base
+  GD: greedy dual eviction (base class)
 
-  implementation in log n time for each cache miss
-  using multi map: insert in O(log n), erase in O(1), get lowest value in O(1) + store object id and size
+  [implementation via heap: O(log n) time for each cache miss]
 */
 
 class GreedyDualBase: public Cache {
@@ -100,7 +108,7 @@ public:
     return(false);
   }
 };
-
+static Factory<GDCache> factoryGD("GD");
 
 
 
@@ -117,7 +125,7 @@ protected:
 public:
   GDSCache(long long cs): GreedyDualBase(cs) {}
 };
-
+static Factory<GDSCache> factoryGDS("GDS");
 
 
 /*
@@ -156,7 +164,7 @@ public:
     return(false);
   }
 };
-
+static Factory<GDSFCache> factoryGDSF("GDSF");
 
 
 
@@ -235,6 +243,7 @@ public:
   }
 
 };
+static Factory<LRUKCache> factoryLRUK("LRUK");
 
 
 /*
@@ -273,7 +282,7 @@ public:
     return(false);
   }
 };
-
+static Factory<LFUDACache> factoryLFUDA("LFUDA");
 
 
 /*
@@ -341,7 +350,7 @@ public:
     return(false);
   }
 };
-
+static Factory<S2LRUCache> factoryS2LRU("S2LRU");
 
 
 /*
@@ -479,76 +488,5 @@ public:
     return(false);
   }
 };
+static Factory<S2LRUCache> factoryS4LRU("S4LRU");
 
-
-
-/*
-  ThLRU: LRU eviction with a size admission threshold
-*/
-
-class ThLRUCache: public LRUCache {
-protected:
-  double sthreshold;
-
-  virtual void miss(const long cur_req, const long size) {
-    // admit if size < threshold
-    bool dec_adm = size<sthreshold;
-    if (dec_adm)
-      LRUCache::miss(cur_req, size);
-  }
-
-public:
-  ThLRUCache(long long cs, double sth): LRUCache(cs), sthreshold(sth) {}
-
-  ThLRUCache(const ThLRUCache& rhs): LRUCache(rhs) { /* copy constructor*/
-    this->sthreshold = rhs.getPar();
-  }
-
-  ~ThLRUCache(){}
-
-  void setPars(double sth) {
-    sthreshold = sth;
-  }
-
-  double getPar() const {
-    return (sthreshold);
-  }
-};
-
-
-
-/*
-  ExpLRU: LRU eviction with size-aware probabilistic cache admission
-*/
-
-class ExpLRU: public LRUCache {
-protected:
-  default_random_engine generator;
-  double sthreshold;
-
-  virtual void miss(const long cur_req, const long size) {
-    // admit to cache with probablity that is exponentially decreasing with size
-    double admissionprob = exp(-size/ sthreshold);
-    bernoulli_distribution admissioncoin(admissionprob);
-    const bool dec_adm = (admissioncoin(generator));
-    if (dec_adm)
-      LRUCache::miss(cur_req, size);
-  }
-
-public:
-  ExpLRU(long long cs, double sth): LRUCache(cs), sthreshold(sth) {}
-
-  ExpLRU(const ExpLRU& rhs): LRUCache(rhs) { /* copy constructor*/
-    this->sthreshold = rhs.getSthreshold();
-  }
-
-  ~ExpLRU(){}
-
-  void setPars(double sth) {
-    sthreshold = sth;
-  }
-
-  double getSthreshold() const {
-    return (sthreshold);
-  }
-};
