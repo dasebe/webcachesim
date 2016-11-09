@@ -18,9 +18,8 @@ int main (int argc, char* argv[])
 
   const long long cache_size  = pow(2.0,sizeExp);
 
-  unique_ptr<Cache> webcache = move(Cache::create_unique("LRU"));
+  unique_ptr<Cache> webcache = move(Cache::create_unique("FIFO"));
   webcache->I_am();
-  return 1;
 
   ifstream infile;
   long reqs = 0, bytes = 0;
