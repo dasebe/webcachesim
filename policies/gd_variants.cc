@@ -285,72 +285,6 @@ public:
 static Factory<LFUDACache> factoryLFUDA("LFUDA");
 
 
-/*
-  S2LRU
-*/
-
-class S2LRUCache: public LRUCache {
-protected:
-  LRUCache previous;
-
-  virtual void miss(const long cur_req, const long size) {
-    // object feasible to store?
-    if(size >= cache_size) {
-      LOG("error",0,size,cache_size);
-      return;
-    }
-    list_iterator_t lit;  
-    // check eviction needed
-    while (current_size + size > cache_size) {
-      // evict least popular (i.e. last element)
-      lit = cache_list.end();
-      lit--;
-      long esize = get<1>(*lit);
-      LOG("e",current_size,get<0>(*lit),esize);
-      previous.request(get<0>(*lit), esize); // move to front of previous cache
-      current_size -= esize;
-      cache_map.erase(get<0>(*lit));
-      cache_list.erase(lit);
-    }
-    // admit new object
-    cache_list.push_front(object_t(cur_req, size)); 
-    cache_map[cur_req] = cache_list.begin();
-    current_size += size;
-    LOG("a",current_size,cur_req,size);
-  }
-
-public:
-  S2LRUCache(long long fcs, long long scs): LRUCache(scs), previous(fcs) {  }
-
-  ~S2LRUCache(){}
-
-  void evict (const long cur_req) {
-    previous.evict(cur_req);
-    LRUCache::evict(cur_req);
-  }
-
-  bool lookup2nd (const long cur_req) {
-    return (LRUCache::lookup(cur_req));
-  }
-
-  bool request (const long cur_req, const long size) {
-    if(previous.lookup(cur_req)) { // found in previous layer
-      previous.evict(cur_req); //delete in previous
-      miss(cur_req, size); //admit to current
-      LOG("h",101,cur_req,size);
-      return(LRUCache::request(cur_req, size)); //hit in current
-    } else if(LRUCache::lookup(cur_req)) {// found in current
-      LOG("h",102,cur_req,size);
-      return(LRUCache::request(cur_req, size)); //hit in current
-    }
-    if(previous.request(cur_req, size)) { //request in all prev. layers
-      Cache::hit(size); // hidden hit
-      return(true);
-    }
-    return(false);
-  }
-};
-static Factory<S2LRUCache> factoryS2LRU("S2LRU");
 
 
 /*
@@ -490,3 +424,65 @@ public:
 };
 static Factory<S2LRUCache> factoryS4LRU("S4LRU");
 
+
+
+
+
+/*
+  ThLRU: LRU eviction with a size admission threshold
+*/
+
+class ThLRUCache: public LRUCache {
+protected:
+  double sthreshold;
+
+  virtual void miss(const long cur_req, const long size) {
+    // admit if size < threshold
+    bool dec_adm = size<sthreshold;
+    if (dec_adm)
+      LRUCache::miss(cur_req, size);
+  }
+
+public:
+  ThLRUCache() {}
+  ~ThLRUCache(){}
+  
+  void setPar(int count, ...) {
+    va_list args;
+    // assert count==1
+    va_start(args, count);
+    sthreshold=va_arg(args, double); }
+};
+static Factory<ThLRUCache> factoryThLRU("ThLRU");
+
+
+
+/*
+  ExpLRU: LRU eviction with size-aware probabilistic cache admission
+*/
+
+class ExpLRUCache: public LRUCache {
+protected:
+  default_random_engine generator;
+  double sthreshold;
+
+  virtual void miss(const long cur_req, const long size) {
+    // admit to cache with probablity that is exponentially decreasing with size
+    double admissionprob = exp(-size/ sthreshold);
+    bernoulli_distribution admissioncoin(admissionprob);
+    const bool dec_adm = (admissioncoin(generator));
+    if (dec_adm)
+      LRUCache::miss(cur_req, size);
+  }
+
+public:
+  ExpLRUCache() {}
+  ~ExpLRUCache(){}
+
+  void setPar(int count, ...) {
+    va_list args;
+    // assert count==1
+    va_start(args, count);
+    sthreshold=va_arg(args, double); }
+};
+static Factory<ExpLRUCache> factoryExpLRU("ExpLRU");
