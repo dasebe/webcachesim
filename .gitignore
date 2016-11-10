@@ -27,3 +27,9 @@
 *.exe
 *.out
 *.app
+
+# emacs tmp files
+*~
+
+# other tmp files
+*.log
