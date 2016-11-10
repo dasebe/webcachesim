@@ -78,7 +78,7 @@ int main (int argc, char* argv[])
       }
 
       //    cout << id << " " << size << endl;
-      if (size <= 1)
+      if (size < 1)
 	continue;
 	
       if(dSimpleId.count(id)==0)
