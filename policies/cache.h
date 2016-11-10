@@ -6,17 +6,18 @@
 
 using namespace std;
 
+// uncomment to enable cache debugging:
+//#define CDEBUG 1
+
 // util for debug
 #ifdef CDEBUG
 #define LOG(m,x,y,z) log_message(m,x,y,z)
 #else
 #define LOG(m,x,y,z)
 #endif
-void log_message(string m, double x, double y, double z) {
+inline void log_message(string m, double x, double y, double z) {
   cerr << m << "," << x << "," << y  << "," << z << "\n";
 }
-
-
 
 class Cache;
 
@@ -25,7 +26,6 @@ public:
   CacheFactory() {}
   virtual unique_ptr<Cache> create_unique() = 0;
 };
-
 
 class Cache {
 public:
@@ -40,31 +40,31 @@ public:
   virtual void setPar(int count, ...) {}
 
   // request an object from the cache
-  virtual bool request (const long cur_req, const long long size) {return(false);}
+  virtual bool request(const long cur_req, const long long size) {}
   // check in cache (debugging)
-  virtual bool lookup (const long cur_req) const {return(false);}
+  virtual bool lookup (const long cur_req) const {}
 
   // statistics
-  virtual void startStatistics() {
+  void startStatistics() {
     logStatistics = true;
   }
-  virtual void stopStatistics() {
+  void stopStatistics() {
     logStatistics = false;
   }
-  virtual void resetStatistics() {
+  void resetStatistics() {
     hits = 0;
     bytehits = 0;
   }
-  virtual long getHits() const {
+  long getHits() const {
     return(hits);
   }
-  virtual long long getBytehits() const {
+  long long getBytehits() const {
     return(bytehits);
   }
-  virtual long long getCurrentSize() const {
+  long long getCurrentSize() const {
     return(current_size);
   }
-  virtual long long getCacheSize() const {
+  long long getCacheSize() const {
     return(cache_size);
   }
   // helper functions (factory pattern)
@@ -94,7 +94,7 @@ protected:
      return map_instance;
   }
   // helper function (statistics gathering)
-  virtual void hit(long size) {
+   void hit(long size) {
     if(logStatistics) {
       hits++;
       bytehits+=size;

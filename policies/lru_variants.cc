@@ -11,9 +11,6 @@ using namespace std;
 typedef tuple<long, long> object_t; // objectid, size
 typedef list<object_t>::iterator list_iterator_t;
 
-// set to enable cache debugging
-#define CDEBUG 1
-
 /*
   LRU: Least Recently Used eviction
 */
@@ -23,13 +20,13 @@ public:
   // construct and destroy LRU
   LRUCache() {}
   ~LRUCache(){}
-  void I_am() { cout << "I am lru\n"; }
+  virtual void I_am() { cout << "I am lru\n"; }
 
   // normal cache functions
-  bool lookup (const long cur_req) const {
+  virtual bool lookup (const long cur_req) const {
     return(cache_map.count(cur_req)>0);
   }
-  void evict (const long cur_req) {
+  virtual void evict (const long cur_req) {
     if(lookup(cur_req)) {
       list_iterator_t lit = cache_map[cur_req];
       cache_map.erase(cur_req);
@@ -37,7 +34,7 @@ public:
       cache_list.erase(lit);
     }
   }
-  bool request (const long cur_req, const long size) {
+  virtual bool request(const long cur_req, const long long size) {
     unordered_map<long, list_iterator_t>::const_iterator it;
     it = cache_map.find(cur_req);
     if(it != cache_map.end())
@@ -50,7 +47,6 @@ public:
 	}
 	else { // inconsistent size -> treat as miss and delete inconsistent entry
 	  evict(cur_req);
-	  //	  cerr << "deleted outdated object" << endl;
 	}
       }
     miss(cur_req, size);
@@ -72,7 +68,7 @@ protected:
   virtual void miss(const long cur_req, const long size) {
     // object feasible to store?
     if(size >= cache_size) {
-      LOG("error",0,size,cache_size);
+      LOG("L",0,size,cache_size);
       return;
     }
     list_iterator_t lit;  
@@ -107,7 +103,7 @@ class FIFOCache: public LRUCache {
 public:
   FIFOCache() {}
   ~FIFOCache(){}
-  void I_am() { cout << "I am fifo\n"; }
+  virtual void I_am() { cout << "I am fifo\n"; }
 
 protected:
   virtual void hit(unordered_map<long, list_iterator_t>::const_iterator it, long size) {
