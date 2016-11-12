@@ -72,7 +72,7 @@ protected:
   }
 
 public:
-  GreedyDualBase(): Cache(cs) {}
+  GreedyDualBase(): Cache() {}
   ~GreedyDualBase(){}
 
   bool lookup (const long cur_req) const {
@@ -106,7 +106,8 @@ public:
     return(false);
   }
 };
-static Factory<GDCache> factoryGD("GD");
+static Factory<GreedyDualBase> factoryGD("GD");
+
 
 
 
@@ -139,7 +140,7 @@ protected:
   }
 
 public:
-  GDSFCache(long long cs): GreedyDualBase(cs) {}
+  GDSFCache(): GreedyDualBase() {}
 
   ~GDSFCache(){}
 
@@ -218,7 +219,18 @@ protected:
 
 
 public:
-  LRUKCache(long long cs, unsigned int k): GreedyDualBase(cs), tk(k), curtime(0) {}
+  LRUKCache(): GreedyDualBase(), tk(2), curtime(0) {}
+  ~LRUKCache() {}
+
+  virtual void setPar(string parName, string parValue) {
+    if(parName=="k") {
+      const int k = stoi(parValue);
+      assert(k>0);
+      tk = k;
+    } else {
+      cerr << "unrecognized parameter: " << parName << endl;
+    }
+  }
 
   bool request (const long cur_req, const long size) {
     curtime++;
@@ -257,8 +269,7 @@ protected:
   }
 
 public:
-  LFUDACache(long long cs): GreedyDualBase(cs) {}
-
+  LFUDACache(): GreedyDualBase() {}
   ~LFUDACache(){}
 
   bool request (const long cur_req, const long size) {
@@ -281,6 +292,3 @@ public:
   }
 };
 static Factory<LFUDACache> factoryLFUDA("LFUDA");
-
-
-
