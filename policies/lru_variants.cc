@@ -132,13 +132,14 @@ public:
   }
 
   virtual void setPar(string parName, string parValue) {
-    if(parName=="pC1") {
+    cerr << "2" << endl;
+    if(parName=="seg1") {
       const double pC1 = stof(parValue);
       assert(pC1<1.0);
       assert(pC1>0.0);
       LRUCache::setSize( ceil(overall_cache_size*pC1) );
       previous.setSize( overall_cache_size-ceil(overall_cache_size*pC1) );
-    } else if(parName=="pC2") {
+    } else if(parName=="seg2") {
       const double pC2 = stof(parValue);
       assert(pC2<1.0);
       assert(pC2>0.0);
@@ -154,12 +155,16 @@ public:
     LRUCache::evict(cur_req);
   }
 
+  virtual bool lookup1st  (const long cur_req) {
+    return (previous.lookup(cur_req));
+  }
+  
   virtual bool lookup2nd (const long cur_req) {
     return (LRUCache::lookup(cur_req));
   }
 
   virtual bool request (const long cur_req, const long long size) {
-    //    cerr << "s2lru" << endl;
+    cerr << "s2lru" << endl;
     if(previous.lookup(cur_req)) { // found in previous layer
       previous.evict(cur_req); //delete in previous
       miss(cur_req, size); //admit to current
@@ -208,186 +213,6 @@ public:
 
 };
 static Factory<S2LRUCache> factoryS2LRU("S2LRU");
-
-
-
-
-
-
-
-/*
-  S3LRU
-*/
-
-class S3LRUCache: public LRUCache {
-public:
-  S3LRUCache(): previous() {  }
-  ~S3LRUCache(){}
-
-  virtual void setSize(long long cs) {
-    overall_cache_size = cs;
-    // default parameter choice
-    LRUCache::setSize( ceil(overall_cache_size/3) );
-    previous.setSize( overall_cache_size-ceil(overall_cache_size/3) );
-  }
-
-  virtual void setPar(string parName, string parValue) {
-    if(parName=="pC3") {
-      const double pC3 = stof(parValue);
-      assert(pC3<1.0);
-      assert(pC3>0.0);
-      LRUCache::setSize( ceil(overall_cache_size*pC3) );
-    } else {
-      previous.setPar(parName, parValue);
-    }
-  }
-
-  virtual void evict (const long cur_req) {
-    previous.evict(cur_req);
-    LRUCache::evict(cur_req);
-  }
-
-  virtual bool lookup3rd (const long cur_req) {
-    return (LRUCache::lookup(cur_req));
-  }
-
-  virtual bool request (const long cur_req, const long size) {
-    if(previous.lookup2nd(cur_req)) { // found in previous
-      //      cerr << "MOVE UP 2->3"  << endl;
-      previous.evict(cur_req); //delete in previous
-      miss(cur_req, size); //admit to current
-      //      assert(LRUCache::lookup(cur_req));
-      LOG("h",102,cur_req,size);
-      return(LRUCache::request(cur_req, size)); //hit in current
-    } else if(LRUCache::lookup(cur_req)) {// found in current
-      LOG("h",103,cur_req,size);
-      return(LRUCache::request(cur_req, size)); //hit in current
-    }
-    if(previous.request(cur_req, size)) { //request in all prev. layers
-      Cache::hit(size); // hidden hit
-      return(true);
-    }
-    return(false);
-  }
-
-protected:
-  long long overall_cache_size;
-  S2LRUCache previous;
-
-  virtual void miss(const long cur_req, const long size) {
-    // object feasible to store?
-    if(size >= cache_size) {
-      LOG("error",0,size,cache_size);
-      return;
-    }
-    list_iterator_t lit;  
-    // check eviction needed
-    while (current_size + size > cache_size) {
-      // evict least popular (i.e. last element)
-      lit = cache_list.end();
-      lit--;
-      long esize = get<1>(*lit);
-      LOG("e",current_size,get<0>(*lit),esize);
-      previous.request(get<0>(*lit), esize); // move to front of previous cache
-      current_size -= esize;
-      cache_map.erase(get<0>(*lit));
-      cache_list.erase(lit);
-    }
-    // admit new object
-    cache_list.push_front(object_t(cur_req, size)); 
-    cache_map[cur_req] = cache_list.begin();
-    current_size += size;
-    LOG("a",current_size,cur_req,size);
-  }
-};
-
-
-
-
-
-/*
-  S4LRU
-*/
-
-class S4LRUCache: public LRUCache {
-public:
-  S4LRUCache(): previous() {  }
-  ~S4LRUCache(){}
-
-  virtual void setSize(long long cs) {
-    overall_cache_size = cs;
-    // default parameter choice
-    LRUCache::setSize( ceil(overall_cache_size/4) );
-    previous.setSize( overall_cache_size-ceil(overall_cache_size/4) );
-  }
-
-  virtual void setPar(string parName, string parValue) {
-    if(parName=="pC4") {
-      const double pC4 = stof(parValue);
-      assert(pC4<1.0);
-      assert(pC4>0.0);
-      LRUCache::setSize( ceil(overall_cache_size*pC4) );
-    } else {
-      previous.setPar(parName, parValue);
-    }
-  }
-
-  virtual void evict (const long cur_req, const long size) {
-    previous.evict(cur_req);
-    LRUCache::evict(cur_req);
-  }
-
-  virtual bool request (const long cur_req, const long size) {
-    if(previous.lookup3rd(cur_req)) { // found in previous
-      //      cerr << "MOVE UP 3->4"  << endl;
-      previous.evict(cur_req); //delete in previous
-      miss(cur_req, size); //admit to current
-      LOG("h",103,cur_req,size);
-      //      assert(LRUCache::lookup(cur_req));
-      return(LRUCache::request(cur_req, size)); //hit in current
-    } else if(LRUCache::lookup(cur_req)) {// found in current
-      LOG("h",104,cur_req,size);
-      return(LRUCache::request(cur_req, size)); //hit in current
-    }
-    if(previous.request(cur_req, size)) { //request in all prev. layers
-      Cache::hit(size); // hidden hit
-      return(true);
-    }
-    return(false);
-  }
-
-  protected:
-  long long overall_cache_size;
-  S3LRUCache previous;
-
-  virtual void miss(const long cur_req, const long size) {
-    // object feasible to store?
-    if(size >= cache_size) {
-      LOG("error",0,size,cache_size);
-      return;
-    }
-    list_iterator_t lit;  
-    // check eviction needed
-    while (current_size + size > cache_size) {
-      // evict least popular (i.e. last element)
-      lit = cache_list.end();
-      lit--;
-      long esize = get<1>(*lit);
-      LOG("e",current_size,get<0>(*lit),esize);
-      previous.request(get<0>(*lit), esize); // move to front of previous cache
-      current_size -= esize;
-      cache_map.erase(get<0>(*lit));
-      cache_list.erase(lit);
-    }
-    // admit new object
-    cache_list.push_front(object_t(cur_req, size)); 
-    cache_map[cur_req] = cache_list.begin();
-    current_size += size;
-    LOG("a",current_size,cur_req,size);
-  }
-};
-static Factory<S2LRUCache> factoryS4LRU("S4LRU");
-
 
 
 
