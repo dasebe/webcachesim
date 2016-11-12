@@ -48,7 +48,7 @@ int main (int argc, char* argv[])
     stringstream fieldstream( field );
     fieldstream >> size;
 
-    if (size <= 1)
+    if (size < 1)
       continue;
 	
     if(dSimpleId.count(id)==0)

@@ -1,26 +1,46 @@
 #include <fstream>
-#include "helpers/cache_definitions.cpp"
+#include <regex>
+#include "policies/lru_variants.cc"
+#include "policies/gd_variants.cc"
 
 int main (int argc, char* argv[])
 {
 
-  // parameters
-  if(argc != 6) {
-    cerr << "webcachesim traceFile cacheType sizeExp param warmUp" << endl;
+  // output help if insufficient params
+  if(argc < 5) {
+    cerr << "webcachesim traceFile warmUp cacheType log2CacheSize cacheParams" << endl;
     return 1;
   }
 
+  // trace properties
   const char* path = argv[1];
-  const string cacheType = argv[2];
-  const double sizeExp = atof(argv[3]);
-  const long double param = atof(argv[4]);
-  const long warmUp = atol(argv[5]);
+  const long warmUp = atol(argv[2]);
+  assert(warmUp>=0);
 
-  const long long cache_size  = pow(2.0,sizeExp);
-
-
-  if(initCaches(cacheType,cache_size,param)!=0)
+  // create cache
+  const string cacheType = argv[3];
+  unique_ptr<Cache> webcache = move(Cache::create_unique(cacheType));
+  if(webcache == nullptr)
     return 1;
+
+  // configure cache size
+  const double sizeExp = atof(argv[4]);
+  const long long cache_size  = pow(2.0,sizeExp);
+  webcache->setSize(cache_size);
+
+  // parse cache parameters
+  regex opexp ("(.*)=(.*)");
+  cmatch opmatch;
+  string paramSummary;
+  for(int i=5; i<argc; i++) {
+    regex_match (argv[i],opmatch,opexp);
+    if(opmatch.size()!=3) {
+      cerr << "each cacheParam needs to be in form name=value" << endl;
+      return 1;
+    }
+    webcache->setPar(opmatch[1], opmatch[2]);
+    paramSummary += opmatch[2];
+  }
 
   ifstream infile;
   long reqs = 0, bytes = 0;
@@ -37,7 +57,7 @@ int main (int argc, char* argv[])
 	{
 	  cerr << "statistics started" << endl;
 	  logStatistics = true;
-	  tch->startStatistics();
+	  webcache->startStatistics();
 	}
 
       // log statistics
@@ -48,11 +68,11 @@ int main (int argc, char* argv[])
 	}
 
       // request
-      reqFun(id, size);
+      webcache->request(id,size);
     }
 
   infile.close();
-  cout << t <<  " " << cacheType << " " << sizeExp << " " << param << " " << tch->getHits() << " " << reqs << " " << bytes << endl;
+  cout << cacheType << " " << sizeExp << " " << paramSummary << " " << webcache->getHits() << " " << reqs << " " << bytes << endl;
 
   return 0;
 }
