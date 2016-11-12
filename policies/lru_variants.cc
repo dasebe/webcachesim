@@ -214,6 +214,51 @@ static Factory<S2LRUCache> factoryS2LRU("S2LRU");
 
 
 
+
+/*
+  FilterCache (admit only after N requests)
+*/
+
+class FilterCache: public LRUCache {
+public:
+  FilterCache(): npar(2), LRUCache() {}
+  ~FilterCache(){}
+  
+  virtual void setPar(string parName, string parValue) {
+    if(parName=="n") {
+      const long n = stol(parValue);
+      assert(n>0);
+      npar = n;
+    } else {
+      cerr << "unrecognized parameter: " << parName << endl;
+    }
+  }
+
+protected:
+  long npar;
+  unordered_map<long,long> filter;
+
+  virtual bool request (const long cur_req, const long long size) {
+    filter[cur_req]++;
+    return(LRUCache::request(cur_req, size));
+  }
+  
+  virtual void miss(const long cur_req, const long size) {
+    if(filter[cur_req]<=npar)
+      return ;
+    LRUCache::miss(cur_req, size);
+  }
+};
+static Factory<FilterCache> factoryFilter("Filter");
+
+
+
+
+
+
+
+
+
 /*
   ThLRU: LRU eviction with a size admission threshold
 */
