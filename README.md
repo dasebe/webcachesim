@@ -1,12 +1,25 @@
 # webcachesim:
-## a simple C++ framework for simulating web caching policies
+## a C++11 framework for simulating web caching policies
 
-The webcachesimsource simulator replays a request trace, and you can configure several caching policies, the cache size, policy parameters, and a warm-up period before hit statistics are gathered.
+This simulator replays a request trace, and allows to experiment with various caching policies. The goal of this framework is flexibility to allow experimenting with and implementation of a wide variety of caching policies.
 
-## Usage:
+### Basic programming interface
 
-The general call format of webcachesim is
+The basic interface is simple:
+
+    // create new cache
+    unique_ptr<Cache> webcache = move(Cache::create_unique("yourPolicy"));
+    // set cache capacity
+    webcache->setSize(1000);
+    // set an arbitrary param (parser implement by yourPolicy)
+    webcache->setPar("param", ".5");
+
+### Basic command line interface
+
+There is also a simple CLI, with a general call format like this
+
     ./webcachesim traceFile warmUp cacheType log2CacheSize cacheParams
+
 where
 
  - traceFile: a request trace (see below)
@@ -14,6 +27,8 @@ where
  - cacheType: one of the caching policies (see below)
  - log2CacheSize: the maximum cache capacity in bytes in logarithmic form (base 2)
  - cacheParams: optional cache parameters, can be used to tune cache policies (see below)
+
+## Usage and current support for policies
 
 ### Request trace format
 
