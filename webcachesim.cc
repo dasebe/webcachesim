@@ -24,24 +24,22 @@ int main (int argc, char* argv[])
   const double sizeExp = atof(argv[4]);
   const long long cache_size  = pow(2.0,sizeExp);
   webcache->setSize(cache_size);
+
+  cerr << "size " << webcache->getSize() << endl;
   
   // parse cache parameters
   regex opexp ("(.*)=(.*)");
   cmatch opmatch;
+  string paramSummary;
   for(int i=5; i<argc; i++) {
     regex_match (argv[i],opmatch,opexp);
     assert(opmatch.size()==3);
     webcache->setPar(opmatch[1], opmatch[2]);
+    paramSummary += opmatch[2];
   }
 
   cerr << "size " << webcache->getSize() << endl;
-
-  return 0;
-
-
-
-
-
+  
   ifstream infile;
   long reqs = 0, bytes = 0;
   long t, id, size;
@@ -72,7 +70,7 @@ int main (int argc, char* argv[])
     }
 
   infile.close();
-  //  cout << t <<  " " << cacheType << " " << sizeExp << " " << param << " " << webcache->getHits() << " " << reqs << " " << bytes << endl;
+  cout << cacheType << " " << sizeExp << " " << paramSummary << " " << webcache->getHits() << " " << reqs << " " << bytes << endl;
 
   return 0;
 }
