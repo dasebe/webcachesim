@@ -35,7 +35,6 @@ public:
     }
   }
   virtual bool request (const long cur_req, const long long size) {
-    //    cerr << "lru" << endl;
     unordered_map<long, list_iterator_t>::const_iterator it;
     it = cache_map.find(cur_req);
     if(it != cache_map.end())
@@ -132,7 +131,6 @@ public:
   }
 
   virtual void setPar(string parName, string parValue) {
-    cerr << "2" << endl;
     if(parName=="seg1") {
       const double pC1 = stof(parValue);
       assert(pC1<1.0);
@@ -164,7 +162,6 @@ public:
   }
 
   virtual bool request (const long cur_req, const long long size) {
-    cerr << "s2lru" << endl;
     if(previous.lookup(cur_req)) { // found in previous layer
       previous.evict(cur_req); //delete in previous
       miss(cur_req, size); //admit to current
