@@ -1,8 +1,13 @@
+#ifndef CACHE_H
+#define CACHE_H
+
 #include <iostream>
 #include <memory>
 #include <string>
 #include <stdarg.h>
 #include <map>
+
+
 
 using namespace std;
 
@@ -73,8 +78,12 @@ public:
     get_factory_instance()[name] = factory;
   }
   static unique_ptr<Cache> create_unique(string name) {
-    unique_ptr<Cache> Cache_instance =
-      move(get_factory_instance()[name]->create_unique());
+    unique_ptr<Cache> Cache_instance;
+    if(get_factory_instance().count(name) != 1) {
+      cerr << "unkown cacheType" << endl;
+      return nullptr;
+    }
+    Cache_instance = move(get_factory_instance()[name]->create_unique());
     return Cache_instance;
   }
 
@@ -111,3 +120,6 @@ template<class T>
     return newT;
   }
 };
+
+
+#endif /* CACHE_H */

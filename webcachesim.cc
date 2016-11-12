@@ -15,10 +15,13 @@ int main (int argc, char* argv[])
   // trace properties
   const char* path = argv[1];
   const long warmUp = atol(argv[2]);
+  assert(warmUp>=0);
 
   // create cache
   const string cacheType = argv[3];
   unique_ptr<Cache> webcache = move(Cache::create_unique(cacheType));
+  if(webcache == nullptr)
+    return 1;
 
   // configure cache size
   const double sizeExp = atof(argv[4]);
@@ -31,7 +34,10 @@ int main (int argc, char* argv[])
   string paramSummary;
   for(int i=5; i<argc; i++) {
     regex_match (argv[i],opmatch,opexp);
-    assert(opmatch.size()==3);
+    if(opmatch.size()!=3) {
+      cerr << "each cacheParam needs to be in form name=value" << endl;
+      return 1;
+    }
     webcache->setPar(opmatch[1], opmatch[2]);
     paramSummary += opmatch[2];
   }
