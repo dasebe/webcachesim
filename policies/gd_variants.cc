@@ -27,12 +27,11 @@ protected:
   // find objects via unordered_map
   unordered_map<long, map_iterator_t> cache_map;
 
-
   virtual long double agevalue(const long cur_req, const long size) {
     return(current_L + 1);
   }
 
-  void hit(const long cur_req, const long long size) {
+  virtual void hit(const long cur_req, const long long size) {
     // get iterator for the old position
     map_iterator_t si = cache_map[cur_req];
     // update current req's value to hval:
@@ -43,7 +42,7 @@ protected:
     Cache::hit(size);
   }
 
-  void miss(const long cur_req, const long long size) {
+  virtual void miss(const long cur_req, const long long size) {
     // object feasible to store?
     if(size >= cache_size) {
       LOG("error", 0, size, cache_size);
@@ -73,15 +72,14 @@ protected:
   }
 
 public:
-  GreedyDualBase(long long cs): Cache(cs) {}
-
+  GreedyDualBase(): Cache(cs) {}
   ~GreedyDualBase(){}
 
   bool lookup (const long cur_req) const {
     return(cache_map.count(cur_req)>0);
   }
 
-  void evict (const long cur_req) {
+  virtual void evict (const long cur_req) {
     if(lookup(cur_req)) {
       map_iterator_t lit = cache_map[cur_req];
       object_t obj = lit->second;
@@ -91,7 +89,7 @@ public:
     }
   }
 
-  bool request (const long cur_req, long size) {
+  virtual bool request (const long cur_req, long size) {
     if (cache_map.count(cur_req) > 0) {
 	if (size == get<1>(get<1>(*(cache_map[cur_req]))) ) {
 	  // hit
@@ -123,7 +121,7 @@ protected:
   }
 
 public:
-  GDSCache(long long cs): GreedyDualBase(cs) {}
+  GDSCache(): GreedyDualBase() {}
 };
 static Factory<GDSCache> factoryGDS("GDS");
 

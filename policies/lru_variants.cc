@@ -19,7 +19,7 @@ typedef list<object_t>::iterator list_iterator_t;
 class LRUCache: public Cache {
 public:
   // construct and destroy LRU
-  LRUCache() {}
+  LRUCache(): Cache() {}
   ~LRUCache(){}
 
   // normal cache functions
@@ -101,7 +101,7 @@ static Factory<LRUCache> factoryLRU("LRU");
 
 class FIFOCache: public LRUCache {
 public:
-  FIFOCache() {}
+  FIFOCache(): LRUCache() {}
   ~FIFOCache(){}
 
 protected:
@@ -120,7 +120,7 @@ static Factory<FIFOCache> factoryFIFO("FIFO");
 
 class S2LRUCache: public LRUCache {
 public:
-  S2LRUCache(): previous() {}
+  S2LRUCache(): previous(), LRUCache() {}
   ~S2LRUCache(){}
 
   virtual void setSize(long long cs) {
@@ -220,7 +220,7 @@ static Factory<S2LRUCache> factoryS2LRU("S2LRU");
 
 class ThLRUCache: public LRUCache {
 public:
-  ThLRUCache(): sthreshold(524288) {}
+  ThLRUCache(): sthreshold(524288), LRUCache() {}
   ~ThLRUCache(){}
   
   virtual void setPar(string parName, string parValue) {
@@ -253,7 +253,7 @@ static Factory<ThLRUCache> factoryThLRU("ThLRU");
 
 class ExpLRUCache: public LRUCache {
 public:
-  ExpLRUCache(): cpar(262144) {} //default value
+  ExpLRUCache(): cpar(262144), LRUCache() {} //default value
   ~ExpLRUCache(){}
 
   virtual void setPar(string parName, string parValue) {

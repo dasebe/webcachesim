@@ -1,7 +1,7 @@
 #include <fstream>
 #include <regex>
 #include "policies/lru_variants.cc"
-//#include "policies/gd_variants.cc"
+#include "policies/gd_variants.cc"
 
 int main (int argc, char* argv[])
 {
