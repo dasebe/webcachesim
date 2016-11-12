@@ -3,7 +3,19 @@
 
 The webcachesimsource simulator replays a request trace, and you can configure several caching policies, the cache size, policy parameters, and a warm-up period before hit statistics are gathered.
 
-## Request trace format
+## Usage:
+
+The general call format of webcachesim is
+    ./webcachesim traceFile warmUp cacheType log2CacheSize cacheParams
+where
+
+ - traceFile: a request trace (see below)
+ - warmUp: the number of requests to skip before gathering hit/miss statistics
+ - cacheType: one of the caching policies (see below)
+ - log2CacheSize: the maximum cache capacity in bytes in logarithmic form (base 2)
+ - cacheParams: optional cache parameters, can be used to tune cache policies (see below)
+
+### Request trace format
 
 Request traces must be given in a space-separated format with three colums
 - time should be a long int, but can be arbitrary (for future TTL feature, not currently in use)
@@ -18,39 +30,109 @@ Request traces must be given in a space-separated format with three colums
 |   4  |  3  |  14  |
 |   4  |  1 |  120 |
 
-## Available caching policies
-The available caching policies are:
+### Available caching policies
 
-1. LRU (least-recently used eviction)
-2. Filter-LRU (LRU + admit after N requests)
-3. Threshold-LRU (LRU + admit if object size is less than threshold)
-4. ExpProb-LRU (LRU + admit with probability exponentially decreasing with object size)
-2. FIFO (first-in first-out eviction)
-3. GDS (greedy dual size eviction)
-4. GDSF (greedy dual-size frequency eviction)
-5. LRU-K (evict obejct which has oldest K-th reference in the past)
-6. LFUDA (least-frequently used eviction with dynamic agin)
-7. S2LRU (segmented LRU, two segments)
-8. S4LRU (segmented LRU, four segments)
+There are currently seven available caching policies.
 
-## Parameters of caching policies
+#### LRU
 
-no parameters:
+does: least-recently used eviction
 
-1. LRU
-2. FIFO
-3. GDS
-4. GDSF
-6. LFUDA
+params: none
 
-one parameter:
+example (1GB capacity):
 
-2. Filter-LRU (N: - admit after N requests)
-3. Threshold-LRU (t: - the size threshold)
-4. ExpProb-LRU (c: the size which has a 50% chance of being admitted (used to determine the exponential family))
-5. LRU-K (K: K-th reference in the past)
-7. S2LRU (s: fraction of capacity assigned to first segment)
-8. S4LRU (s: fraction of capacity assigned to first segment, rest is shared equally by other segments)
+    ./webcachesim trace.txt 0 LRU 30
+    
+#### FIFO
+
+does: first-in first-out eviction
+
+params: none
+
+example (1GB capacity):
+
+    ./webcachesim trace.txt 0 FIFO 30
+    
+#### GDS
+
+does: greedy dual size eviction
+
+params: none
+
+example (1GB capacity):
+
+    ./webcachesim trace.txt 0 GDS 30
+    
+#### GDSF
+
+does: greedy dual-size frequency eviction
+
+params: none
+
+example (1GB capacity):
+
+    ./webcachesim trace.txt 0 GDSF 30
+    
+#### Filter-LRU
+
+does: LRU eviction + admit only after N requests
+
+params: n - admit after n requests)
+
+example (1GB capacity, admit after 10 requests):
+
+    ./webcachesim trace.txt 0 Filter 30 n=10
+    
+#### Threshold-LRU
+
+does: LRU eviction + admit only after N requests
+
+params: t - the size threshold in log form (base 2)
+
+example (1GB capacity, admit only objects smaller than 512KB):
+
+    ./webcachesim trace.txt 0 ThLRU 30 t=19
+    
+#### ExpProb-LRU
+
+does: LRU eviction + admit with probability exponentially decreasing with object size
+
+params: c - the size which has a 50% chance of being admitted (used to determine the exponential family)
+
+example (1GB capacity, admit objects with size 256KB with about 50% probability):
+
+    ./webcachesim trace.txt 0 ThLRU 30 c=18
+    
+#### ExpProb-LRU
+
+does: LRU eviction + admit with probability exponentially decreasing with object size
+
+params: c - the size which has a 50% chance of being admitted (used to determine the exponential family)
+
+example (1GB capacity, admit objects with size 256KB with about 50% probability):
+
+    ./webcachesim trace.txt 0 ThLRU 30 c=18
+    
+#### Segmented LRU (two segments)
+
+does: segments cache capacity into two areas and does LRU eviction in each, a hit moves an object up one area to the next
+
+params: either seg1 or seg2 = the fraction of the capacity assigned to the first or second segment, respectively (the rest goes to the other)
+
+example (1GB capacity, each segment gets half the capacity)
+
+    ./webcachesim trace.txt 0 S2LRU 30 seg1=.5
+
+#### LRU-K
+
+does: evict obejct which has oldest K-th reference in the past
+
+params: k - eviction based on k-th reference in the past
+
+example (1GB capacity, each segment gets half the capacity)
+
+    ./webcachesim trace.txt 0 LRUK 30 k=4
 
 ## Example:
 
