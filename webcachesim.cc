@@ -25,8 +25,6 @@ int main (int argc, char* argv[])
   const long long cache_size  = pow(2.0,sizeExp);
   webcache->setSize(cache_size);
 
-  cerr << "size " << webcache->getSize() << endl;
-  
   // parse cache parameters
   regex opexp ("(.*)=(.*)");
   cmatch opmatch;
@@ -38,8 +36,6 @@ int main (int argc, char* argv[])
     paramSummary += opmatch[2];
   }
 
-  cerr << "size " << webcache->getSize() << endl;
-  
   ifstream infile;
   long reqs = 0, bytes = 0;
   long t, id, size;

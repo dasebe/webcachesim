@@ -7,7 +7,7 @@
 using namespace std;
 
 // uncomment to enable cache debugging:
-#define CDEBUG 1
+//#define CDEBUG 1
 
 // util for debug
 #ifdef CDEBUG
@@ -35,11 +35,13 @@ public:
   virtual ~Cache(){};
 
   // configure cache parameters
-  virtual void setSize(long long cs) {cache_size = cs;}
+  virtual void setSize(long long cs) {cache_size = cs;
+    cerr << cache_size << endl;}
   virtual void setPar(string parName, string parValue) {}
 
   // request an object from the cache
-  virtual bool request(const long cur_req, const long long size) {}
+  virtual bool request (const long cur_req, const long long size) {}
+
   // check in cache (debugging)
   virtual bool lookup (const long cur_req) const {}
 

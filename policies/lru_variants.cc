@@ -4,8 +4,8 @@
 #include <tuple>
 #include <assert.h>
 #include <random>
-#include "cache.h"
 #include <math.h>
+#include "cache.h"
 
 using namespace std;
 
@@ -34,7 +34,8 @@ public:
       cache_list.erase(lit);
     }
   }
-  virtual bool request(const long cur_req, const long long size) {
+  virtual bool request (const long cur_req, const long long size) {
+    //    cerr << "lru" << endl;
     unordered_map<long, list_iterator_t>::const_iterator it;
     it = cache_map.find(cur_req);
     if(it != cache_map.end())
@@ -127,7 +128,7 @@ public:
     overall_cache_size = cs;
     // default parameter choice
     LRUCache::setSize( ceil(overall_cache_size/2) );
-    previous.setSize( floor(overall_cache_size/2) );
+    previous.setSize( overall_cache_size-ceil(overall_cache_size/2) );
   }
 
   virtual void setPar(string parName, string parValue) {
@@ -137,21 +138,28 @@ public:
       assert(pC1>0.0);
       LRUCache::setSize( ceil(overall_cache_size*pC1) );
       previous.setSize( overall_cache_size-ceil(overall_cache_size*pC1) );
+    } else if(parName=="pC2") {
+      const double pC2 = stof(parValue);
+      assert(pC2<1.0);
+      assert(pC2>0.0);
+      previous.setSize( ceil(overall_cache_size*pC2) );
+      LRUCache::setSize( overall_cache_size-ceil(overall_cache_size*pC2) );
     } else {
       cerr << "unrecognized parameter: " << parName << endl;
     }
   }
 
-  void evict (const long cur_req) {
+  virtual void evict (const long cur_req) {
     previous.evict(cur_req);
     LRUCache::evict(cur_req);
   }
 
-  bool lookup2nd (const long cur_req) {
+  virtual bool lookup2nd (const long cur_req) {
     return (LRUCache::lookup(cur_req));
   }
 
-  bool request (const long cur_req, const long size) {
+  virtual bool request (const long cur_req, const long long size) {
+    //    cerr << "s2lru" << endl;
     if(previous.lookup(cur_req)) { // found in previous layer
       previous.evict(cur_req); //delete in previous
       miss(cur_req, size); //admit to current
@@ -201,3 +209,252 @@ public:
 };
 static Factory<S2LRUCache> factoryS2LRU("S2LRU");
 
+
+
+
+
+
+
+/*
+  S3LRU
+*/
+
+class S3LRUCache: public LRUCache {
+public:
+  S3LRUCache(): previous() {  }
+  ~S3LRUCache(){}
+
+  virtual void setSize(long long cs) {
+    overall_cache_size = cs;
+    // default parameter choice
+    LRUCache::setSize( ceil(overall_cache_size/3) );
+    previous.setSize( overall_cache_size-ceil(overall_cache_size/3) );
+  }
+
+  virtual void setPar(string parName, string parValue) {
+    if(parName=="pC3") {
+      const double pC3 = stof(parValue);
+      assert(pC3<1.0);
+      assert(pC3>0.0);
+      LRUCache::setSize( ceil(overall_cache_size*pC3) );
+    } else {
+      previous.setPar(parName, parValue);
+    }
+  }
+
+  virtual void evict (const long cur_req) {
+    previous.evict(cur_req);
+    LRUCache::evict(cur_req);
+  }
+
+  virtual bool lookup3rd (const long cur_req) {
+    return (LRUCache::lookup(cur_req));
+  }
+
+  virtual bool request (const long cur_req, const long size) {
+    if(previous.lookup2nd(cur_req)) { // found in previous
+      //      cerr << "MOVE UP 2->3"  << endl;
+      previous.evict(cur_req); //delete in previous
+      miss(cur_req, size); //admit to current
+      //      assert(LRUCache::lookup(cur_req));
+      LOG("h",102,cur_req,size);
+      return(LRUCache::request(cur_req, size)); //hit in current
+    } else if(LRUCache::lookup(cur_req)) {// found in current
+      LOG("h",103,cur_req,size);
+      return(LRUCache::request(cur_req, size)); //hit in current
+    }
+    if(previous.request(cur_req, size)) { //request in all prev. layers
+      Cache::hit(size); // hidden hit
+      return(true);
+    }
+    return(false);
+  }
+
+protected:
+  long long overall_cache_size;
+  S2LRUCache previous;
+
+  virtual void miss(const long cur_req, const long size) {
+    // object feasible to store?
+    if(size >= cache_size) {
+      LOG("error",0,size,cache_size);
+      return;
+    }
+    list_iterator_t lit;  
+    // check eviction needed
+    while (current_size + size > cache_size) {
+      // evict least popular (i.e. last element)
+      lit = cache_list.end();
+      lit--;
+      long esize = get<1>(*lit);
+      LOG("e",current_size,get<0>(*lit),esize);
+      previous.request(get<0>(*lit), esize); // move to front of previous cache
+      current_size -= esize;
+      cache_map.erase(get<0>(*lit));
+      cache_list.erase(lit);
+    }
+    // admit new object
+    cache_list.push_front(object_t(cur_req, size)); 
+    cache_map[cur_req] = cache_list.begin();
+    current_size += size;
+    LOG("a",current_size,cur_req,size);
+  }
+};
+
+
+
+
+
+/*
+  S4LRU
+*/
+
+class S4LRUCache: public LRUCache {
+public:
+  S4LRUCache(): previous() {  }
+  ~S4LRUCache(){}
+
+  virtual void setSize(long long cs) {
+    overall_cache_size = cs;
+    // default parameter choice
+    LRUCache::setSize( ceil(overall_cache_size/4) );
+    previous.setSize( overall_cache_size-ceil(overall_cache_size/4) );
+  }
+
+  virtual void setPar(string parName, string parValue) {
+    if(parName=="pC4") {
+      const double pC4 = stof(parValue);
+      assert(pC4<1.0);
+      assert(pC4>0.0);
+      LRUCache::setSize( ceil(overall_cache_size*pC4) );
+    } else {
+      previous.setPar(parName, parValue);
+    }
+  }
+
+  virtual void evict (const long cur_req, const long size) {
+    previous.evict(cur_req);
+    LRUCache::evict(cur_req);
+  }
+
+  virtual bool request (const long cur_req, const long size) {
+    if(previous.lookup3rd(cur_req)) { // found in previous
+      //      cerr << "MOVE UP 3->4"  << endl;
+      previous.evict(cur_req); //delete in previous
+      miss(cur_req, size); //admit to current
+      LOG("h",103,cur_req,size);
+      //      assert(LRUCache::lookup(cur_req));
+      return(LRUCache::request(cur_req, size)); //hit in current
+    } else if(LRUCache::lookup(cur_req)) {// found in current
+      LOG("h",104,cur_req,size);
+      return(LRUCache::request(cur_req, size)); //hit in current
+    }
+    if(previous.request(cur_req, size)) { //request in all prev. layers
+      Cache::hit(size); // hidden hit
+      return(true);
+    }
+    return(false);
+  }
+
+  protected:
+  long long overall_cache_size;
+  S3LRUCache previous;
+
+  virtual void miss(const long cur_req, const long size) {
+    // object feasible to store?
+    if(size >= cache_size) {
+      LOG("error",0,size,cache_size);
+      return;
+    }
+    list_iterator_t lit;  
+    // check eviction needed
+    while (current_size + size > cache_size) {
+      // evict least popular (i.e. last element)
+      lit = cache_list.end();
+      lit--;
+      long esize = get<1>(*lit);
+      LOG("e",current_size,get<0>(*lit),esize);
+      previous.request(get<0>(*lit), esize); // move to front of previous cache
+      current_size -= esize;
+      cache_map.erase(get<0>(*lit));
+      cache_list.erase(lit);
+    }
+    // admit new object
+    cache_list.push_front(object_t(cur_req, size)); 
+    cache_map[cur_req] = cache_list.begin();
+    current_size += size;
+    LOG("a",current_size,cur_req,size);
+  }
+};
+static Factory<S2LRUCache> factoryS4LRU("S4LRU");
+
+
+
+
+
+/*
+  ThLRU: LRU eviction with a size admission threshold
+*/
+
+class ThLRUCache: public LRUCache {
+public:
+  ThLRUCache(): sthreshold(524288) {}
+  ~ThLRUCache(){}
+  
+  virtual void setPar(string parName, string parValue) {
+    if(parName=="t") {
+      const double t = stof(parValue);
+      assert(t>0);
+      sthreshold = pow(2.0,t);
+    } else {
+      cerr << "unrecognized parameter: " << parName << endl;
+    }
+  }
+
+protected:
+  long sthreshold;
+
+  virtual void miss(const long cur_req, const long size) {
+    // admit if size < threshold
+    bool dec_adm = size<sthreshold;
+    if (dec_adm)
+      LRUCache::miss(cur_req, size);
+  }
+};
+static Factory<ThLRUCache> factoryThLRU("ThLRU");
+
+
+
+/*
+  ExpLRU: LRU eviction with size-aware probabilistic cache admission
+*/
+
+class ExpLRUCache: public LRUCache {
+public:
+  ExpLRUCache(): cpar(262144) {} //default value
+  ~ExpLRUCache(){}
+
+  virtual void setPar(string parName, string parValue) {
+    if(parName=="c") {
+      const double c = stof(parValue);
+      assert(c>0);
+      cpar = pow(2.0,c);
+    } else {
+      cerr << "unrecognized parameter: " << parName << endl;
+    }
+  }
+
+protected:
+  default_random_engine generator;
+  double cpar;
+
+  virtual void miss(const long cur_req, const long size) {
+    // admit to cache with probablity that is exponentially decreasing with size
+    double admissionprob = exp(-size/ cpar);
+    bernoulli_distribution admissioncoin(admissionprob);
+    const bool dec_adm = (admissioncoin(generator));
+    if (dec_adm)
+      LRUCache::miss(cur_req, size);
+  }
+};
+static Factory<ExpLRUCache> factoryExpLRU("ExpLRU");
