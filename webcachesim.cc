@@ -1,13 +1,14 @@
 #include <fstream>
+#include <regex>
 #include "policies/lru_variants.cc"
 //#include "policies/gd_variants.cc"
 
 int main (int argc, char* argv[])
 {
 
-  // parameters
-  if(argc <= 6) {
-    cerr << "webcachesim traceFile warmUp cacheType log2CacheSize cacheParam" << endl;
+  // output help if insufficient params
+  if(argc < 5) {
+    cerr << "webcachesim traceFile warmUp cacheType log2CacheSize cacheParams" << endl;
     return 1;
   }
 
@@ -23,15 +24,19 @@ int main (int argc, char* argv[])
   const double sizeExp = atof(argv[4]);
   const long long cache_size  = pow(2.0,sizeExp);
   webcache->setSize(cache_size);
-
+  
   // parse cache parameters
-  const int paramCount = argc-5;
-  if(paramCount == 0)
-    cerr << "no param" << endl;
-  else {//////
-    for(int i=6; i<argc; i++) {
-    setPar(paramCount, 
-  const long double param = atof(argv[4]);
+  regex opexp ("(.*)=(.*)");
+  cmatch opmatch;
+  for(int i=5; i<argc; i++) {
+    regex_match (argv[i],opmatch,opexp);
+    assert(opmatch.size()==3);
+    webcache->setPar(opmatch[1], opmatch[2]);
+  }
+
+  cerr << "size " << webcache->getSize() << endl;
+
+  return 0;
 
 
 
@@ -67,7 +72,7 @@ int main (int argc, char* argv[])
     }
 
   infile.close();
-  cout << t <<  " " << cacheType << " " << sizeExp << " " << param << " " << webcache->getHits() << " " << reqs << " " << bytes << endl;
+  //  cout << t <<  " " << cacheType << " " << sizeExp << " " << param << " " << webcache->getHits() << " " << reqs << " " << bytes << endl;
 
   return 0;
 }

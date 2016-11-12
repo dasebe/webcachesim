@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <random>
 #include "cache.h"
+#include <math.h>
 
 using namespace std;
 
@@ -20,7 +21,6 @@ public:
   // construct and destroy LRU
   LRUCache() {}
   ~LRUCache(){}
-  virtual void I_am() { cout << "I am lru\n"; }
 
   // normal cache functions
   virtual bool lookup (const long cur_req) const {
@@ -103,7 +103,6 @@ class FIFOCache: public LRUCache {
 public:
   FIFOCache() {}
   ~FIFOCache(){}
-  virtual void I_am() { cout << "I am fifo\n"; }
 
 protected:
   virtual void hit(unordered_map<long, list_iterator_t>::const_iterator it, long size) {
@@ -120,7 +119,57 @@ static Factory<FIFOCache> factoryFIFO("FIFO");
 */
 
 class S2LRUCache: public LRUCache {
-protected:
+public:
+  S2LRUCache(): previous() {}
+  ~S2LRUCache(){}
+
+  virtual void setSize(long long cs) {
+    overall_cache_size = cs;
+    // default parameter choice
+    LRUCache::setSize( ceil(overall_cache_size/2) );
+    previous.setSize( floor(overall_cache_size/2) );
+  }
+
+  virtual void setPar(string parName, string parValue) {
+    if(parName=="pC1") {
+      const double pC1 = stof(parValue);
+      assert(pC1<1.0);
+      assert(pC1>0.0);
+      LRUCache::setSize( ceil(overall_cache_size*pC1) );
+      previous.setSize( overall_cache_size-ceil(overall_cache_size*pC1) );
+    } else {
+      cerr << "unrecognized parameter: " << parName << endl;
+    }
+  }
+
+  void evict (const long cur_req) {
+    previous.evict(cur_req);
+    LRUCache::evict(cur_req);
+  }
+
+  bool lookup2nd (const long cur_req) {
+    return (LRUCache::lookup(cur_req));
+  }
+
+  bool request (const long cur_req, const long size) {
+    if(previous.lookup(cur_req)) { // found in previous layer
+      previous.evict(cur_req); //delete in previous
+      miss(cur_req, size); //admit to current
+      LOG("h",101,cur_req,size);
+      return(LRUCache::request(cur_req, size)); //hit in current
+    } else if(LRUCache::lookup(cur_req)) {// found in current
+      LOG("h",102,cur_req,size);
+      return(LRUCache::request(cur_req, size)); //hit in current
+    }
+    if(previous.request(cur_req, size)) { //request in all prev. layers
+      Cache::hit(size); // hidden hit
+      return(true);
+    }
+    return(false);
+  }
+
+  protected:
+  long long overall_cache_size;
   LRUCache previous;
 
   virtual void miss(const long cur_req, const long size) {
@@ -149,41 +198,6 @@ protected:
     LOG("a",current_size,cur_req,size);
   }
 
-public:
-  S2LRUCache(): previous() {}
-  ~S2LRUCache(){}
-  virtual void setPar(int count, ...) {
-    va_list args;
-    assert(count==1);
-    va_start(args, count);
-    xx=va_arg(args, int); }
-
-
-  void evict (const long cur_req) {
-    previous.evict(cur_req);
-    LRUCache::evict(cur_req);
-  }
-
-  bool lookup2nd (const long cur_req) {
-    return (LRUCache::lookup(cur_req));
-  }
-
-  bool request (const long cur_req, const long size) {
-    if(previous.lookup(cur_req)) { // found in previous layer
-      previous.evict(cur_req); //delete in previous
-      miss(cur_req, size); //admit to current
-      LOG("h",101,cur_req,size);
-      return(LRUCache::request(cur_req, size)); //hit in current
-    } else if(LRUCache::lookup(cur_req)) {// found in current
-      LOG("h",102,cur_req,size);
-      return(LRUCache::request(cur_req, size)); //hit in current
-    }
-    if(previous.request(cur_req, size)) { //request in all prev. layers
-      Cache::hit(size); // hidden hit
-      return(true);
-    }
-    return(false);
-  }
 };
 static Factory<S2LRUCache> factoryS2LRU("S2LRU");
 

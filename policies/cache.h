@@ -33,11 +33,10 @@ public:
   Cache() : cache_size(0), current_size(0), hits(0), bytehits(0), logStatistics(false) {
   }
   virtual ~Cache(){};
-  virtual void I_am() { cout << "I am cache\n"; }
 
   // configure cache parameters
   virtual void setSize(long long cs) {cache_size = cs;}
-  virtual void setPar(int count, ...) {}
+  virtual void setPar(string parName, string parValue) {}
 
   // request an object from the cache
   virtual bool request(const long cur_req, const long long size) {}
@@ -64,7 +63,7 @@ public:
   long long getCurrentSize() const {
     return(current_size);
   }
-  long long getCacheSize() const {
+  long long getSize() const {
     return(cache_size);
   }
   // helper functions (factory pattern)
@@ -72,7 +71,6 @@ public:
     get_factory_instance()[name] = factory;
   }
   static unique_ptr<Cache> create_unique(string name) {
-    cout << "test " << name << endl;
     unique_ptr<Cache> Cache_instance =
       move(get_factory_instance()[name]->create_unique());
     return Cache_instance;
