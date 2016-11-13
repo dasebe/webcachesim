@@ -157,18 +157,18 @@ All cache implementations inherit from "Cache" (in policies/cache.h) which defin
     public:
       // interface to set arbitrary parameters request
       virtual void setPar(string parName, string parValue) {
-        if(parName=="c") {
-          cpar = stof(parValue);
+        if(parName=="myPar") {
+          myPar = stof(parValue);
         }
       }
     
        // requests call this function with their id and size
       bool request (const long cur_req, const long long size) {
-       // ...
+       // your policy goes here
       }
     
     protected:
-      double cpar;
+      double myPar;
     };
     // register your policy with the framework
     static Factory<YourPolicy> factoryYP("YourPolicy");
@@ -180,4 +180,4 @@ This allows the user interface side to conveniently configure and use your new p
     // set cache capacity
     webcache->setSize(1000);
     // set an arbitrary param (parser implement by yourPolicy)
-    webcache->setPar("param", ".5");
+    webcache->setPar("myPar", "0.94");
