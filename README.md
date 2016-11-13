@@ -1,22 +1,11 @@
 # webcachesim:
 ## a C++11 framework for simulating web caching policies
 
-This simulator replays a request trace, and allows to experiment with various caching policies. The goal of this framework is flexibility to allow experimenting with and implementation of a wide variety of caching policies.
+Simulate a variety of existing caching policies by replaying request traces, and use this framework as a basis to experiment with new ones.
 
-### Basic programming interface
+## Use an exisiting policy
 
-The basic interface is simple:
-
-    // create new cache
-    unique_ptr<Cache> webcache = move(Cache::create_unique("yourPolicy"));
-    // set cache capacity
-    webcache->setSize(1000);
-    // set an arbitrary param (parser implement by yourPolicy)
-    webcache->setPar("param", ".5");
-
-### Basic command line interface
-
-There is also a simple CLI, with a general call format like this
+The basic interface is
 
     ./webcachesim traceFile warmUp cacheType log2CacheSize cacheParams
 
@@ -27,8 +16,6 @@ where
  - cacheType: one of the caching policies (see below)
  - log2CacheSize: the maximum cache capacity in bytes in logarithmic form (base 2)
  - cacheParams: optional cache parameters, can be used to tune cache policies (see below)
-
-## Usage and current support for policies
 
 ### Request trace format
 
@@ -88,6 +75,17 @@ params: none
 example (1GB capacity):
 
     ./webcachesim trace.txt 0 GDSF 30
+    
+#### LFU-DA
+
+does: least-frequently used eviction with dynamic aging
+
+params: none
+
+example (1GB capacity):
+
+    ./webcachesim trace.txt 0 LFUDA 30
+    
     
 #### Filter-LRU
 
@@ -149,7 +147,7 @@ example (1GB capacity, each segment gets half the capacity)
 
     ./webcachesim trace.txt 0 LRUK 30 k=4
 
-## Example:
+### Example:
 
 Download a public 1999 request trace ([trace description](http://www.cs.bu.edu/techreports/abstracts/1999-011)), rewrite it into our format, and run the simulator.
 
@@ -159,3 +157,37 @@ Download a public 1999 request trace ([trace description](http://www.cs.bu.edu/t
     ./rewrite 1999-011-usertrace-98 trace.txt
     make
     ./webcachesim trace.txt LRU 30 0 10
+
+
+## Implement a new policy
+
+All cache implementations inherit from "Cache" (in policies/cache.h) which defines common features such as the cache capacity, statistics gathering, and the request interface. Defining a new policy needs little overhead
+
+    class YourPolicy: public Cache {
+    public:
+      // interface to set arbitrary parameters request
+      virtual void setPar(string parName, string parValue) {
+        if(parName=="c") {
+          cpar = stof(parValue);
+        }
+      }
+    
+       // requests call this function with their id and size
+      bool request (const long cur_req, const long long size) {
+       // ...
+      }
+    
+    protected:
+      double cpar;
+    };
+    // register your policy with the framework
+    static Factory<YourPolicy> factoryYP("YourPolicy");
+ 
+This allows the user interface side to conveniently configure and use your new policy.
+
+    // create new cache
+    unique_ptr<Cache> webcache = move(Cache::create_unique("YourPolicy"));
+    // set cache capacity
+    webcache->setSize(1000);
+    // set an arbitrary param (parser implement by yourPolicy)
+    webcache->setPar("param", ".5");
