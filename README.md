@@ -34,7 +34,7 @@ Request traces must be given in a space-separated format with three colums
 
 ### Available caching policies
 
-There are currently seven available caching policies.
+There are currently ten caching policies.
 
 #### LRU
 
@@ -116,17 +116,7 @@ params: c - the size which has a 50% chance of being admitted (used to determine
 example (1GB capacity, admit objects with size 256KB with about 50% probability):
 
     ./webcachesim trace.txt 0 ThLRU 30 c=18
-    
-#### ExpProb-LRU
-
-does: LRU eviction + admit with probability exponentially decreasing with object size
-
-params: c - the size which has a 50% chance of being admitted (used to determine the exponential family)
-
-example (1GB capacity, admit objects with size 256KB with about 50% probability):
-
-    ./webcachesim trace.txt 0 ThLRU 30 c=18
-    
+  
 #### Segmented LRU (two segments)
 
 does: segments cache capacity into two areas and does LRU eviction in each, a hit moves an object up one area to the next
