@@ -55,7 +55,7 @@ int main (int argc, char* argv[])
       // start statistics after warm up
       if (!logStatistics && t > warmUp)
 	{
-	  cerr << "statistics started" << endl;
+	  cerr << "gathering statistics..." << endl;
 	  logStatistics = true;
 	  webcache->startStatistics();
 	}
@@ -72,7 +72,13 @@ int main (int argc, char* argv[])
     }
 
   infile.close();
-  cout << cacheType << " " << sizeExp << " " << paramSummary << " " << webcache->getHits() << " " << reqs << " " << bytes << endl;
+  cout << "done." << endl << "-------" << endl
+       << "cache policy: " << cacheType << endl
+       << "size (log2): " << sizeExp << endl
+       << "additional parameters: " << paramSummary << endl
+       << "requests processed: " << reqs << endl
+       << "object hit ratio: " << double(webcache->getHits())/reqs << endl
+       << "byte hit ratio: " << double(webcache->getBytehits())/bytes << endl;
 
   return 0;
 }

@@ -40,8 +40,7 @@ public:
   virtual ~Cache(){};
 
   // configure cache parameters
-  virtual void setSize(long long cs) {cache_size = cs;
-    cerr << cache_size << endl;}
+  virtual void setSize(long long cs) {cache_size = cs;}
   virtual void setPar(string parName, string parValue) {}
 
   // request an object from the cache
