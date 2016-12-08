@@ -6,8 +6,7 @@
 #include <string>
 #include <stdarg.h>
 #include <map>
-
-
+#include <tuple>
 
 using namespace std;
 
@@ -23,6 +22,8 @@ using namespace std;
 inline void log_message(string m, double x, double y, double z) {
   cerr << m << "," << x << "," << y  << "," << z << "\n";
 }
+
+typedef tuple<long long, long long> object_t; // objectid, size
 
 class Cache;
 
@@ -44,10 +45,10 @@ public:
   virtual void setPar(string parName, string parValue) {}
 
   // request an object from the cache
-  virtual bool request (const long cur_req, const long long size) {}
+  virtual bool request (const long long cur_req, const long long size) = 0;
 
   // check in cache (debugging)
-  virtual bool lookup (const long cur_req) const {}
+  virtual bool lookup (const long long cur_req) const = 0;
 
   // statistics
   void startStatistics() {
@@ -60,7 +61,7 @@ public:
     hits = 0;
     bytehits = 0;
   }
-  long getHits() const {
+  long long getHits() const {
     return(hits);
   }
   long long getBytehits() const {
@@ -91,7 +92,7 @@ protected:
   long long cache_size;
   long long current_size;
   // cache hit statistics
-  long hits;
+  long long hits;
   long long bytehits;
 
   bool logStatistics;
@@ -102,7 +103,7 @@ protected:
      return map_instance;
   }
   // helper function (statistics gathering)
-   void hit(long size) {
+   void hit(const long long size) {
     if(logStatistics) {
       hits++;
       bytehits+=size;

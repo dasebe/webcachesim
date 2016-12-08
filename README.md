@@ -27,9 +27,9 @@ where
 ### Request trace format
 
 Request traces must be given in a space-separated format with three colums
-- time should be a long int, but can be arbitrary (for future TTL feature, not currently in use)
-- id should be a long int, used to uniquely identify objects
-- size should be a long int, the obejct size
+- time should be a long long int, but can be arbitrary (for future TTL feature, not currently in use)
+- id should be a long long int, used to uniquely identify objects
+- size should be a long long int, the object size
 
 | time |  id | size |
 | ---- | --- | ---- |

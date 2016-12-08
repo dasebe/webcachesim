@@ -1,10 +1,8 @@
 #include <unordered_map>
-#include <map>
 #include <unordered_set>
 #include <vector>
 #include <queue>
 #include <list>
-#include <tuple>
 #include <assert.h>
 #include <random>
 #include "cache.h"
@@ -25,13 +23,13 @@ protected:
   // ordered multi map of GD values, access object id + size
   multimap<long double, object_t> value_map;
   // find objects via unordered_map
-  unordered_map<long, map_iterator_t> cache_map;
+  unordered_map<long long, map_iterator_t> cache_map;
 
-  virtual long double agevalue(const long cur_req, const long size) {
+  virtual long double agevalue(const long long cur_req, const long long size) {
     return(current_L + 1);
   }
 
-  virtual void hit(const long cur_req, const long long size) {
+  virtual void hit(const long long cur_req, const long long size) {
     // get iterator for the old position
     map_iterator_t si = cache_map[cur_req];
     // update current req's value to hval:
@@ -42,7 +40,7 @@ protected:
     Cache::hit(size);
   }
 
-  virtual void miss(const long cur_req, const long long size) {
+  virtual void miss(const long long cur_req, const long long size) {
     // object feasible to store?
     if(size >= cache_size) {
       LOG("error", 0, size, cache_size);
@@ -75,11 +73,11 @@ public:
   GreedyDualBase(): Cache() {}
   ~GreedyDualBase(){}
 
-  bool lookup (const long cur_req) const {
+  bool lookup (const long long cur_req) const {
     return(cache_map.count(cur_req)>0);
   }
 
-  virtual void evict (const long cur_req) {
+  virtual void evict (const long long cur_req) {
     if(lookup(cur_req)) {
       map_iterator_t lit = cache_map[cur_req];
       object_t obj = lit->second;
@@ -89,7 +87,7 @@ public:
     }
   }
 
-  virtual bool request (const long cur_req, long size) {
+  virtual bool request (const long long cur_req, const long long size) {
     if (cache_map.count(cur_req) > 0) {
 	if (size == get<1>(get<1>(*(cache_map[cur_req]))) ) {
 	  // hit
@@ -117,7 +115,7 @@ static Factory<GreedyDualBase> factoryGD("GD");
 
 class GDSCache: public GreedyDualBase {
 protected:
-  long double agevalue(const long cur_req, const long size) {
+  long double agevalue(const long long cur_req, const long long size) {
     return(current_L + 1/double(size));
   }
 
@@ -133,9 +131,9 @@ static Factory<GDSCache> factoryGDS("GDS");
 
 class GDSFCache: public GreedyDualBase {
 protected:
-  unordered_map<long, long long> reqs_map;
+  unordered_map<long long, long long> reqs_map;
 
-  long double agevalue(const long cur_req, const long size) {
+  long double agevalue(const long long cur_req, const long long size) {
     return(current_L + reqs_map[cur_req]/double(size));
   }
 
@@ -144,7 +142,7 @@ public:
 
   ~GDSFCache(){}
 
-  bool request (const long cur_req, const long size) {
+  bool request (const long long cur_req, const long long size) {
     if (cache_map.count(cur_req) > 0) {
       if (size == get<1>(get<1>(*(cache_map[cur_req]))) ) {
 	// hit and consistent object size
@@ -174,10 +172,10 @@ static Factory<GDSFCache> factoryGDSF("GDSF");
 
 class LRUKCache: public GreedyDualBase {
 protected:
-  unordered_map<long, queue<unsigned long>> refs_map;
+  unordered_map<long long, queue<unsigned long>> refs_map;
   unsigned int tk;
   unsigned long curtime;
-  long double agevalue(const long cur_req, const long size) {
+  long double agevalue(const long long cur_req, const long long size) {
     long double newval = 0.0L;
     if(refs_map[cur_req].size()>=tk) {
 	newval = refs_map[cur_req].front();
@@ -187,7 +185,7 @@ protected:
     return(newval);
   }
 
-  void miss(const long cur_req, const long long size) {
+  void miss(const long long cur_req, const long long size) {
     // object feasible to store?
     if(size >= cache_size) {
       LOG("error", 0, size, cache_size);
@@ -232,7 +230,7 @@ public:
     }
   }
 
-  bool request (const long cur_req, const long size) {
+  bool request (const long long cur_req, const long long size) {
     curtime++;
     if (cache_map.count(cur_req) > 0) {
       if (size == get<1>(get<1>(*(cache_map[cur_req]))) ) {
@@ -262,9 +260,9 @@ static Factory<LRUKCache> factoryLRUK("LRUK");
 
 class LFUDACache: public GreedyDualBase {
 protected:
-  unordered_map<long, long long> reqs_map;
+  unordered_map<long long, long long> reqs_map;
 
-  long double agevalue(const long cur_req, const long size) {
+  long double agevalue(const long long cur_req, const long long size) {
     return(current_L + reqs_map[cur_req]);
   }
 
@@ -272,7 +270,7 @@ public:
   LFUDACache(): GreedyDualBase() {}
   ~LFUDACache(){}
 
-  bool request (const long cur_req, const long size) {
+  bool request (const long long cur_req, const long long size) {
     if (cache_map.count(cur_req) > 0) {
       if (size == get<1>(get<1>(*(cache_map[cur_req]))) ) {
 	// hit and consistent object size

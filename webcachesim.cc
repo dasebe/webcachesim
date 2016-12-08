@@ -43,8 +43,8 @@ int main (int argc, char* argv[])
   }
 
   ifstream infile;
-  long reqs = 0, bytes = 0;
-  long t, id, size;
+  long long reqs = 0, bytes = 0;
+  long long t, id, size;
   bool logStatistics=false;
 
   cerr << "running..." << endl;

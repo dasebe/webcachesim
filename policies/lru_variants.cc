@@ -1,7 +1,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <list>
-#include <tuple>
 #include <assert.h>
 #include <random>
 #include <math.h>
@@ -9,7 +8,6 @@
 
 using namespace std;
 
-typedef tuple<long, long> object_t; // objectid, size
 typedef list<object_t>::iterator list_iterator_t;
 
 /*
@@ -23,10 +21,10 @@ public:
   ~LRUCache(){}
 
   // normal cache functions
-  virtual bool lookup (const long cur_req) const {
+  virtual bool lookup (const long long cur_req) const {
     return(cache_map.count(cur_req)>0);
   }
-  virtual void evict (const long cur_req) {
+  virtual void evict (const long long cur_req) {
     if(lookup(cur_req)) {
       list_iterator_t lit = cache_map[cur_req];
       cache_map.erase(cur_req);
@@ -34,8 +32,8 @@ public:
       cache_list.erase(lit);
     }
   }
-  virtual bool request (const long cur_req, const long long size) {
-    unordered_map<long, list_iterator_t>::const_iterator it;
+  virtual bool request (const long long cur_req, const long long size) {
+    unordered_map<long long, list_iterator_t>::const_iterator it;
     it = cache_map.find(cur_req);
     if(it != cache_map.end())
       {
@@ -57,15 +55,15 @@ protected:
   // list for recency order
   list<object_t> cache_list;
   // map to find objects in list
-  unordered_map<long, list_iterator_t> cache_map;
+  unordered_map<long long, list_iterator_t> cache_map;
 
   // main functionality: deal with hit and miss
-  virtual void hit(unordered_map<long, list_iterator_t>::const_iterator it, long size) {
+  virtual void hit(unordered_map<long long, list_iterator_t>::const_iterator it, const long long size) {
     cache_list.splice(cache_list.begin(), cache_list, it->second);
     Cache::hit(size);
   }
 
-  virtual void miss(const long cur_req, const long size) {
+  virtual void miss(const long long cur_req, const long long size) {
     // object feasible to store?
     if(size >= cache_size) {
       LOG("L",0,size,cache_size);
@@ -77,7 +75,7 @@ protected:
       // evict least popular (i.e. last element)
       lit = cache_list.end();
       lit--;
-      long esize = get<1>(*lit);
+      long long esize = get<1>(*lit);
       LOG("e",current_size,get<0>(*lit),esize);
       current_size -= esize;
       cache_map.erase(get<0>(*lit));
@@ -105,7 +103,7 @@ public:
   ~FIFOCache(){}
 
 protected:
-  virtual void hit(unordered_map<long, list_iterator_t>::const_iterator it, long size) {
+  virtual void hit(unordered_map<long long, list_iterator_t>::const_iterator it, const long long size) {
     Cache::hit(size);
   }
 };
@@ -148,20 +146,20 @@ public:
     }
   }
 
-  virtual void evict (const long cur_req) {
+  virtual void evict (const long long cur_req) {
     previous.evict(cur_req);
     LRUCache::evict(cur_req);
   }
 
-  virtual bool lookup1st  (const long cur_req) {
+  virtual bool lookup1st  (const long long cur_req) {
     return (previous.lookup(cur_req));
   }
   
-  virtual bool lookup2nd (const long cur_req) {
+  virtual bool lookup2nd (const long long cur_req) {
     return (LRUCache::lookup(cur_req));
   }
 
-  virtual bool request (const long cur_req, const long long size) {
+  virtual bool request (const long long cur_req, const long long size) {
     if(previous.lookup(cur_req)) { // found in previous layer
       previous.evict(cur_req); //delete in previous
       miss(cur_req, size); //admit to current
@@ -182,7 +180,7 @@ public:
   long long overall_cache_size;
   LRUCache previous;
 
-  virtual void miss(const long cur_req, const long size) {
+  virtual void miss(const long long cur_req, const long long size) {
     // object feasible to store?
     if(size >= cache_size) {
       LOG("error",0,size,cache_size);
@@ -194,7 +192,7 @@ public:
       // evict least popular (i.e. last element)
       lit = cache_list.end();
       lit--;
-      long esize = get<1>(*lit);
+      long long esize = get<1>(*lit);
       LOG("e",current_size,get<0>(*lit),esize);
       previous.request(get<0>(*lit), esize); // move to front of previous cache
       current_size -= esize;
@@ -226,7 +224,7 @@ public:
   
   virtual void setPar(string parName, string parValue) {
     if(parName=="n") {
-      const long n = stol(parValue);
+      const long long n = stol(parValue);
       assert(n>0);
       npar = n;
     } else {
@@ -235,15 +233,15 @@ public:
   }
 
 protected:
-  long npar;
-  unordered_map<long,long> filter;
+  long long npar;
+  unordered_map<long long,long long> filter;
 
-  virtual bool request (const long cur_req, const long long size) {
+  virtual bool request (const long long cur_req, const long long size) {
     filter[cur_req]++;
     return(LRUCache::request(cur_req, size));
   }
   
-  virtual void miss(const long cur_req, const long size) {
+  virtual void miss(const long long cur_req, const long long size) {
     if(filter[cur_req]<=npar)
       return ;
     LRUCache::miss(cur_req, size);
@@ -279,9 +277,9 @@ public:
   }
 
 protected:
-  long sthreshold;
+  long long sthreshold;
 
-  virtual void miss(const long cur_req, const long size) {
+  virtual void miss(const long long cur_req, const long long size) {
     // admit if size < threshold
     bool dec_adm = size<sthreshold;
     if (dec_adm)
@@ -315,7 +313,7 @@ protected:
   default_random_engine generator;
   double cpar;
 
-  virtual void miss(const long cur_req, const long size) {
+  virtual void miss(const long long cur_req, const long long size) {
     // admit to cache with probablity that is exponentially decreasing with size
     double admissionprob = exp(-size/ cpar);
     bernoulli_distribution admissioncoin(admissionprob);
