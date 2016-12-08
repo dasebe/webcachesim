@@ -3,6 +3,13 @@
 
 Simulate a variety of existing caching policies by replaying request traces, and use this framework as a basis to experiment with new ones.
 
+## Compile
+
+Auto generate a Makefile using cmake and start compilation as follows.
+
+    cmake CMakeLists.txt
+    make
+
 ## Use an exisiting policy
 
 The basic interface is
