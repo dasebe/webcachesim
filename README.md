@@ -10,6 +10,8 @@ Auto generate a Makefile using cmake and start compilation as follows.
     cmake CMakeLists.txt
     make
 
+(You will need a compiler that supports C++11, e.g., GCC 4.8.1 upwards (with -std=c++11). Older compilers that partially support C++11, e.g., GCC 4.4, can compile (with -std=c++0x).
+
 ## Use an exisiting policy
 
 The basic interface is
