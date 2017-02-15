@@ -1,9 +1,15 @@
 # webcachesim:
-## a C++11 framework for simulating web caching policies
+## a C++11 simulator for CDN caching and web caching policies
 
 Simulate a variety of existing caching policies by replaying request traces, and use this framework as a basis to experiment with new ones.
 
-## Compile
+## Example simulation results
+
+We replay production traffic from a CDN server operated by the [Wikimedia Foundation](https://wikimediafoundation.org/wiki/Home), and consider various modern caching policies.
+
+<img src="https://cloud.githubusercontent.com/assets/9959772/22966302/de4de664-f361-11e6-9345-854bffa2005c.png" width=500px />
+
+## Compiling webcachesim
 
 Auto generate a Makefile using cmake and start compilation as follows.
 
@@ -12,7 +18,7 @@ Auto generate a Makefile using cmake and start compilation as follows.
 
 You will need a compiler that supports C++11, e.g., GCC 4.8.1 upwards (with -std=c++11). Older compilers that partially support C++11, e.g., GCC 4.4, can compile (with -std=c++0x).
 
-## Use an exisiting policy
+## Using an exisiting policy
 
 The basic interface is
 
