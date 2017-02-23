@@ -3,6 +3,9 @@
 
 Simulate a variety of existing caching policies by replaying request traces, and use this framework as a basis to experiment with new ones.
 
+The webcachesim simulator was built during the [AdaptSize project](https://github.com/dasebe/AdaptSize), see [References](##References) for more information.
+
+
 ## Example simulation results
 
 We replay production traffic from a CDN server operated by the [Wikimedia Foundation](https://wikimediafoundation.org/wiki/Home), and consider various modern caching policies.
@@ -248,3 +251,13 @@ This project has not be thoroughly tested, any test cases are likely to get a sp
 ### Contribute a new caching policy
 
 If you want to add a new caching policy, please augment your code with a reference, a test case, and an example. Use pull requests as usual.
+
+## References
+
+We ask derivative academic works to reference the AdaptSize paper:
+
+    AdaptSize: Orchestrating the Hot Object Memory Cache in a CDN
+    Daniel S. Berger, Ramesh K. Sitaraman, Mor Harchol-Balter
+    To appear in USENIX NSDI in March 2017.
+    
+You can find more information on [USENIX NSDI 2017 here.](https://www.usenix.org/conference/nsdi17/technical-sessions)
