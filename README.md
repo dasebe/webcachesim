@@ -222,3 +222,28 @@ This allows the user interface side to conveniently configure and use your new p
     webcache->setSize(1000);
     // set an arbitrary param (parser implement by yourPolicy)
     webcache->setPar("myPar", "0.94");
+
+
+
+## Contributors are welcome
+
+Want to contribute? Great! We follow the [Github contribution work flow](https://help.github.com/articles/github-flow/).
+This means that all submissions require review. We use Github pull requests for this purpose.
+
+There are a couple ways to help out.
+
+### Documentation and use cases
+
+Tell us how you use webcachesim or how you'd want to use webcachesim and what you're missing to implement your use case.
+
+### Bug Reports
+
+If you come across a bug in webcachesim, please file a bug report. This is an early-stage project, which depends on your input!
+
+### Write test cases
+
+This project has not be thoroughly tested, any test cases are likely to get a speedy merge.
+
+### Contribute a new caching policy
+
+If you want to add a new caching policy, please augment your code with a reference, a test case, and an example. Use pull requests as usual.
