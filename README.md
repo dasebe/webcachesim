@@ -59,7 +59,7 @@ does: least-recently used eviction
 
 params: none
 
-example (1GB capacity):
+example usage:
 
     ./webcachesim test.tr 0 LRU 1000
     
@@ -69,7 +69,7 @@ does: first-in first-out eviction
 
 params: none
 
-example (1GB capacity):
+example usage:
 
     ./webcachesim test.tr 0 FIFO 1000
     
@@ -79,7 +79,7 @@ does: greedy dual size eviction
 
 params: none
 
-example (1GB capacity):
+example usage:
 
     ./webcachesim test.tr 0 GDS 1000
     
@@ -89,7 +89,7 @@ does: greedy dual-size frequency eviction
 
 params: none
 
-example (1GB capacity):
+example usage:
 
     ./webcachesim test.tr 0 GDSF 1000
     
@@ -99,7 +99,7 @@ does: least-frequently used eviction with dynamic aging
 
 params: none
 
-example (1GB capacity):
+example usage:
 
     ./webcachesim test.tr 0 LFUDA 1000
     
@@ -110,7 +110,7 @@ does: LRU eviction + admit only after N requests
 
 params: n - admit after n requests)
 
-example (1GB capacity, admit after 10 requests):
+example usage (admit after 10 requests):
 
     ./webcachesim test.tr 0 Filter 1000 n=10
     
@@ -120,7 +120,7 @@ does: LRU eviction + admit only after N requests
 
 params: t - the size threshold in log form (base 2)
 
-example (1GB capacity, admit only objects smaller than 512KB):
+example usage (admit only objects smaller than 512KB):
 
     ./webcachesim test.tr 0 ThLRU 1000 t=19
     
@@ -130,7 +130,7 @@ does: LRU eviction + admit with probability exponentially decreasing with object
 
 params: c - the size which has a 50% chance of being admitted (used to determine the exponential family)
 
-example (1GB capacity, admit objects with size 256KB with about 50% probability):
+example usage (admit objects with size 256KB with about 50% probability):
 
     ./webcachesim test.tr 0 ThLRU 1000 c=18
   
@@ -140,7 +140,7 @@ does: segments cache capacity into two areas and does LRU eviction in each, a hi
 
 params: either seg1 or seg2 = the fraction of the capacity assigned to the first or second segment, respectively (the rest goes to the other)
 
-example (1GB capacity, each segment gets half the capacity)
+example usage (each segment gets half the capacity)
 
     ./webcachesim test.tr 0 S2LRU 1000 seg1=.5
 
@@ -150,7 +150,7 @@ does: evict obejct which has oldest K-th reference in the past
 
 params: k - eviction based on k-th reference in the past
 
-example (1GB capacity, each segment gets half the capacity)
+example usage (each segment gets half the capacity)
 
     ./webcachesim test.tr 0 LRUK 1000 k=4
 
