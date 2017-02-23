@@ -1,5 +1,5 @@
 # webcachesim:
-## a C++11 simulator for CDN caching and web caching policies
+## A simulator for CDN caching and web caching policies (based on the C++11 standard library)
 
 Simulate a variety of existing caching policies by replaying request traces, and use this framework as a basis to experiment with new ones.
 
@@ -22,7 +22,7 @@ You will need a compiler that supports C++11, e.g., GCC 4.8.1 upwards (with -std
 
 The basic interface is
 
-    ./webcachesim traceFile warmUp cacheType log2CacheSize cacheParams
+    ./webcachesim traceFile warmUp cacheType log2CacheSize [cacheParams]
 
 where
 
@@ -51,7 +51,7 @@ Example trace in file "test.tr".
 
 ### Available caching policies
 
-There are currently ten caching policies.
+There are currently ten caching policies. This section describes each one, in turn, its parameters, and how to run it on the "test.tr" example trace with cache size 1000 Bytes.
 
 #### LRU
 
