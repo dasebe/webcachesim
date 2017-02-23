@@ -1,5 +1,5 @@
 # webcachesim:
-## A simulator for CDN caching and web caching policies (based on the C++11 standard library)
+## A simulator for CDN caching and web caching policies.
 
 Simulate a variety of existing caching policies by replaying request traces, and use this framework as a basis to experiment with new ones.
 
@@ -231,7 +231,7 @@ This allows the user interface side to conveniently configure and use your new p
 ## Contributors are welcome
 
 Want to contribute? Great! We follow the [Github contribution work flow](https://help.github.com/articles/github-flow/).
-This means that all submissions require review. We use Github pull requests for this purpose.
+This means that submissions should fork and use a Github pull requests to get merged into this code base.
 
 There are a couple ways to help out.
 
