@@ -8,7 +8,7 @@ int main (int argc, char* argv[])
 
   // output help if insufficient params
   if(argc < 5) {
-    cerr << "webcachesim traceFile warmUp cacheType log2CacheSize cacheParams" << endl;
+    cerr << "webcachesim traceFile warmUp cacheType cacheSizeBytes cacheParams" << endl;
     return 1;
   }
 
@@ -24,8 +24,7 @@ int main (int argc, char* argv[])
     return 1;
 
   // configure cache size
-  const double sizeExp = atof(argv[4]);
-  const long long cache_size  = pow(2.0,sizeExp);
+  const long long cache_size  = atoll(argv[4]);
   webcache->setSize(cache_size);
 
   // parse cache parameters
@@ -74,7 +73,7 @@ int main (int argc, char* argv[])
   infile.close();
   cout << "done." << endl << "-------" << endl
        << "cache policy: " << cacheType << endl
-       << "size (log2): " << sizeExp << endl
+       << "size: " << cache_size << endl
        << "additional parameters: " << paramSummary << endl
        << "requests processed: " << reqs << endl
        << "object hit ratio: " << double(webcache->getHits())/reqs << endl
