@@ -8,7 +8,7 @@ int main (int argc, char* argv[])
 
   // output help if insufficient params
   if(argc < 5) {
-    cerr << "webcachesim traceFile warmUp cacheType cacheSizeBytes cacheParams" << endl;
+    cerr << "webcachesim traceFile warmUp cacheType cacheSizeBytes [cacheParams]" << endl;
     return 1;
   }
 

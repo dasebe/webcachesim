@@ -37,7 +37,7 @@ where
 Request traces must be given in a space-separated format with three colums
 - time should be a long long int, but can be arbitrary (for future TTL feature, not currently in use)
 - id should be a long long int, used to uniquely identify objects
-- size should be a long long int, the object size
+- size should be a long long int, this is object's size in bytes
 
 | time |  id | size |
 | ---- | --- | ---- |
@@ -46,6 +46,8 @@ Request traces must be given in a space-separated format with three colums
 |   3  |  1  |  120 |
 |   4  |  3  |  14  |
 |   4  |  1 |  120 |
+
+Example trace in file "test.tr".
 
 ### Available caching policies
 
@@ -59,7 +61,7 @@ params: none
 
 example (1GB capacity):
 
-    ./webcachesim trace.txt 0 LRU 30
+    ./webcachesim test.tr 0 LRU 1000
     
 #### FIFO
 
@@ -69,7 +71,7 @@ params: none
 
 example (1GB capacity):
 
-    ./webcachesim trace.txt 0 FIFO 30
+    ./webcachesim test.tr 0 FIFO 1000
     
 #### GDS
 
@@ -79,7 +81,7 @@ params: none
 
 example (1GB capacity):
 
-    ./webcachesim trace.txt 0 GDS 30
+    ./webcachesim test.tr 0 GDS 1000
     
 #### GDSF
 
@@ -89,7 +91,7 @@ params: none
 
 example (1GB capacity):
 
-    ./webcachesim trace.txt 0 GDSF 30
+    ./webcachesim test.tr 0 GDSF 1000
     
 #### LFU-DA
 
@@ -99,7 +101,7 @@ params: none
 
 example (1GB capacity):
 
-    ./webcachesim trace.txt 0 LFUDA 30
+    ./webcachesim test.tr 0 LFUDA 1000
     
     
 #### Filter-LRU
@@ -110,7 +112,7 @@ params: n - admit after n requests)
 
 example (1GB capacity, admit after 10 requests):
 
-    ./webcachesim trace.txt 0 Filter 30 n=10
+    ./webcachesim test.tr 0 Filter 1000 n=10
     
 #### Threshold-LRU
 
@@ -120,7 +122,7 @@ params: t - the size threshold in log form (base 2)
 
 example (1GB capacity, admit only objects smaller than 512KB):
 
-    ./webcachesim trace.txt 0 ThLRU 30 t=19
+    ./webcachesim test.tr 0 ThLRU 1000 t=19
     
 #### ExpProb-LRU
 
@@ -130,7 +132,7 @@ params: c - the size which has a 50% chance of being admitted (used to determine
 
 example (1GB capacity, admit objects with size 256KB with about 50% probability):
 
-    ./webcachesim trace.txt 0 ThLRU 30 c=18
+    ./webcachesim test.tr 0 ThLRU 1000 c=18
   
 #### Segmented LRU (two segments)
 
@@ -140,7 +142,7 @@ params: either seg1 or seg2 = the fraction of the capacity assigned to the first
 
 example (1GB capacity, each segment gets half the capacity)
 
-    ./webcachesim trace.txt 0 S2LRU 30 seg1=.5
+    ./webcachesim test.tr 0 S2LRU 1000 seg1=.5
 
 #### LRU-K
 
@@ -150,18 +152,42 @@ params: k - eviction based on k-th reference in the past
 
 example (1GB capacity, each segment gets half the capacity)
 
-    ./webcachesim trace.txt 0 LRUK 30 k=4
+    ./webcachesim test.tr 0 LRUK 1000 k=4
 
-### Example:
 
-Download a public 1999 request trace ([trace description](http://www.cs.bu.edu/techreports/abstracts/1999-011)), rewrite it into our format, and run the simulator.
+## How to get traces:
+
+
+### Generate your own traces with a given distribution
+
+One example is a Pareto (Zipf-like) popularity distribution and Bounded-Pareto object size distribution.
+The "basic_trace" tool takes the following parameters:
+
+ - how many unique objects
+ - how many requests to generate for most popular object (total request length will be a multiple of that)
+ - Pareto shape
+ - min object size
+ - max object size
+ - output name for trace
+
+Here's an example that recreates the "test.tr" trace for the examples above. This uses the "basic_trace" generator with 1000 objects, about 10000 requests overall, Pareto shape 1.8 and object sizes between 1 and 10000 bytes.
+
+    g++ tracegenerator/basic_trace.cc -std=c++11 -o basic_trace
+    ./basic_trace 1000 1000 1.8 1 10000 test.tr
+    make
+    ./webcachesim test.tr 0 LRU 1000
+
+
+### Rewrite existing open-source traces
+
+Example: download a public 1999 request trace ([trace description](http://www.cs.bu.edu/techreports/abstracts/1999-011)), rewrite it into our format, and run the simulator.
 
     wget http://www.cs.bu.edu/techreports/1999-011-usertrace-98.gz
     gunzip 1999-011-usertrace-98.gz
-    g++ -o rewrite -std=c++11 ../helpers/rewrite_trace_http.cc
-    ./rewrite 1999-011-usertrace-98 trace.txt
+    g++ -o rewrite -std=c++11 ../traceparser/rewrite_trace_http.cc
+    ./rewrite 1999-011-usertrace-98 test.tr
     make
-    ./webcachesim trace.txt LRU 30 0 10
+    ./webcachesim test.tr 0 LRU 1073741824
 
 
 ## Implement a new policy
