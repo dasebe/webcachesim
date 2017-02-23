@@ -3,7 +3,7 @@
 
 Simulate a variety of existing caching policies by replaying request traces, and use this framework as a basis to experiment with new ones.
 
-The webcachesim simulator was built for the [AdaptSize project](https://github.com/dasebe/AdaptSize), see [References](#References) for more information.
+The webcachesim simulator was built for the [AdaptSize project](https://github.com/dasebe/AdaptSize), see [References](#references) for more information.
 
 
 ## Example simulation results
@@ -254,7 +254,7 @@ If you want to add a new caching policy, please augment your code with a referen
 
 ## References
 
-We ask derivative academic works to reference the AdaptSize paper:
+We ask academic works, which built on this code, to reference the AdaptSize paper:
 
     AdaptSize: Orchestrating the Hot Object Memory Cache in a CDN
     Daniel S. Berger, Ramesh K. Sitaraman, Mor Harchol-Balter
