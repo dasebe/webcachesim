@@ -135,7 +135,7 @@ params: c - the size which has a 50% chance of being admitted (used to determine
 
 example usage (admit objects with size 256KB with about 50% probability):
 
-    ./webcachesim test.tr 0 ThLRU 1000 c=18
+    ./webcachesim test.tr 0 ExpLRU 1000 c=18
   
 #### Segmented LRU (two segments)
 
