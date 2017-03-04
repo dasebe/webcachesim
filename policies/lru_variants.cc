@@ -118,7 +118,7 @@ static Factory<FIFOCache> factoryFIFO("FIFO");
 
 class S2LRUCache: public LRUCache {
 public:
-  S2LRUCache(): previous(), LRUCache() {}
+  S2LRUCache(): LRUCache(), previous() {}
   ~S2LRUCache(){}
 
   virtual void setSize(long long cs) {
@@ -177,8 +177,8 @@ public:
   }
 
   protected:
-  long long overall_cache_size;
   LRUCache previous;
+  long long overall_cache_size;
 
   virtual void miss(const long long cur_req, const long long size) {
     // object feasible to store?
@@ -219,7 +219,7 @@ static Factory<S2LRUCache> factoryS2LRU("S2LRU");
 
 class FilterCache: public LRUCache {
 public:
-  FilterCache(): npar(2), LRUCache() {}
+  FilterCache(): LRUCache(), npar(2) {}
   ~FilterCache(){}
   
   virtual void setPar(string parName, string parValue) {
@@ -263,7 +263,7 @@ static Factory<FilterCache> factoryFilter("Filter");
 
 class ThLRUCache: public LRUCache {
 public:
-  ThLRUCache(): sthreshold(524288), LRUCache() {}
+  ThLRUCache(): LRUCache(), sthreshold(524288) {}
   ~ThLRUCache(){}
   
   virtual void setPar(string parName, string parValue) {
@@ -296,7 +296,7 @@ static Factory<ThLRUCache> factoryThLRU("ThLRU");
 
 class ExpLRUCache: public LRUCache {
 public:
-  ExpLRUCache(): cpar(262144), LRUCache() {} //default value
+  ExpLRUCache(): LRUCache(), cpar(262144) {} //default value
   ~ExpLRUCache(){}
 
   virtual void setPar(string parName, string parValue) {
