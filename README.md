@@ -149,7 +149,7 @@ example usage (each segment gets half the capacity)
 
 #### LRU-K
 
-does: evict obejct which has oldest K-th reference in the past
+does: evict object which has oldest K-th reference in the past
 
 params: k - eviction based on k-th reference in the past
 
