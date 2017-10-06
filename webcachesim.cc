@@ -42,7 +42,7 @@ int main (int argc, char* argv[])
   }
 
   ifstream infile;
-  long long reqs = 0, bytes = 0;
+  long long reqs = 0, bytes = 0, hits = 0;
   long long t, id, size;
   bool logStatistics=false;
 
@@ -67,17 +67,16 @@ int main (int argc, char* argv[])
 	}
 
       // request
-      webcache->request(id,size);
+      if(webcache->request(id,size)) {
+          hits++;
+      }
     }
 
   infile.close();
-  cout << "done." << endl << "-------" << endl
-       << "cache policy: " << cacheType << endl
-       << "size: " << cache_size << endl
-       << "additional parameters: " << paramSummary << endl
-       << "requests processed: " << reqs << endl
-       << "object hit ratio: " << double(webcache->getHits())/reqs << endl
-       << "byte hit ratio: " << double(webcache->getBytehits())/bytes << endl;
+  cout << cacheType << " " << cache_size << " " << paramSummary << " "
+       << reqs << " " << webcache->getHits() << " " << hits << " "
+       << double(webcache->getHits())/reqs << " "
+       << double(webcache->getBytehits())/bytes << endl;
 
   return 0;
 }
