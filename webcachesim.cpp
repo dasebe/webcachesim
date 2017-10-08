@@ -1,37 +1,39 @@
 #include <fstream>
+#include <string>
 #include <regex>
-#include "policies/lru_variants.cc"
-#include "policies/gd_variants.cc"
+#include "caches/lru_variants.h"
+#include "caches/gd_variants.h"
+#include "request.h"
+
+using namespace std;
 
 int main (int argc, char* argv[])
 {
 
   // output help if insufficient params
-  if(argc < 5) {
-    cerr << "webcachesim traceFile warmUp cacheType cacheSizeBytes [cacheParams]" << endl;
+  if(argc < 4) {
+    cerr << "webcachesim traceFile cacheType cacheSizeBytes [cacheParams]" << endl;
     return 1;
   }
 
   // trace properties
   const char* path = argv[1];
-  const long warmUp = atol(argv[2]);
-  assert(warmUp>=0);
 
   // create cache
-  const string cacheType = argv[3];
+  const string cacheType = argv[2];
   unique_ptr<Cache> webcache = move(Cache::create_unique(cacheType));
   if(webcache == nullptr)
     return 1;
 
   // configure cache size
-  const long long cache_size  = atoll(argv[4]);
+  const uint64_t cache_size  = std::stoull(argv[3]);
   webcache->setSize(cache_size);
 
   // parse cache parameters
   regex opexp ("(.*)=(.*)");
   cmatch opmatch;
   string paramSummary;
-  for(int i=5; i<argc; i++) {
+  for(int i=4; i<argc; i++) {
     regex_match (argv[i],opmatch,opexp);
     if(opmatch.size()!=3) {
       cerr << "each cacheParam needs to be in form name=value" << endl;
@@ -42,41 +44,31 @@ int main (int argc, char* argv[])
   }
 
   ifstream infile;
-  long long reqs = 0, bytes = 0, hits = 0;
+  long long reqs = 0, hits = 0;
   long long t, id, size;
-  bool logStatistics=false;
 
   cerr << "running..." << endl;
 
   infile.open(path);
+  SimpleRequest* req = new SimpleRequest(0, 0);
   while (infile >> t >> id >> size)
     {
-      // start statistics after warm up
-      if (!logStatistics && t > warmUp)
-	{
-	  cerr << "gathering statistics..." << endl;
-	  logStatistics = true;
-	  webcache->startStatistics();
-	}
-
-      // log statistics
-      if (logStatistics)
-	{
-	  reqs++;
-	  bytes += size;
-	}
-
-      // request
-      if(webcache->request(id,size)) {
-          hits++;
-      }
+        reqs++;
+        
+        req->reinit(id,size);
+        if(webcache->lookup(req)) {
+            hits++;
+        } else {
+            webcache->admit(req);
+        }
     }
+
+  delete req;
 
   infile.close();
   cout << cacheType << " " << cache_size << " " << paramSummary << " "
-       << reqs << " " << webcache->getHits() << " " << hits << " "
-       << double(webcache->getHits())/reqs << " "
-       << double(webcache->getBytehits())/bytes << endl;
+       << reqs << " " << hits << " "
+       << double(hits)/reqs << endl;
 
   return 0;
 }
