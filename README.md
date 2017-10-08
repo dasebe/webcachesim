@@ -14,23 +14,22 @@ We replay production traffic from a CDN server operated by the [Wikimedia Founda
 
 ## Compiling webcachesim
 
-Auto generate a Makefile using cmake and start compilation as follows.
+You will need a compiler that supports C++11, e.g., GCC 4.8.1 upwards (with -std=c++11). Older compilers that partially support C++11, e.g., GCC 4.4, can compile (with -std=c++0x).
 
-    cmake CMakeLists.txt
+Then, get started with
+
     make
 
-You will need a compiler that supports C++11, e.g., GCC 4.8.1 upwards (with -std=c++11). Older compilers that partially support C++11, e.g., GCC 4.4, can compile (with -std=c++0x).
 
 ## Using an exisiting policy
 
 The basic interface is
 
-    ./webcachesim traceFile warmUp cacheType log2CacheSize [cacheParams]
+    ./webcachesim traceFile cacheType log2CacheSize [cacheParams]
 
 where
 
  - traceFile: a request trace (see below)
- - warmUp: the number of requests to skip before gathering hit/miss statistics
  - cacheType: one of the caching policies (see below)
  - log2CacheSize: the maximum cache capacity in bytes in logarithmic form (base 2)
  - cacheParams: optional cache parameters, can be used to tune cache policies (see below)
