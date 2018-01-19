@@ -3,6 +3,7 @@
 *.lo
 *.o
 *.obj
+*.d
 
 # Precompiled Headers
 *.gch
@@ -33,3 +34,4 @@
 
 # other tmp files
 *.log
+*.txt
