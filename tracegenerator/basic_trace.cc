@@ -34,7 +34,7 @@ int main (int argc, char* argv[])
   const double higherb = atof(argv[5]);
   const string outputname(argv[6]);
 
-  long size[no_objs];
+  auto * size = new long[no_objs];
   list<fi_pair_t> reqseq;
 
   // initialize object sizes
@@ -86,6 +86,8 @@ int main (int argc, char* argv[])
 
   cout << "finished output.\n";
   outfile.close();
+
+  delete size;
 
   return 0;
 }
