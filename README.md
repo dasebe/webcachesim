@@ -63,8 +63,8 @@ params: none
 
 example usage:
 
-    ./webcachesim test.tr 0 LRU 1000
-    
+    ./webcachesim test.tr LRU 1000
+     
 #### FIFO
 
 does: first-in first-out eviction
@@ -73,7 +73,7 @@ params: none
 
 example usage:
 
-    ./webcachesim test.tr 0 FIFO 1000
+    ./webcachesim test.tr FIFO 1000
     
 #### GDS
 
@@ -83,7 +83,7 @@ params: none
 
 example usage:
 
-    ./webcachesim test.tr 0 GDS 1000
+    ./webcachesim test.tr GDS 1000
     
 #### GDSF
 
@@ -93,7 +93,7 @@ params: none
 
 example usage:
 
-    ./webcachesim test.tr 0 GDSF 1000
+    ./webcachesim test.tr GDSF 1000
     
 #### LFU-DA
 
@@ -103,7 +103,7 @@ params: none
 
 example usage:
 
-    ./webcachesim test.tr 0 LFUDA 1000
+    ./webcachesim test.tr LFUDA 1000
     
     
 #### Filter-LRU
@@ -114,7 +114,7 @@ params: n - admit after n requests)
 
 example usage (admit after 10 requests):
 
-    ./webcachesim test.tr 0 Filter 1000 n=10
+    ./webcachesim test.tr Filter 1000 n=10
     
 #### Threshold-LRU
 
@@ -124,7 +124,7 @@ params: t - the size threshold in log form (base 2)
 
 example usage (admit only objects smaller than 512KB):
 
-    ./webcachesim test.tr 0 ThLRU 1000 t=19
+    ./webcachesim test.tr ThLRU 1000 t=19
     
 #### ExpProb-LRU
 
@@ -134,18 +134,8 @@ params: c - the size which has a 50% chance of being admitted (used to determine
 
 example usage (admit objects with size 256KB with about 50% probability):
 
-    ./webcachesim test.tr 0 ExpLRU 1000 c=18
+    ./webcachesim test.tr ExpLRU 1000 c=18
   
-#### Segmented LRU (two segments)
-
-does: segments cache capacity into two areas and does LRU eviction in each, a hit moves an object up one area to the next
-
-params: either seg1 or seg2 = the fraction of the capacity assigned to the first or second segment, respectively (the rest goes to the other)
-
-example usage (each segment gets half the capacity)
-
-    ./webcachesim test.tr 0 S2LRU 1000 seg1=.5
-
 #### LRU-K
 
 does: evict object which has oldest K-th reference in the past
@@ -154,7 +144,7 @@ params: k - eviction based on k-th reference in the past
 
 example usage (each segment gets half the capacity)
 
-    ./webcachesim test.tr 0 LRUK 1000 k=4
+    ./webcachesim test.tr LRUK 1000 k=4
 
 
 ## How to get traces:
