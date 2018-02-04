@@ -90,7 +90,7 @@ FilterCache::FilterCache()
 }
 
 void FilterCache::setPar(std::string parName, std::string parValue) {
-    if(parName=="n") {
+    if(parName.compare("n") == 0) {
         const uint64_t n = std::stoull(parValue);
         assert(n>0);
         _nParam = n;
@@ -127,7 +127,7 @@ ThLRUCache::ThLRUCache()
 }
 
 void ThLRUCache::setPar(std::string parName, std::string parValue) {
-    if(parName=="t") {
+    if(parName.compare("t") == 0) {
         const double t = stof(parValue);
         assert(t>0);
         _sizeThreshold = pow(2.0,t);
@@ -157,7 +157,7 @@ ExpLRUCache::ExpLRUCache()
 }
 
 void ExpLRUCache::setPar(std::string parName, std::string parValue) {
-    if(parName=="c") {
+    if(parName.compare("c") == 0) {
         const double c = stof(parValue);
         assert(c>0);
         _cParam = pow(2.0,c);
