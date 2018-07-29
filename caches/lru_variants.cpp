@@ -54,7 +54,7 @@ void LRUCache::evict(SimpleRequest* req)
     }
 }
 
-void LRUCache::evict()
+SimpleRequest* LRUCache::evict_return()
 {
     // evict least popular (i.e. last element)
     if (_cacheList.size() > 0) {
@@ -62,10 +62,18 @@ void LRUCache::evict()
         lit--;
         CacheObject obj = *lit;
         LOG("e", _currentSize, obj.id, obj.size);
+        SimpleRequest* req = new SimpleRequest(obj.id, obj.size);
         _currentSize -= obj.size;
         _cacheMap.erase(obj);
         _cacheList.erase(lit);
+        return req;
     }
+    return NULL;
+}
+
+void LRUCache::evict()
+{
+    evict_return();
 }
 
 void LRUCache::hit(lruCacheMapType::const_iterator it, uint64_t size)
@@ -179,3 +187,72 @@ void ExpLRUCache::admit(SimpleRequest* req)
     }
 }
 
+
+
+
+
+/*
+  S4LRU
+*/
+
+void S4LRUCache::setSize(uint64_t cs) {
+    uint64_t total = cs;
+    for(int i=0; i<4; i++) {
+        segments[i].setSize(cs/4);
+        total -= cs/4;
+        std::cerr << "setsize " << i << " : " << cs/4 << "\n";
+    }
+    if(total>0) {
+        segments[0].setSize(cs/4+total);
+        std::cerr << "bonus setsize " << 0 << " : " << cs/4 + total << "\n";
+    }
+}
+
+bool S4LRUCache::lookup(SimpleRequest* req)
+{
+    for(int i=0; i<4; i++) {
+        if(segments[i].lookup(req)) {
+            // hit
+            if(i<3) {
+                // move up
+                segments[i].evict(req);
+                segment_admit(i+1,req);
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
+void S4LRUCache::admit(SimpleRequest* req)
+{
+    segments[0].admit(req);
+}
+
+void S4LRUCache::segment_admit(uint8_t idx, SimpleRequest* req)
+{
+    if(idx==0) {
+        segments[idx].admit(req);
+    } else {
+        while(segments[idx].getCurrentSize() + req->getSize()
+              > segments[idx].getSize()) {
+            // need to evict from this partition first
+            // find least popular item in this segment
+            auto nreq = segments[idx].evict_return();
+            segment_admit(idx-1,nreq);
+        }
+        segments[idx].admit(req);
+    }
+}
+
+void S4LRUCache::evict(SimpleRequest* req)
+{
+    for(int i=0; i<4; i++) {
+        segments[i].evict(req);
+    }
+}
+
+void S4LRUCache::evict()
+{
+    segments[0].evict();
+}

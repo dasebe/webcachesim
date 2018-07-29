@@ -35,6 +35,7 @@ public:
     virtual void admit(SimpleRequest* req);
     virtual void evict(SimpleRequest* req);
     virtual void evict();
+    virtual SimpleRequest* evict_return();
 };
 
 static Factory<LRUCache> factoryLRU("LRU");
@@ -120,6 +121,44 @@ public:
 };
 
 static Factory<ExpLRUCache> factoryExpLRU("ExpLRU");
+
+
+/*
+  S4LRU
+
+  enter at segment 0
+  if hit on segment i, segment i+1
+  if evicted on segment i, segment i-1
+
+*/
+class S4LRUCache : public Cache
+{
+protected:
+    LRUCache segments[4];
+
+public:
+    S4LRUCache()
+        : Cache()
+    {
+        segments[0] = LRUCache();
+        segments[1] = LRUCache();
+        segments[2] = LRUCache();
+        segments[3] = LRUCache();
+    }
+    virtual ~S4LRUCache()
+    {
+    }
+
+    virtual void setSize(uint64_t cs);
+    virtual bool lookup(SimpleRequest* req);
+    virtual void admit(SimpleRequest* req);
+    virtual void segment_admit(uint8_t idx, SimpleRequest* req);
+    virtual void evict(SimpleRequest* req);
+    virtual void evict();
+};
+
+static Factory<S4LRUCache> factoryS4LRU("S4LRU");
+
 
 
 #endif
