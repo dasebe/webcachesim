@@ -25,13 +25,13 @@ Then, get started with
 
 The basic interface is
 
-    ./webcachesim traceFile cacheType log2CacheSize [cacheParams]
+    ./webcachesim traceFile cacheType cacheSize [cacheParams]
 
 where
 
  - traceFile: a request trace (see below)
  - cacheType: one of the caching policies (see below)
- - log2CacheSize: the maximum cache capacity in bytes in logarithmic form (base 2)
+ - cacheSize: the cache capacity in bytes
  - cacheParams: optional cache parameters, can be used to tune cache policies (see below)
 
 ### Request trace format
