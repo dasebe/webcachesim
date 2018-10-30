@@ -35,3 +35,8 @@
 # other tmp files
 *.log
 *.txt
+
+# IDE
+.idea
+cmake-build-debug
+cmake-build-release

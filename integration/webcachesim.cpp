@@ -1,8 +1,8 @@
 #include <fstream>
 #include <string>
 #include <regex>
-#include "caches/lru_variants.h"
-#include "caches/gd_variants.h"
+#include "lru_variants.h"
+#include "gd_variants.h"
 #include "request.h"
 
 using namespace std;

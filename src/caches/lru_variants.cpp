@@ -3,7 +3,7 @@
 #include <cmath>
 #include <cassert>
 #include "lru_variants.h"
-#include "../random_helper.h"
+#include "random_helper.h"
 
 /*
   LRU: Least Recently Used eviction
