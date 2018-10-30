@@ -34,7 +34,7 @@
 
 # other tmp files
 *.log
-*.txt
+#*.txt
 
 # IDE
 .idea

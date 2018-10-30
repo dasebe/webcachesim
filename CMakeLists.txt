@@ -1,0 +1,24 @@
+cmake_minimum_required (VERSION 3.5.1)
+project (webcachesim)
+set (CMAKE_CXX_STANDARD 11)
+
+#set(CMAKE_BUILD_TYPE Debug CACHE STRING "build type (Debug/Release)")
+#set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug;Release")
+
+#option(BUILD_GTEST "build google test module" OFF)
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
+include_directories(${CMAKE_SOURCE_DIR}/include)
+include_directories(${CMAKE_SOURCE_DIR}/include/caches)
+
+#include_directories(caches)
+#include_directories(.)
+
+add_subdirectory(src)
+add_subdirectory(test)
+add_subdirectory(bench)
+add_subdirectory(integration)
+
+
+#add_executable (webcachesim caches/lru_variants.cpp caches/gd_variants.cpp random_helper.cpp webcachesim.cpp)
