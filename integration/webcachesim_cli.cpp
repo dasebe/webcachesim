@@ -22,7 +22,7 @@ int main (int argc, char* argv[])
 
   SimulationResult res = simulation(argv[1], argv[2], std::stoull(argv[3]), params);
 
-  cout<<res.object_hit_rate<<endl;
+  cout << "bhr: " << res.byte_hit_rate << endl << "ohr: " << res.object_hit_rate << endl;
 
 // todo: omit params at first
 //  // parse cache parameters

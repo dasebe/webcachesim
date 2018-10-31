@@ -13,7 +13,7 @@
 
 using namespace std;
 
-SimulationResult simulation(string tracefile, string cache_type, uint64_t cache_size, map<string, double> & params){
+SimulationResult simulation(string trace_file, string cache_type, uint64_t cache_size, map<string, double> & params){
 
     // create cache
     unique_ptr<Cache> webcache = move(Cache::create_unique(cache_type));
@@ -40,30 +40,31 @@ SimulationResult simulation(string tracefile, string cache_type, uint64_t cache_
 //  }
 
     ifstream infile;
-    long long reqs = 0, hits = 0;
+    long long byte_req = 0, byte_hit = 0, obj_req = 0, obj_hit = 0;
     long long t, id, size;
 
     cerr << "running..." << endl;
 
-    infile.open(tracefile);
-    SimpleRequest* req = new SimpleRequest(0, 0);
+    infile.open(trace_file);
+    SimpleRequest * req = new SimpleRequest(0, 0);
+    int i = 0;
     while (infile >> t >> id >> size)
     {
-        reqs++;
+        byte_req += size; obj_req++;
 
         req->reinit(id,size);
         if(webcache->lookup(req)) {
-            hits++;
+            byte_hit += size; obj_hit++;
         } else {
             webcache->admit(req);
         }
+//        cout << i << " " << t << " " << obj_hit << endl;
+        i ++;
     }
 
     delete req;
 
     infile.close();
-//    cout << cacheType << " " << cache_size << " " << paramSummary << " "
-//         << reqs << " " << hits << " "
-//         << double(hits)/reqs << endl;
-    return SimulationResult(double(hits)/reqs);
+
+    return {double(byte_hit)/byte_req, double(obj_hit)/obj_req};
 }

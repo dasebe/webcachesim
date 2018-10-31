@@ -10,21 +10,7 @@
 #include <cstdint>
 #include <memory>
 #include "request.h"
-
-// uncomment to enable cache debugging:
-// #define CDEBUG 1
-
-// util for debug
-#ifdef CDEBUG
-inline void logMessage(std::string m, double x, double y, double z) {
-    std::cerr << m << "," << x << "," << y  << "," << z << "\n";
-}
-#define LOG(m,x,y,z) logMessage(m,x,y,z)
-#else
-#define LOG(m,x,y,z)
-#endif
-
-
+#include "common.h"
 
 class Cache;
 

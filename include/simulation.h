@@ -26,7 +26,7 @@ public:
 /*
  * single thread simulation. Returns results.
  */
-SimulationResult simulation(string tracefile, string cache_type, uint64_t cache_size, map<string, double> & params);
+SimulationResult simulation(string trace_file, string cache_type, uint64_t cache_size, map<string, double> & params);
 
 
 #endif //WEBCACHESIM_SIMULATION_H
