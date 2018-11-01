@@ -9,9 +9,9 @@ struct CacheObject
     IdType id;
     uint64_t size;
 
-    CacheObject(SimpleRequest* req)
-        : id(req->getId()),
-          size(req->getSize())
+    CacheObject(SimpleRequest &req)
+        : id(req.getId()),
+          size(req.getSize())
     {}
 
     // comparison is based on all three properties

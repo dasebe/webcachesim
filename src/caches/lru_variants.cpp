@@ -8,7 +8,7 @@
 /*
   LRU: Least Recently Used eviction
 */
-bool LRUCache::lookup(SimpleRequest* req)
+bool LRUCache::lookup(SimpleRequest& req)
 {
     CacheObject obj(req);
     auto it = _cacheMap.find(obj);
@@ -21,9 +21,9 @@ bool LRUCache::lookup(SimpleRequest* req)
     return false;
 }
 
-void LRUCache::admit(SimpleRequest* req)
+void LRUCache::admit(SimpleRequest& req)
 {
-    const uint64_t size = req->getSize();
+    const uint64_t size = req.getSize();
     // object feasible to store?
     if (size > _cacheSize) {
         LOG("L", _cacheSize, req->getId(), size);
@@ -41,7 +41,7 @@ void LRUCache::admit(SimpleRequest* req)
     LOG("a", _currentSize, obj.id, obj.size);
 }
 
-void LRUCache::evict(SimpleRequest* req)
+void LRUCache::evict(SimpleRequest& req)
 {
     CacheObject obj(req);
     auto it = _cacheMap.find(obj);
@@ -73,109 +73,148 @@ void LRUCache::hit(lruCacheMapType::const_iterator it, uint64_t size)
     _cacheList.splice(_cacheList.begin(), _cacheList, it->second);
 }
 
-/*
-  FIFO: First-In First-Out eviction
-*/
-void FIFOCache::hit(lruCacheMapType::const_iterator it, uint64_t size)
-{
-}
+///*
+//  FIFO: First-In First-Out eviction
+//*/
+//void FIFOCache::hit(lruCacheMapType::const_iterator it, uint64_t size)
+//{
+//}
+//
+///*
+//  FilterCache (admit only after N requests)
+//*/
+//FilterCache::FilterCache()
+//    : LRUCache(),
+//      _nParam(2)
+//{
+//}
+//
+//void FilterCache::setPar(std::string parName, std::string parValue) {
+//    if(parName.compare("n") == 0) {
+//        const uint64_t n = std::stoull(parValue);
+//        assert(n>0);
+//        _nParam = n;
+//    } else {
+//        std::cerr << "unrecognized parameter: " << parName << std::endl;
+//    }
+//}
+//
+//
+//bool FilterCache::lookup(SimpleRequest* req)
+//{
+//    CacheObject obj(req);
+//    _filter[obj]++;
+//    return LRUCache::lookup(req);
+//}
+//
+//void FilterCache::admit(SimpleRequest* req)
+//{
+//    CacheObject obj(req);
+//    if (_filter[obj] <= _nParam) {
+//        return;
+//    }
+//    LRUCache::admit(req);
+//}
+//
+//
+///*
+//  ThLRU: LRU eviction with a size admission threshold
+//*/
+//ThLRUCache::ThLRUCache()
+//    : LRUCache(),
+//      _sizeThreshold(524288)
+//{
+//}
+//
+//void ThLRUCache::setPar(std::string parName, std::string parValue) {
+//    if(parName.compare("t") == 0) {
+//        const double t = stof(parValue);
+//        assert(t>0);
+//        _sizeThreshold = pow(2.0,t);
+//    } else {
+//        std::cerr << "unrecognized parameter: " << parName << std::endl;
+//    }
+//}
+//
+//
+//void ThLRUCache::admit(SimpleRequest* req)
+//{
+//    const uint64_t size = req->getSize();
+//    // admit if size < threshold
+//    if (size < _sizeThreshold) {
+//        LRUCache::admit(req);
+//    }
+//}
+//
+//
+///*
+//  ExpLRU: LRU eviction with size-aware probabilistic cache admission
+//*/
+//ExpLRUCache::ExpLRUCache()
+//    : LRUCache(),
+//      _cParam(262144)
+//{
+//}
+//
+//void ExpLRUCache::setPar(std::string parName, std::string parValue) {
+//    if(parName.compare("c") == 0) {
+//        const double c = stof(parValue);
+//        assert(c>0);
+//        _cParam = pow(2.0,c);
+//    } else {
+//        std::cerr << "unrecognized parameter: " << parName << std::endl;
+//    }
+//}
+//
+//
+//
+//void ExpLRUCache::admit(SimpleRequest* req)
+//{
+//    const double size = req->getSize();
+//    // admit to cache with probablity that is exponentially decreasing with size
+//    double admissionProb = exp(-size/ _cParam);
+//    std::bernoulli_distribution distribution(admissionProb);
+//    if (distribution(globalGenerator)) {
+//        LRUCache::admit(req);
+//    }
+//}
 
-/*
-  FilterCache (admit only after N requests)
-*/
-FilterCache::FilterCache()
-    : LRUCache(),
-      _nParam(2)
-{
-}
-
-void FilterCache::setPar(std::string parName, std::string parValue) {
-    if(parName.compare("n") == 0) {
-        const uint64_t n = std::stoull(parValue);
-        assert(n>0);
-        _nParam = n;
-    } else {
-        std::cerr << "unrecognized parameter: " << parName << std::endl;
+bool BeladyCache::lookup(SimpleRequest& _req) {
+    AnnotatedRequest & req = static_cast<AnnotatedRequest&>(_req);
+    auto it = _cacheMap.left.find(std::make_pair(req.getId(), req.getSize()));
+    if (it != _cacheMap.left.end()) {
+        // log hit
+        LOG("h", 0, obj.id, obj.size);
+        _cacheMap.left.replace_data(it, (req.get_next_t()));
+        return true;
     }
+    return false;
 }
 
+void BeladyCache::admit(SimpleRequest& _req) {
+    AnnotatedRequest & req = static_cast<AnnotatedRequest&>(_req);
 
-bool FilterCache::lookup(SimpleRequest* req)
-{
-    CacheObject obj(req);
-    _filter[obj]++;
-    return LRUCache::lookup(req);
-}
-
-void FilterCache::admit(SimpleRequest* req)
-{
-    CacheObject obj(req);
-    if (_filter[obj] <= _nParam) {
+    const uint64_t size = req.getSize();
+    // object feasible to store?
+    if (size > _cacheSize) {
+        LOG("L", _cacheSize, req.getId(), size);
         return;
     }
-    LRUCache::admit(req);
-}
 
+    // admit new object
+    _cacheMap.insert({{req.getId(), req.getSize()}, req.get_next_t()});
+    _currentSize += size;
 
-/*
-  ThLRU: LRU eviction with a size admission threshold
-*/
-ThLRUCache::ThLRUCache()
-    : LRUCache(),
-      _sizeThreshold(524288)
-{
-}
-
-void ThLRUCache::setPar(std::string parName, std::string parValue) {
-    if(parName.compare("t") == 0) {
-        const double t = stof(parValue);
-        assert(t>0);
-        _sizeThreshold = pow(2.0,t);
-    } else {
-        std::cerr << "unrecognized parameter: " << parName << std::endl;
+    LOG("a", _currentSize, obj.id, obj.size);
+    // check eviction needed
+    while (_currentSize > _cacheSize) {
+        evict();
     }
 }
 
-
-void ThLRUCache::admit(SimpleRequest* req)
-{
-    const uint64_t size = req->getSize();
-    // admit if size < threshold
-    if (size < _sizeThreshold) {
-        LRUCache::admit(req);
-    }
-}
-
-
-/*
-  ExpLRU: LRU eviction with size-aware probabilistic cache admission
-*/
-ExpLRUCache::ExpLRUCache()
-    : LRUCache(),
-      _cParam(262144)
-{
-}
-
-void ExpLRUCache::setPar(std::string parName, std::string parValue) {
-    if(parName.compare("c") == 0) {
-        const double c = stof(parValue);
-        assert(c>0);
-        _cParam = pow(2.0,c);
-    } else {
-        std::cerr << "unrecognized parameter: " << parName << std::endl;
-    }
-}
-
-
-
-void ExpLRUCache::admit(SimpleRequest* req)
-{
-    const double size = req->getSize();
-    // admit to cache with probablity that is exponentially decreasing with size
-    double admissionProb = exp(-size/ _cParam);
-    std::bernoulli_distribution distribution(admissionProb);
-    if (distribution(globalGenerator)) {
-        LRUCache::admit(req);
-    }
+void BeladyCache::evict() {
+    auto right_iter = _cacheMap.right.begin();
+    _currentSize -= right_iter->second.second;
+    _cacheMap.right.erase(right_iter);
 }
 

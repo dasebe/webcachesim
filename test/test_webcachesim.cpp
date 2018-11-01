@@ -13,7 +13,7 @@ struct InputT{
     double expected_ohr;
 };
 
-InputT input[] = {
+InputT inputLRU[] = {
         {.trace_file = "../../test/test.tr", .cache_type = "LRU", .cache_size=1,
                 .expected_bhr=0.009775222164140094, .expected_ohr=0.01782310331681281},
         {.trace_file = "../../test/test.tr", .cache_type = "LRU", .cache_size=2,
@@ -38,9 +38,43 @@ InputT input[] = {
                 .expected_bhr=0.9093047569262938, .expected_ohr=0.9085017155928327},
 };
 
-TEST_CASE("webcachesim") {
+TEST_CASE("webcachesimLRU") {
     map<string, double_t > params;
-    for (auto& it : input) {
+    for (auto& it : inputLRU) {
+        SimulationResult res = simulation(it.trace_file, it.cache_type, it.cache_size, params);
+        REQUIRE( res.byte_hit_rate == it.expected_bhr);
+        REQUIRE( res.object_hit_rate == it.expected_ohr);
+    }
+}
+
+InputT inputBelady[] = {
+        {.trace_file = "../../test/test.tr", .cache_type = "Belady", .cache_size=1,
+                .expected_bhr=0.05781495033978045, .expected_ohr=0.10541364849409074},
+        {.trace_file = "../../test/test.tr", .cache_type = "Belady", .cache_size=2,
+                .expected_bhr=0.08724516466283325, .expected_ohr=0.15268776210446053},
+        {.trace_file = "../../test/test.tr", .cache_type = "Belady", .cache_size=5,
+                .expected_bhr=0.15446941975953998, .expected_ohr=0.20301181852840258},
+        {.trace_file = "../../test/test.tr", .cache_type = "Belady", .cache_size=10,
+                .expected_bhr=0.2740198640878202, .expected_ohr=0.2919367136866184},
+        {.trace_file = "../../test/test.tr", .cache_type = "Belady", .cache_size=20,
+                .expected_bhr=0.36408782017773134, .expected_ohr=0.3844834159359512},
+        {.trace_file = "../../test/test.tr", .cache_type = "Belady", .cache_size=50,
+                .expected_bhr=0.48285415577626767, .expected_ohr=0.5090545177277926},
+        {.trace_file = "../../test/test.tr", .cache_type = "Belady", .cache_size=100,
+                .expected_bhr=0.5843178254051229, .expected_ohr=0.6003621807091117},
+        {.trace_file = "../../test/test.tr", .cache_type = "Belady", .cache_size=200,
+                .expected_bhr=0.685572399372713, .expected_ohr=0.6991040792985131},
+        {.trace_file = "../../test/test.tr", .cache_type = "Belady", .cache_size=500,
+                .expected_bhr=0.8112911657083115, .expected_ohr=0.8205299275638582},
+        {.trace_file = "../../test/test.tr", .cache_type = "Belady", .cache_size=1000,
+                .expected_bhr=0.8855201254573968, .expected_ohr=0.8845787266488754},
+        {.trace_file = "../../test/test.tr", .cache_type = "Belady", .cache_size=2000,
+                .expected_bhr=0.9093047569262938, .expected_ohr=0.9085017155928327},
+};
+
+TEST_CASE("webcachesimBelady") {
+    map<string, double_t > params;
+    for (auto& it : inputBelady) {
         SimulationResult res = simulation(it.trace_file, it.cache_type, it.cache_size, params);
         REQUIRE( res.byte_hit_rate == it.expected_bhr);
         REQUIRE( res.object_hit_rate == it.expected_ohr);

@@ -8,6 +8,14 @@ set(LIB_SOURCE
         simulation.cpp
 )
 #message(123)
+
+find_package(Boost)
+
+INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
+
+
 add_library(webcachesim SHARED ${LIB_SOURCE})
 
 target_include_directories(webcachesim PUBLIC include)
+
+TARGET_LINK_LIBRARIES(webcachesim LINK_PUBLIC ${Boost_LIBRARIES} )

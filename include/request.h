@@ -28,8 +28,7 @@ public:
     {
     }
 
-    void reinit(IdType id, uint64_t size)
-    {
+    inline void reinit(IdType id, uint64_t size) {
         _id = id;
         _size = size;
     }
@@ -42,15 +41,37 @@ public:
     }
 
     // Get request object id
-    IdType getId() const
-    {
+    inline IdType getId() const {
         return _id;
     }
 
     // Get request size in bytes
-    uint64_t getSize() const
-    {
+    inline uint64_t getSize() const {
         return _size;
+    }
+};
+
+
+class AnnotatedRequest: public SimpleRequest
+{
+private:
+    u_int64_t _next_t;
+
+public:
+    // Create request
+    AnnotatedRequest(IdType id, uint64_t size, uint64_t next_t)
+            : SimpleRequest(id, size),
+              _next_t(next_t)
+    {
+    }
+
+    inline void reinit(IdType id, uint64_t size, uint64_t next_t) {
+        SimpleRequest::reinit(id, size);
+        _next_t = next_t;
+    }
+    // Get request size in bytes
+    inline uint64_t get_next_t() const {
+        return _next_t;
     }
 };
 

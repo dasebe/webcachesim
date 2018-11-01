@@ -31,9 +31,9 @@ public:
     virtual ~Cache(){};
 
     // main cache management functions (to be defined by a policy)
-    virtual bool lookup(SimpleRequest* req) = 0;
-    virtual void admit(SimpleRequest* req) = 0;
-    virtual void evict(SimpleRequest* req) = 0;
+    virtual bool lookup(SimpleRequest& req) = 0;
+    virtual void admit(SimpleRequest& req) = 0;
+    virtual void evict(SimpleRequest& req) = 0;
     virtual void evict() = 0;
 
     // configure cache parameters
