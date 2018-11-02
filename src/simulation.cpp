@@ -13,8 +13,8 @@
 
 using namespace std;
 
-SimulationResult _simulation_belady(string trace_file, string cache_type, uint64_t cache_size,
-        map<string, double> & params){
+map<string, double> _simulation_belady(string trace_file, string cache_type, uint64_t cache_size,
+                                       map<string, double> params){
     // create cache
     unique_ptr<Cache> webcache = move(Cache::create_unique(cache_type));
     // todo: raise exception?
@@ -53,11 +53,16 @@ SimulationResult _simulation_belady(string trace_file, string cache_type, uint64
 
     infile.close();
 
-    return {double(byte_hit) / byte_req, double(obj_hit) / obj_req};
+    map<string, double> res = {
+            {"byte_hit_rate", double(byte_hit) / byte_req},
+            {"object_hit_rate", double(obj_hit) / obj_req},
+    };
+//    return {double(byte_hit) / byte_req, double(obj_hit) / obj_req};
+    return res;
 }
 
-SimulationResult _simulation(string trace_file, string cache_type, uint64_t cache_size,
-                                    map<string, double> & params){
+map<string, double> _simulation(string trace_file, string cache_type, uint64_t cache_size,
+                                map<string, double> params){
     // create cache
     unique_ptr<Cache> webcache = move(Cache::create_unique(cache_type));
     // todo: raise exception?
@@ -109,10 +114,16 @@ SimulationResult _simulation(string trace_file, string cache_type, uint64_t cach
 
     infile.close();
 
-    return {double(byte_hit) / byte_req, double(obj_hit) / obj_req};
+//    return {double(byte_hit) / byte_req, double(obj_hit) / obj_req};
+    map<string, double> res = {
+            {"byte_hit_rate", double(byte_hit) / byte_req},
+            {"object_hit_rate", double(obj_hit) / obj_req},
+    };
+//    return {double(byte_hit) / byte_req, double(obj_hit) / obj_req};
+    return res;
 }
 
-SimulationResult simulation(string trace_file, string cache_type, uint64_t cache_size, map<string, double> & params){
+map<string, double> simulation(string trace_file, string cache_type, uint64_t cache_size, map<string, double> params){
     if (cache_type == "Belady")
         return _simulation_belady(trace_file, cache_type, cache_size, params);
     else

@@ -10,23 +10,10 @@
 
 using namespace std;
 
-class SimulationResult {
-public:
-    SimulationResult(double bhr=0, double ohr=0)
-    :   byte_hit_rate(bhr),
-        object_hit_rate(ohr)
-    {
-    }
-
-    double byte_hit_rate;
-    double object_hit_rate;
-};
-
-
 /*
  * single thread simulation. Returns results.
  */
-SimulationResult simulation(string trace_file, string cache_type, uint64_t cache_size, map<string, double> & params);
+map<string, double> simulation(string trace_file, string cache_type, uint64_t cache_size, map<string, double> params);
 
 
 #endif //WEBCACHESIM_SIMULATION_H

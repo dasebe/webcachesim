@@ -18,11 +18,11 @@ int main (int argc, char* argv[])
     return 1;
   }
 
-  map<string, double_t > params;
+  map<string, double> params;
 
-  SimulationResult res = simulation(argv[1], argv[2], std::stoull(argv[3]), params);
+  auto res = simulation(argv[1], argv[2], std::stoull(argv[3]), params);
 
-  cout << "bhr: " << res.byte_hit_rate << endl << "ohr: " << res.object_hit_rate << endl;
+  cout << "bhr: " << res["byte_hit_rate"] << endl << "ohr: " << res["object_hit_rate"] << endl;
 
 // todo: omit params at first
 //  // parse cache parameters

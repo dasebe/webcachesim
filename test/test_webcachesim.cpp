@@ -13,6 +13,17 @@ struct InputT{
     double expected_ohr;
 };
 
+
+#define webcachesim_test(input) \
+    map<string, double_t > params; \
+    for (auto& it : input) { \
+        auto res = simulation(it.trace_file, it.cache_type, it.cache_size, params); \
+        REQUIRE( res["byte_hit_rate"] == it.expected_bhr); \
+        REQUIRE( res["object_hit_rate"] == it.expected_ohr); \
+    }
+
+
+
 InputT inputLRU[] = {
         {.trace_file = "../../test/test.tr", .cache_type = "LRU", .cache_size=1,
                 .expected_bhr=0.009775222164140094, .expected_ohr=0.01782310331681281},
@@ -39,12 +50,7 @@ InputT inputLRU[] = {
 };
 
 TEST_CASE("webcachesimLRU") {
-    map<string, double_t > params;
-    for (auto& it : inputLRU) {
-        SimulationResult res = simulation(it.trace_file, it.cache_type, it.cache_size, params);
-        REQUIRE( res.byte_hit_rate == it.expected_bhr);
-        REQUIRE( res.object_hit_rate == it.expected_ohr);
-    }
+    webcachesim_test(inputLRU);
 }
 
 InputT inputBelady[] = {
@@ -73,12 +79,7 @@ InputT inputBelady[] = {
 };
 
 TEST_CASE("webcachesimBelady") {
-    map<string, double_t > params;
-    for (auto& it : inputBelady) {
-        SimulationResult res = simulation(it.trace_file, it.cache_type, it.cache_size, params);
-        REQUIRE( res.byte_hit_rate == it.expected_bhr);
-        REQUIRE( res.object_hit_rate == it.expected_ohr);
-    }
+    webcachesim_test(inputBelady);
 }
 
 InputT inputFIFO[] = {
@@ -107,10 +108,5 @@ InputT inputFIFO[] = {
 };
 
 TEST_CASE("webcachesimFIFO") {
-    map<string, double_t > params;
-    for (auto& it : inputFIFO) {
-        SimulationResult res = simulation(it.trace_file, it.cache_type, it.cache_size, params);
-        REQUIRE( res.byte_hit_rate == it.expected_bhr);
-        REQUIRE( res.object_hit_rate == it.expected_ohr);
-    }
+    webcachesim_test(inputFIFO);
 }
