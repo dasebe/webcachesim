@@ -42,26 +42,26 @@ public:
 static Factory<LRUCache> factoryLRU("LRU");
 
 
-///*
-//  FIFO: First-In First-Out eviction
-//*/
-//class FIFOCache : public LRUCache
-//{
-//protected:
-//    virtual void hit(lruCacheMapType::const_iterator it, uint64_t size);
-//
-//public:
-//    FIFOCache()
-//        : LRUCache()
-//    {
-//    }
-//    virtual ~FIFOCache()
-//    {
-//    }
-//};
-//
-//static Factory<FIFOCache> factoryFIFO("FIFO");
-//
+/*
+  FIFO: First-In First-Out eviction
+*/
+class FIFOCache : public LRUCache
+{
+protected:
+    virtual void hit(lruCacheMapType::const_iterator it, uint64_t size);
+
+public:
+    FIFOCache()
+        : LRUCache()
+    {
+    }
+    virtual ~FIFOCache()
+    {
+    }
+};
+
+static Factory<FIFOCache> factoryFIFO("FIFO");
+
 ///*
 //  FilterCache (admit only after N requests)
 //*/

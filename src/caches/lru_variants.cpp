@@ -73,13 +73,13 @@ void LRUCache::hit(lruCacheMapType::const_iterator it, uint64_t size)
     _cacheList.splice(_cacheList.begin(), _cacheList, it->second);
 }
 
-///*
-//  FIFO: First-In First-Out eviction
-//*/
-//void FIFOCache::hit(lruCacheMapType::const_iterator it, uint64_t size)
-//{
-//}
-//
+/*
+  FIFO: First-In First-Out eviction
+*/
+void FIFOCache::hit(lruCacheMapType::const_iterator it, uint64_t size)
+{
+}
+
 ///*
 //  FilterCache (admit only after N requests)
 //*/

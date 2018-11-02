@@ -80,3 +80,37 @@ TEST_CASE("webcachesimBelady") {
         REQUIRE( res.object_hit_rate == it.expected_ohr);
     }
 }
+
+InputT inputFIFO[] = {
+        {.trace_file = "../../test/test.tr", .cache_type = "FIFO", .cache_size=1,
+                .expected_bhr=0.009775222164140094, .expected_ohr=0.01782310331681281},
+        {.trace_file = "../../test/test.tr", .cache_type = "FIFO", .cache_size=2,
+                .expected_bhr=0.015577626764244642, .expected_ohr=0.026972931757529545},
+        {.trace_file = "../../test/test.tr", .cache_type = "FIFO", .cache_size=5,
+                .expected_bhr=0.03863042341871406, .expected_ohr=0.050895920701486845},
+        {.trace_file = "../../test/test.tr", .cache_type = "FIFO", .cache_size=10,
+                .expected_bhr=0.07360167276529012, .expected_ohr=0.08377811666031262},
+        {.trace_file = "../../test/test.tr", .cache_type = "FIFO", .cache_size=20,
+                .expected_bhr=0.13068478829064298, .expected_ohr=0.13667556233320624},
+        {.trace_file = "../../test/test.tr", .cache_type = "FIFO", .cache_size=50,
+                .expected_bhr=0.232723470987977, .expected_ohr=0.23770491803278687},
+        {.trace_file = "../../test/test.tr", .cache_type = "FIFO", .cache_size=100,
+                .expected_bhr=0.3238369053842133, .expected_ohr=0.32901258101410596},
+        {.trace_file = "../../test/test.tr", .cache_type = "FIFO", .cache_size=200,
+                .expected_bhr=0.4341871406168322, .expected_ohr=0.4442432329393824},
+        {.trace_file = "../../test/test.tr", .cache_type = "FIFO", .cache_size=500,
+                .expected_bhr=0.6151594354417146, .expected_ohr=0.6239992375142966},
+        {.trace_file = "../../test/test.tr", .cache_type = "FIFO", .cache_size=1000,
+                .expected_bhr=0.7763721902770517, .expected_ohr=0.7821197102554327},
+        {.trace_file = "../../test/test.tr", .cache_type = "FIFO", .cache_size=2000,
+                .expected_bhr=0.9093047569262938, .expected_ohr=0.9085017155928327},
+};
+
+TEST_CASE("webcachesimFIFO") {
+    map<string, double_t > params;
+    for (auto& it : inputFIFO) {
+        SimulationResult res = simulation(it.trace_file, it.cache_type, it.cache_size, params);
+        REQUIRE( res.byte_hit_rate == it.expected_bhr);
+        REQUIRE( res.object_hit_rate == it.expected_ohr);
+    }
+}
