@@ -18,27 +18,26 @@ int main (int argc, char* argv[])
     return 1;
   }
 
-  map<string, double> params;
+  map<string, string> params;
+
+  // parse cache parameters
+  regex opexp ("(.*)=(.*)");
+  cmatch opmatch;
+  string paramSummary;
+  for(int i=4; i<argc; i++) {
+    regex_match (argv[i],opmatch,opexp);
+    if(opmatch.size()!=3) {
+      cerr << "each cacheParam needs to be in form name=value" << endl;
+      return 1;
+    }
+    cout<<opmatch[1]<<endl<<opmatch[2]<<endl;
+    params[opmatch[1]] = opmatch[2];
+    paramSummary += opmatch[2];
+  }
 
   auto res = simulation(argv[1], argv[2], std::stoull(argv[3]), params);
 
   cout << "bhr: " << res["byte_hit_rate"] << endl << "ohr: " << res["object_hit_rate"] << endl;
-
-// todo: omit params at first
-//  // parse cache parameters
-//  regex opexp ("(.*)=(.*)");
-//  cmatch opmatch;
-//  string paramSummary;
-//  for(int i=4; i<argc; i++) {
-//    regex_match (argv[i],opmatch,opexp);
-//    if(opmatch.size()!=3) {
-//      cerr << "each cacheParam needs to be in form name=value" << endl;
-//      return 1;
-//    }
-//    webcache->setPar(opmatch[1], opmatch[2]);
-//    paramSummary += opmatch[2];
-//  }
-
 
   return 0;
 }

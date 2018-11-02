@@ -13,8 +13,8 @@
 
 using namespace std;
 
-map<string, double> _simulation_belady(string trace_file, string cache_type, uint64_t cache_size,
-                                       map<string, double> params){
+map<string, string> _simulation_belady(string trace_file, string cache_type, uint64_t cache_size,
+                                       map<string, string> params){
     // create cache
     unique_ptr<Cache> webcache = move(Cache::create_unique(cache_type));
     // todo: raise exception?
@@ -23,6 +23,10 @@ map<string, double> _simulation_belady(string trace_file, string cache_type, uin
 
     // configure cache size
     webcache->setSize(cache_size);
+
+    for (auto& kv: params) {
+        webcache->setPar(kv.first, kv.second);
+    }
 
     //suppose already annotated
     ifstream infile;
@@ -49,20 +53,17 @@ map<string, double> _simulation_belady(string trace_file, string cache_type, uin
         i++;
     }
 
-//    delete req;
-
     infile.close();
 
-    map<string, double> res = {
-            {"byte_hit_rate", double(byte_hit) / byte_req},
-            {"object_hit_rate", double(obj_hit) / obj_req},
+    map<string, string> res = {
+            {"byte_hit_rate", to_string(double(byte_hit) / byte_req)},
+            {"object_hit_rate", to_string(double(obj_hit) / obj_req)},
     };
-//    return {double(byte_hit) / byte_req, double(obj_hit) / obj_req};
     return res;
 }
 
-map<string, double> _simulation(string trace_file, string cache_type, uint64_t cache_size,
-                                map<string, double> params){
+map<string, string> _simulation(string trace_file, string cache_type, uint64_t cache_size,
+                                map<string, string> params){
     // create cache
     unique_ptr<Cache> webcache = move(Cache::create_unique(cache_type));
     // todo: raise exception?
@@ -72,20 +73,10 @@ map<string, double> _simulation(string trace_file, string cache_type, uint64_t c
     // configure cache size
     webcache->setSize(cache_size);
 
-// todo: omit params at first
-//  // parse cache parameters
-//  regex opexp ("(.*)=(.*)");
-//  cmatch opmatch;
-//  string paramSummary;
-//  for(int i=4; i<argc; i++) {
-//    regex_match (argv[i],opmatch,opexp);
-//    if(opmatch.size()!=3) {
-//      cerr << "each cacheParam needs to be in form name=value" << endl;
-//      return 1;
-//    }
-//    webcache->setPar(opmatch[1], opmatch[2]);
-//    paramSummary += opmatch[2];
-//  }
+    for (auto& kv: params) {
+        webcache->setPar(kv.first, kv.second);
+    }
+
     ifstream infile;
     long long byte_req = 0, byte_hit = 0, obj_req = 0, obj_hit = 0;
     long long t, id, size;
@@ -110,20 +101,16 @@ map<string, double> _simulation(string trace_file, string cache_type, uint64_t c
         i++;
     }
 
-//    delete req;
-
     infile.close();
 
-//    return {double(byte_hit) / byte_req, double(obj_hit) / obj_req};
-    map<string, double> res = {
-            {"byte_hit_rate", double(byte_hit) / byte_req},
-            {"object_hit_rate", double(obj_hit) / obj_req},
+    map<string, string> res = {
+            {"byte_hit_rate", to_string(double(byte_hit) / byte_req)},
+            {"object_hit_rate", to_string(double(obj_hit) / obj_req)},
     };
-//    return {double(byte_hit) / byte_req, double(obj_hit) / obj_req};
     return res;
 }
 
-map<string, double> simulation(string trace_file, string cache_type, uint64_t cache_size, map<string, double> params){
+map<string, string> simulation(string trace_file, string cache_type, uint64_t cache_size, map<string, string> params){
     if (cache_type == "Belady")
         return _simulation_belady(trace_file, cache_type, cache_size, params);
     else

@@ -13,7 +13,7 @@ using namespace std;
 /*
  * single thread simulation. Returns results.
  */
-map<string, double> simulation(string trace_file, string cache_type, uint64_t cache_size, map<string, double> params);
+map<string, string> simulation(string trace_file, string cache_type, uint64_t cache_size, map<string, string> params);
 
 
 #endif //WEBCACHESIM_SIMULATION_H

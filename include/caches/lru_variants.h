@@ -62,28 +62,28 @@ public:
 
 static Factory<FIFOCache> factoryFIFO("FIFO");
 
-///*
-//  FilterCache (admit only after N requests)
-//*/
-//class FilterCache : public LRUCache
-//{
-//protected:
-//    uint64_t _nParam;
-//    std::unordered_map<CacheObject, uint64_t> _filter;
-//
-//public:
-//    FilterCache();
-//    virtual ~FilterCache()
-//    {
-//    }
-//
-//    virtual void setPar(std::string parName, std::string parValue);
-//    virtual bool lookup(SimpleRequest* req);
-//    virtual void admit(SimpleRequest* req);
-//};
-//
-//static Factory<FilterCache> factoryFilter("Filter");
-//
+/*
+  FilterCache (admit only after N requests)
+*/
+class FilterCache : public LRUCache
+{
+protected:
+    uint64_t _nParam;
+    std::unordered_map<CacheObject, uint64_t> _filter;
+
+public:
+    FilterCache();
+    virtual ~FilterCache()
+    {
+    }
+
+    virtual void setPar(std::string parName, std::string parValue);
+    virtual bool lookup(SimpleRequest& req);
+    virtual void admit(SimpleRequest& req);
+};
+
+static Factory<FilterCache> factoryFilter("Filter");
+
 ///*
 //  ThLRU: LRU eviction with a size admission threshold
 //*/
