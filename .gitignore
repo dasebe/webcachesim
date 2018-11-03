@@ -46,3 +46,6 @@ build
 
 # python lib
 *.egg-info
+
+# tmp dir
+tmp
