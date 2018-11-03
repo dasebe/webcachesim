@@ -15,5 +15,4 @@ using namespace std;
  */
 map<string, string> simulation(string trace_file, string cache_type, uint64_t cache_size, map<string, string> params);
 
-
 #endif //WEBCACHESIM_SIMULATION_H

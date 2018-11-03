@@ -43,3 +43,6 @@ cmake-build-release
 
 # cmake
 build
+
+# python lib
+*.egg-info
