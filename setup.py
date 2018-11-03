@@ -76,4 +76,7 @@ setup(
     ext_modules=[CMakeExtension('pywebcachesim')],
     cmdclass=dict(build_ext=CMakeBuild),
     zip_safe=False,
+    entry_points = {
+        'console_scripts': ['pywebcachesim=pywebcachesim.runner:main'],
+    }
 )
