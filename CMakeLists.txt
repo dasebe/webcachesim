@@ -20,5 +20,8 @@ add_subdirectory(test)
 add_subdirectory(bench)
 add_subdirectory(integration)
 
+add_subdirectory(pybind11)
+pybind11_add_module(pywebcachesim integration/webcachesim_py.cpp)
+
 
 #add_executable (webcachesim caches/lru_variants.cpp caches/gd_variants.cpp random_helper.cpp webcachesim.cpp)

@@ -15,9 +15,8 @@ struct InputT{
 
 
 #define webcachesim_test(input) \
-    map<string, string> params; \
     for (auto& it : input) { \
-        auto res = simulation(it.trace_file, it.cache_type, it.cache_size, params); \
+        auto res = simulation(it.trace_file, it.cache_type, it.cache_size, {}); \
         REQUIRE( res["byte_hit_rate"] == to_string(it.expected_bhr)); \
         REQUIRE( res["object_hit_rate"] == to_string(it.expected_ohr)); \
     }

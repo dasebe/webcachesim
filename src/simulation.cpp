@@ -18,8 +18,8 @@ map<string, string> _simulation_belady(string trace_file, string cache_type, uin
     // create cache
     unique_ptr<Cache> webcache = move(Cache::create_unique(cache_type));
     // todo: raise exception?
-//    if(webcache == nullptr)
-//        return 1;
+    if(webcache == nullptr)
+        return {};
 
     // configure cache size
     webcache->setSize(cache_size);
@@ -66,9 +66,8 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
                                 map<string, string> params){
     // create cache
     unique_ptr<Cache> webcache = move(Cache::create_unique(cache_type));
-    // todo: raise exception?
-//    if(webcache == nullptr)
-//        return 1;
+    if(webcache == nullptr)
+        return {};
 
     // configure cache size
     webcache->setSize(cache_size);
