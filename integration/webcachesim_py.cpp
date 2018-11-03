@@ -7,7 +7,7 @@
 
 namespace py = pybind11;
 
-PYBIND11_MODULE(pywebcachesim, m) {
+PYBIND11_MODULE(simulation, m) {
 
     m.def("simulation", &simulation, R"pbdoc(
         Run simulation for 1 configuration

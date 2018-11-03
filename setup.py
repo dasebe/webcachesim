@@ -70,12 +70,12 @@ setup(
         'arrow',
         'seaborn',
         'matplotlib',
-        'ujson',
         'tqdm',
     ],
-    ext_modules=[CMakeExtension('pywebcachesim')],
+    ext_modules=[CMakeExtension('pywebcachesim.simulation')],
     cmdclass=dict(build_ext=CMakeBuild),
     zip_safe=False,
+    packages=['pywebcachesim'],
     entry_points = {
         'console_scripts': ['pywebcachesim=pywebcachesim.runner:main'],
     }

@@ -1,0 +1,15 @@
+scheduler_args:
+  debug: False
+  write_dir: '/home/zhenyus/webcachesim/log'
+
+worker_args:
+  cache_types:
+    - LRU
+    - Belady
+  trace_files:
+    '/home/zhenyus/webcachesim/test/test.tr':
+    #cache_sizes
+      - 2
+      - 3
+
+

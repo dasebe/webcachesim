@@ -35,6 +35,7 @@ map<string, string> _simulation_belady(string trace_file, string cache_type, uin
 
 //    cerr << "running..." << endl;
     trace_file += ".ant";
+    //todo: error handling
     infile.open(trace_file);
     AnnotatedRequest req(0, 0, 0);
     int i = 0;
@@ -82,6 +83,7 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
 
 //    cerr << "running..." << endl;
 
+    //todo: error handling
     infile.open(trace_file);
     SimpleRequest req(0, 0);
     int i = 0;

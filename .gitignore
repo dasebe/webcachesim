@@ -46,3 +46,10 @@ build
 
 # python lib
 *.egg-info
+
+# tmp dir
+tmp
+log
+
+# python cache
+__pycache__
