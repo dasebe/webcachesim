@@ -15,7 +15,7 @@ conda create -n webcachesim_env python=3.6
 
 ```bash
 source activate webcachesim_env
-cd $WEBCACHESIM_ROOT
+cd ${WEBCACHESIM_ROOT}
 pip install -e .
 ```
 
@@ -28,7 +28,7 @@ pywebcachesim --help
 * To run a example configuration. Check the yaml file to see the detail configuration:
 
 ```bash
-pywebcachesim --config_file /home/zhenyus/webcachesim/job_simple.yaml
+pywebcachesim --config_file ${WEBCACHESIM_ROOT}/job_simple.yaml --write_dir ${WEBCACHESIM_ROOT}/log --trace_dir ${WEBCACHESIM_ROOT}/test --debug True
 ```
 
 * Install `jupyterlab`

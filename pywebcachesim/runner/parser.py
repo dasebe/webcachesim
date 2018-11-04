@@ -8,12 +8,14 @@ def parse_cmd_args():
     scheduler_parser = argparse.ArgumentParser()
     scheduler_parser.add_argument('--debug',
                                   help='debug mode only run 1 task locally',
+                                  type=bool,
                                   choices=[True, False])
     scheduler_parser.add_argument('--config_file', type=str, nargs='?', help='runner configuration file')
+    scheduler_parser.add_argument('--trace_dir', type=str, nargs='?', help='dir of traces')
     scheduler_parser.add_argument('--write_dir',
                                   type=str,
                                   nargs='?',
-                                  help='whether dump the simulation result. None means not dump')
+                                  help='Whether dump the simulation result. None means not dump')
     scheduler_args, unknown_args = scheduler_parser.parse_known_args()
     worker_parser = argparse.ArgumentParser()
     worker_parser.add_argument('--trace_files', type=str, nargs='+', help='path to trace file')
