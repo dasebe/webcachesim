@@ -9,14 +9,16 @@ import yaml
 
 def run_task(args):
     scheduler_args, task = args
-    res = simulation(task['trace_file'], task['cache_type'], task['cache_size'], {})
+    res = simulation(f'{scheduler_args.trace_dir}/{task["trace_file"]}', task['cache_type'], task['cache_size'], {})
     # print(res)
     if scheduler_args.write_dir is not None:
         if not pathlib.Path(scheduler_args.write_dir).exists():
             pathlib.Path(scheduler_args.write_dir).mkdir(parents=True)
         timestamp = arrow.utcnow().float_timestamp
         with open(f'{scheduler_args.write_dir}/{timestamp}.res', 'w') as f:
-            yaml.dump({'res': res, 'scheduler_args': vars(scheduler_args), 'task': task}, f)
+            yaml.dump({'res': {k: float(v) for k, v in res.items()},
+                       'scheduler_args': vars(scheduler_args),
+                       'task': task}, f)
     else:
         print(res)
     return res
