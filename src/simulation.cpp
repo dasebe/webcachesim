@@ -10,11 +10,81 @@
 #include "lru_variants.h"
 #include "gd_variants.h"
 #include "request.h"
+#include <vector>
+#include <stdio.h>
+#include <sys/time.h>
 
 using namespace std;
 
+
+void annotate(string trace_file) {
+    //todo: there is a risk that multiple process write a same file
+
+    auto expect_file = trace_file+".ant";
+    ifstream cachefile(expect_file);
+    if (cachefile.good()) {
+        cerr<<"file has been annotated, so skip annotation"<<endl;
+        return;
+    }
+
+
+    // parse trace file
+    vector<tuple<uint64_t, uint64_t , uint64_t, uint64_t >> trace;
+    uint64_t t, id, size;
+
+    ifstream infile;
+    infile.open(trace_file);
+    if (!infile) {
+        cerr << "Exception opening/reading annotate original file";
+        return;
+    }
+    while(infile>> t >> id >> size) {
+        //default with infinite future interval
+        trace.emplace_back(t, id, size, numeric_limits<uint64_t >::max()-1);
+    }
+
+
+    uint64_t totalReqc = trace.size();
+    std::cerr << "scanned trace n=" << totalReqc << std::endl;
+
+    // get nextSeen indices
+    map<pair<uint64_t, uint64_t>, uint64_t > lastSeen;
+    for (auto it = trace.rbegin(); it != trace.rend(); ++it) {
+        auto lit = lastSeen.find(make_pair(get<1>(*it), get<2>(*it)));
+        if (lit != lastSeen.end())
+            get<3>(*it) = lit->second;
+        lastSeen[make_pair(get<1>(*it), get<2>(*it))] = get<0>(*it);
+    }
+
+    // get current time
+    string now;
+    {
+        struct timeval tp;
+        gettimeofday(&tp, NULL);
+        now = string(to_string(tp.tv_sec) + to_string(tp.tv_usec));
+    }
+
+
+    ofstream outfile;
+
+
+    auto tmp_file = "/tmp/" + now;
+
+    outfile.open(tmp_file);
+    for (auto & it: trace) {
+        outfile << get<0>(it) << " " << get<1>(it) << " " << get<2>(it) << " " << get<3>(it) <<endl;
+    }
+    
+    rename(tmp_file.c_str(), expect_file.c_str());
+
+}
+
 map<string, string> _simulation_belady(string trace_file, string cache_type, uint64_t cache_size,
                                        map<string, string> params){
+    //annotate a file
+    annotate(trace_file);
+
+
     // create cache
     unique_ptr<Cache> webcache = move(Cache::create_unique(cache_type));
     if(webcache == nullptr) {
@@ -38,10 +108,9 @@ map<string, string> _simulation_belady(string trace_file, string cache_type, uin
 
     infile.open(trace_file);
     if (!infile) {
-        cerr << "Exception opening/reading file";
+        cerr << "exception opening/reading file";
         return {};
     }
-
 
     AnnotatedRequest req(0, 0, 0);
     int i = 0;
