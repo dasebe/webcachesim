@@ -61,6 +61,3 @@ trace
 
 # job dir
 job
-
-# annotate trace
-*.tr.ant

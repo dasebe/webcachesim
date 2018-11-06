@@ -101,8 +101,8 @@ map<string, string> _simulation_belady(string trace_file, string cache_type, uin
 
     //suppose already annotated
     ifstream infile;
-    long long byte_req = 0, byte_hit = 0, obj_req = 0, obj_hit = 0;
-    long long t, id, size, next_t;
+    uint64_t byte_req = 0, byte_hit = 0, obj_req = 0, obj_hit = 0;
+    uint64_t t, id, size, next_t;
 
     trace_file += ".ant";
 
@@ -155,8 +155,8 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     }
 
     ifstream infile;
-    long long byte_req = 0, byte_hit = 0, obj_req = 0, obj_hit = 0;
-    long long t, id, size;
+    uint64_t byte_req = 0, byte_hit = 0, obj_req = 0, obj_hit = 0;
+    uint64_t t, id, size;
 
     infile.open(trace_file);
     if (!infile) {
