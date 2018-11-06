@@ -5,11 +5,16 @@ import pathlib
 from pywebcachesim.simulation import simulation
 from pywebcachesim.runner import parser
 import yaml
+import timeit
 
 
 def run_task(args):
     scheduler_args, task = args
+    start_time = timeit.default_timer()
     res = simulation(f'{scheduler_args.trace_dir}/{task["trace_file"]}', task['cache_type'], task['cache_size'], {})
+    elapsed = timeit.default_timer() - start_time
+    print(f'time for trace_file {task["trace_file"]}, icache_type {task["cache_type"]}, '
+          f'cache_size {task["cache_size"]}: {elapsed} second')
     # print(res)
     if scheduler_args.write_dir is not None:
         if not pathlib.Path(scheduler_args.write_dir).exists():

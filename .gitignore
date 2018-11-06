@@ -50,6 +50,14 @@ build
 # tmp dir
 tmp
 log
+job
 
 # python cache
 __pycache__
+
+
+# trace dir
+trace
+
+# job dir
+job

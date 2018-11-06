@@ -17,9 +17,10 @@ map<string, string> _simulation_belady(string trace_file, string cache_type, uin
                                        map<string, string> params){
     // create cache
     unique_ptr<Cache> webcache = move(Cache::create_unique(cache_type));
-    // todo: raise exception?
-    if(webcache == nullptr)
+    if(webcache == nullptr) {
+        cerr<<"cache type not implemented"<<endl;
         return {};
+    }
 
     // configure cache size
     webcache->setSize(cache_size);
@@ -33,10 +34,15 @@ map<string, string> _simulation_belady(string trace_file, string cache_type, uin
     long long byte_req = 0, byte_hit = 0, obj_req = 0, obj_hit = 0;
     long long t, id, size, next_t;
 
-//    cerr << "running..." << endl;
     trace_file += ".ant";
-    //todo: error handling
+
     infile.open(trace_file);
+    if (!infile) {
+        cerr << "Exception opening/reading file";
+        return {};
+    }
+
+
     AnnotatedRequest req(0, 0, 0);
     int i = 0;
     while (infile >> t >> id >> size >> next_t) {
@@ -67,8 +73,10 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
                                 map<string, string> params){
     // create cache
     unique_ptr<Cache> webcache = move(Cache::create_unique(cache_type));
-    if(webcache == nullptr)
+    if(webcache == nullptr) {
+        cerr<<"cache type not implemented"<<endl;
         return {};
+    }
 
     // configure cache size
     webcache->setSize(cache_size);
@@ -81,10 +89,12 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     long long byte_req = 0, byte_hit = 0, obj_req = 0, obj_hit = 0;
     long long t, id, size;
 
-//    cerr << "running..." << endl;
-
-    //todo: error handling
     infile.open(trace_file);
+    if (!infile) {
+        cerr << "Exception opening/reading file";
+        return {};
+    }
+
     SimpleRequest req(0, 0);
     int i = 0;
     while (infile >> t >> id >> size) {
