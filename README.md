@@ -1,4 +1,48 @@
 # webcachesim:
+
+## Steps For pywebcachsim:
+* `WEBCACHESIM_ROOT` is the dir of your github repo
+
+* Install [anaconda3](https://www.anaconda.com/download/) and add to your path
+
+* Install virtual env
+
+```bash
+conda create -n webcachesim_env python=3.6
+```
+
+* Install `pywebcachesim` library
+
+```bash
+source activate webcachesim_env
+cd $WEBCACHESIM_ROOT
+pip install -e .
+```
+
+* To check help:
+
+```bash
+pywebcachesim --help
+```
+
+* To run a example configuration. Check the yaml file to see the detail configuration:
+
+```bash
+pywebcachesim --config_file /home/zhenyus/webcachesim/job_simple.yaml
+```
+
+* Install `jupyterlab`
+```bash
+pip install jupyterlab
+```
+
+* Open jupyterlab:
+```bash
+jupyter lab
+```
+
+* Open `notebook/evaluation.ipynb` in jupyterlab to check result
+
 ## A simulator for CDN caching and web caching policies.
 
 Simulate a variety of existing caching policies by replaying request traces, and use this framework as a basis to experiment with new ones.
