@@ -357,7 +357,7 @@ map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64
                     byte_req += tit->size;
                     obj_req++;
 
-                    req.reinit(id, tit->size, *rit);
+                    req.reinit(tit->id, tit->size, *rit);
                     if (webcache->lookup(req)) {
                         byte_hit += tit->size;
                         obj_hit++;
@@ -374,8 +374,9 @@ map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64
             windowOpt.clear();
             windowTrace.clear();
         }
-        if (!(++i % 1000000))
-            cout << i << endl;
+        if (!(++i % 1000000)) {
+            cout <<"seq: "<< i <<" hit rate: "<<double(byte_hit) / byte_req<< endl;
+        }
     }
 
     infile.close();
