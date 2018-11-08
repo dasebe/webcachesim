@@ -15,6 +15,7 @@ include_directories(${CMAKE_SOURCE_DIR}/include/caches)
 #include_directories(caches)
 #include_directories(.)
 
+add_subdirectory(lib)
 add_subdirectory(src)
 add_subdirectory(test)
 add_subdirectory(bench)

@@ -8,11 +8,10 @@
 #include <map>
 #include <string>
 
-using namespace std;
-
 /*
  * single thread simulation. Returns results.
  */
-map<string, string> simulation(string trace_file, string cache_type, uint64_t cache_size, map<string, string> params);
+std::map<std::string, std::string> simulation(std::string trace_file, std::string cache_type,
+        uint64_t cache_size, std::map<std::string, std::string> params);
 
 #endif //WEBCACHESIM_SIMULATION_H

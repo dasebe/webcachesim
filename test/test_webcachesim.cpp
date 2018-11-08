@@ -5,6 +5,8 @@
 #include "catch.hpp"
 #include "simulation.h"
 
+using namespace std;
+
 struct InputT{
     string trace_file;
     string cache_type;

@@ -1,4 +1,5 @@
 scheduler_args:
+  debug: true
 
 worker_args:
   cache_types:
