@@ -297,18 +297,21 @@ map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64
     webcache->setSize(cache_size);
     cacheSize = cache_size;
 
+    bool uni_size = false;
     for (auto& kv: params) {
         webcache->setPar(kv.first, kv.second);
         if (kv.first == "window")
             windowSize = stoull(kv.second);
         if (kv.first == "cutoff")
             cutoff = stod(kv.second);
+        if (kv.first == "uni_size")
+            uni_size = static_cast<bool>(stoi(kv.second));
     }
 
 
     ifstream traceFile(trace_file);
     auto timenow = chrono::system_clock::to_time_t(chrono::system_clock::now());
-    resultFile.open(trace_file + ".result." + to_string(timenow));
+    resultFile.open("/tmp/" + to_string(timenow));
     resultFile << ctime(&timenow) << trace_file << " " << cacheSize << " " << windowSize << " " << cutoff << endl;
 
 
@@ -328,6 +331,8 @@ map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64
     ClassifiedRequest req(0, 0, 0);
     int i = 0;
     while (infile >> t >> id >> size) {
+        if (uni_size)
+            size = 1;
         annotate(t, id, size, size);
         //todo: make sure no  tail segment left at the trace
         if (t % windowSize == 0) { // the end of a window
@@ -343,8 +348,8 @@ map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64
 
             //skip evaluation on first window
             if (t != windowSize) {
-                cout << "window result len: " << window_result.size() << " window trace len: " << windowTrace.size()
-                     << endl;
+//                cout << "window result len: " << window_result.size() << " window trace len: " << windowTrace.size()
+//                     << endl;
                 auto rit = window_result.begin();
                 auto tit = windowTrace.begin();
                 for (; rit != window_result.end() && tit != windowTrace.end(); ++rit, ++tit) {

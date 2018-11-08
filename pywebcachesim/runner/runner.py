@@ -11,12 +11,17 @@ import timeit
 def run_task(args):
     scheduler_args, task = args
     start_time = timeit.default_timer()
-    res = simulation(f'{scheduler_args.trace_dir}/{task["trace_file"]}', task['cache_type'], task['cache_size'], {})
+    params = {}
+    for k, v in task.items():
+        if k not in ['trace_file', 'cache_type', 'cache_size']:
+            params[k] = str(v)
+    res = simulation(f'{scheduler_args.trace_dir}/{task["trace_file"]}', task['cache_type'], task['cache_size'], params)
     elapsed = timeit.default_timer() - start_time
     print(f'time for trace_file {task["trace_file"]}, icache_type {task["cache_type"]}, '
           f'cache_size {task["cache_size"]}: {elapsed} second')
     # print(res)
     if scheduler_args.write_dir is not None:
+        print('writing result back...')
         if not pathlib.Path(scheduler_args.write_dir).exists():
             pathlib.Path(scheduler_args.write_dir).mkdir(parents=True)
         timestamp = arrow.utcnow().float_timestamp

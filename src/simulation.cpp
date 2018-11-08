@@ -28,8 +28,14 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     // configure cache size
     webcache->setSize(cache_size);
 
+    uint64_t n_warmup = 0;
+    bool uni_size = false;
     for (auto& kv: params) {
         webcache->setPar(kv.first, kv.second);
+        if (kv.first == "n_warmup")
+            n_warmup = stoull(kv.second);
+        if (kv.first == "uni_size")
+            uni_size = static_cast<bool>(stoi(kv.second));
     }
 
     ifstream infile;
@@ -43,15 +49,22 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     }
 
     SimpleRequest req(0, 0);
-    int i = 0;
+    uint64_t i = 0;
     while (infile >> t >> id >> size) {
-        byte_req += size;
-        obj_req++;
+        if (uni_size)
+            size = 1;
+
+        if (i >= n_warmup) {
+            byte_req += size;
+            obj_req++;
+        }
 
         req.reinit(id, size);
         if (webcache->lookup(req)) {
-            byte_hit += size;
-            obj_hit++;
+            if (i >= n_warmup) {
+                byte_hit += size;
+                obj_hit++;
+            }
         } else {
             webcache->admit(req);
         }
