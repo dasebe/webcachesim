@@ -10,7 +10,7 @@ set(LIB_SOURCE
         simulation.cpp
         simulation_lfo.cpp
         simulation_belady.cpp
-)
+        caches/random_variants.cpp)
 #message(123)
 
 find_package(Boost)
