@@ -10,7 +10,6 @@ bool LFOCache::lookup(SimpleRequest& _req) {
     auto it = _cacheMap.left.find(std::make_pair(req.getId(), req.getSize()));
     if (it != _cacheMap.left.end()) {
         // log hit
-        LOG("h", 0, obj.id, obj.size);
         _cacheMap.left.replace_data(it, (req.rehit_probability));
         return true;
     }
@@ -31,7 +30,6 @@ void LFOCache::admit(SimpleRequest& _req) {
     _cacheMap.insert({{req.getId(), req.getSize()}, req.rehit_probability});
     _currentSize += size;
 
-    LOG("a", _currentSize, obj.id, obj.size);
     // check eviction needed
     while (_currentSize > _cacheSize) {
         evict();

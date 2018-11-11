@@ -23,12 +23,8 @@ void GreedyDualBase::admit(SimpleRequest& req)
     const uint64_t size = req.getSize();
     // object feasible to store?
     if (size >= _cacheSize) {
-        LOG("error", _cacheSize, req->getId(), size);
+        LOG("error", _cacheSize, req.getId(), size);
         return;
-    }
-    // check eviction needed
-    while (_currentSize + size > _cacheSize) {
-        evict();
     }
     // admit new object with new GF value
     long double ageVal = ageValue(req);
@@ -36,21 +32,27 @@ void GreedyDualBase::admit(SimpleRequest& req)
     LOG("a", ageVal, obj.id, obj.size);
     _cacheMap[obj] = _valueMap.emplace(ageVal, obj);
     _currentSize += size;
+    LOG("csize", _currentSize, 0, 0);
+    // check eviction needed
+    while (_currentSize > _cacheSize) {
+        evict();
+    }
+
 }
 
 void GreedyDualBase::evict(SimpleRequest& req)
 {
-    // evict the object match id, type, size of this request
-    CacheObject obj(req);
-    auto it = _cacheMap.find(obj);
-    if (it != _cacheMap.end()) {
-        auto lit = it->second;
-        CacheObject toDelObj = it->first;
-        LOG("e", lit->first, toDelObj.id, toDelObj.size);
-        _currentSize -= toDelObj.size;
-        _valueMap.erase(lit);
-        _cacheMap.erase(it);
-    }
+//    // evict the object match id, type, size of this request
+//    CacheObject obj(req);
+//    auto it = _cacheMap.find(obj);
+//    if (it != _cacheMap.end()) {
+//        auto lit = it->second;
+//        CacheObject toDelObj = it->first;
+//        LOG("e", lit->first, toDelObj.id, toDelObj.size);
+//        _currentSize -= toDelObj.size;
+//        _valueMap.erase(lit);
+//        _cacheMap.erase(it);
+//    }
 }
 
 void GreedyDualBase::evict()
@@ -66,6 +68,7 @@ void GreedyDualBase::evict()
         LOG("e", lit->first, toDelObj.id, toDelObj.size);
         _currentSize -= toDelObj.size;
         _cacheMap.erase(toDelObj);
+        LOG("csize", _currentSize, 0, 0);
         // update L
         _currentL = lit->first;
         _valueMap.erase(lit);

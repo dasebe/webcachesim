@@ -10,7 +10,6 @@ bool BeladyCache::lookup(SimpleRequest& _req) {
     auto it = _cacheMap.left.find(std::make_pair(req.getId(), req.getSize()));
     if (it != _cacheMap.left.end()) {
         // log hit
-        LOG("h", 0, obj.id, obj.size);
         _cacheMap.left.replace_data(it, (req.get_next_t()));
         return true;
     }
@@ -31,7 +30,6 @@ void BeladyCache::admit(SimpleRequest& _req) {
     _cacheMap.insert({{req.getId(), req.getSize()}, req.get_next_t()});
     _currentSize += size;
 
-    LOG("a", _currentSize, obj.id, obj.size);
     // check eviction needed
     while (_currentSize > _cacheSize) {
         evict();

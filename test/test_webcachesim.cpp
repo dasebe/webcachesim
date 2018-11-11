@@ -18,12 +18,10 @@ struct InputT{
 
 
 #define webcachesim_test(input) \
-    map<string, string> params; \
     for (auto& it : input) { \
         auto res = simulation(it.trace_file, it.cache_type, it.cache_size, it.params); \
-        REQUIRE( stod(res["byte_hit_rate"]) == Approx(it.expected_bhr).epsilon(0.001)); \
-        REQUIRE( stod(res["object_hit_rate"]) == Approx(it.expected_ohr).epsilon(0.001)); \
-        auto res = simulation(it.trace_file, it.cache_type, it.cache_size, params); \
+        REQUIRE( stod(res["byte_hit_rate"]) == Approx(it.expected_bhr).margin(0.01)); \
+        REQUIRE( stod(res["object_hit_rate"]) == Approx(it.expected_ohr).margin(0.01)); \
     }
 
 
@@ -114,6 +112,23 @@ InputT inputBelady[] = {
 
 TEST_CASE("webcachesimBelady") {
     webcachesim_test(inputBelady);
+}
+
+InputT inputGDSF[] = {
+        {.trace_file = "../../test/test.tr", .cache_type = "GDSF", .cache_size=50, .params={},
+                .expected_bhr=0.35561944589649763, .expected_ohr=0.4109797941288601},
+        {.trace_file = "../../test/test.tr", .cache_type = "GDSF", .cache_size=100, .params={},
+                .expected_bhr=0.41338212232096183, .expected_ohr=0.49571101791841404},
+        {.trace_file = "../../test/test.tr", .cache_type = "GDSF", .cache_size=200, .params={},
+                .expected_bhr=0.4970726607422896, .expected_ohr=0.6010293556995806},
+        {.trace_file = "../../test/test.tr", .cache_type = "GDSF", .cache_size=500, .params={},
+                .expected_bhr=0.6610559330893884, .expected_ohr=0.7553373999237515},
+        {.trace_file = "../../test/test.tr", .cache_type = "GDSF", .cache_size=1000, .params={},
+                .expected_bhr=0.8143753267119708, .expected_ohr=0.8672321768966832},
+};
+
+TEST_CASE("webcachesimGDSF") {
+    webcachesim_test(inputGDSF);
 }
 
 InputT inputUnitSize[] = {

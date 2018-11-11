@@ -60,27 +60,62 @@ public:
 
 static Factory<FIFOCache> factoryFIFO("FIFO");
 
-/*
-  FilterCache (admit only after N requests)
-*/
-class FilterCache : public LRUCache
-{
-protected:
-    uint64_t _nParam;
-    std::unordered_map<CacheObject, uint64_t> _filter;
+///*
+//  FilterCache (admit only after N requests)
+//*/
+//class FilterCache : public LRUCache
+//{
+//protected:
+//    uint64_t _nParam;
+//    std::unordered_map<CacheObject, uint64_t> _filter;
+//
+//public:
+//    FilterCache();
+//    virtual ~FilterCache()
+//    {
+//    }
+//
+//    virtual void setPar(std::string parName, std::string parValue);
+//    virtual bool lookup(SimpleRequest& req);
+//    virtual void admit(SimpleRequest& req);
+//};
+//
+//static Factory<FilterCache> factoryFilter("Filter");
 
-public:
-    FilterCache();
-    virtual ~FilterCache()
-    {
-    }
-
-    virtual void setPar(std::string parName, std::string parValue);
-    virtual bool lookup(SimpleRequest& req);
-    virtual void admit(SimpleRequest& req);
-};
-
-static Factory<FilterCache> factoryFilter("Filter");
+///*
+//  S4LRU
+//  enter at segment 0
+//  if hit on segment i, segment i+1
+//  if evicted on segment i, segment i-1
+//*/
+//class S4LRUCache : public Cache
+//{
+//protected:
+//    LRUCache segments[4];
+//
+//public:
+//    S4LRUCache()
+//            : Cache()
+//    {
+//        segments[0] = LRUCache();
+//        segments[1] = LRUCache();
+//        segments[2] = LRUCache();
+//        segments[3] = LRUCache();
+//    }
+//    virtual ~S4LRUCache()
+//    {
+//    }
+//
+//    virtual void setSize(uint64_t cs);
+//    virtual bool lookup(SimpleRequest& req);
+//    virtual void admit(SimpleRequest& req);
+//    virtual void segment_admit(uint8_t idx, SimpleRequest& req);
+//    virtual void evict(SimpleRequest& req);
+//    virtual void evict();
+//};
+//
+//static Factory<S4LRUCache> factoryS4LRU("S4LRU");
+//
 
 ///*
 //  ThLRU: LRU eviction with a size admission threshold

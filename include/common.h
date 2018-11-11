@@ -6,7 +6,8 @@
 #define WEBCACHESIM_COMMON_H
 
 // uncomment to enable cache debugging:
-// #define CDEBUG 1
+#undef CDEBUG
+//#define CDEBUG
 
 // util for debug
 #ifdef CDEBUG

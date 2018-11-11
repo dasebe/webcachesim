@@ -37,7 +37,6 @@ void RandomCache::admit(SimpleRequest &req) {
     key_space.insert({req.getId(), req.getSize()});
     _currentSize += size;
 
-    LOG("a", _currentSize, obj.id, obj.size);
     // check eviction needed
     while (_currentSize > _cacheSize) {
         evict();
