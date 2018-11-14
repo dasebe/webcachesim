@@ -20,10 +20,10 @@ bool GreedyDualBase::lookup(SimpleRequest& req)
 
 void GreedyDualBase::admit(SimpleRequest& req)
 {
-    const uint64_t size = req.getSize();
+    const uint64_t size = req.get_size();
     // object feasible to store?
     if (size >= _cacheSize) {
-        LOG("error", _cacheSize, req.getId(), size);
+        LOG("error", _cacheSize, req.get_id(), size);
         return;
     }
     // admit new object with new GF value

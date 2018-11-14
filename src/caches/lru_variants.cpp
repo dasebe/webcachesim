@@ -23,7 +23,7 @@ bool LRUCache::lookup(SimpleRequest& req)
 
 void LRUCache::admit(SimpleRequest& req)
 {
-    const uint64_t size = req.getSize();
+    const uint64_t size = req.get_size();
     // object feasible to store?
     if (size > _cacheSize) {
         LOG("L", _cacheSize, req.getId(), size);

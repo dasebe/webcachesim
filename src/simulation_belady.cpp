@@ -52,7 +52,7 @@ map<string, string> _simulation_belady(string trace_file, string cache_type, uin
     }
 
     cout<<"simulating"<<endl;
-    AnnotatedRequest req(0, 0, 0);
+    AnnotatedRequest req(0, 0, 0, 0);
     uint64_t i = 0;
     while (infile >> t >> id >> size >> next_t) {
         if (uni_size)
@@ -63,7 +63,7 @@ map<string, string> _simulation_belady(string trace_file, string cache_type, uin
             obj_req++;
         }
 
-        req.reinit(id, size, next_t);
+        req.reinit(id, size, t, next_t);
         if (webcache->lookup(req)) {
             if (i >= n_warmup) {
                 byte_hit += size;

@@ -9,11 +9,10 @@ typedef uint64_t IdType;
 // Request information
 class SimpleRequest
 {
-private:
+public:
     IdType _id; // request object id
     uint64_t _size; // request size in bytes
 
-public:
     SimpleRequest()
     {
     }
@@ -37,16 +36,16 @@ public:
     // Print request to stdout
     void print() const
     {
-        std::cout << "id" << getId() << " size " << getSize() << std::endl;
+        std::cout << "id" << get_id() << " size " << get_size() << std::endl;
     }
 
     // Get request object id
-    inline IdType getId() const {
+    inline IdType get_id() const {
         return _id;
     }
 
     // Get request size in bytes
-    inline uint64_t getSize() const {
+    inline uint64_t get_size() const {
         return _size;
     }
 };
@@ -54,24 +53,22 @@ public:
 
 class AnnotatedRequest: public SimpleRequest
 {
-private:
+public:
+    u_int64_t _t;
     u_int64_t _next_t;
 
-public:
     // Create request
-    AnnotatedRequest(IdType id, uint64_t size, uint64_t next_t)
+    AnnotatedRequest(IdType id, uint64_t size, uint64_t t, uint64_t next_t)
             : SimpleRequest(id, size),
+              _t(t),
               _next_t(next_t)
     {
     }
 
-    inline void reinit(IdType id, uint64_t size, uint64_t next_t) {
+    inline void reinit(IdType id, uint64_t size, uint64_t t, uint64_t next_t) {
         SimpleRequest::reinit(id, size);
+        _t = t;
         _next_t = next_t;
-    }
-    // Get request size in bytes
-    inline uint64_t get_next_t() const {
-        return _next_t;
     }
 };
 

@@ -4,13 +4,15 @@ cmake_minimum_required(VERSION 3.5.1)
 set(LIB_SOURCE
         caches/lru_variants.cpp
         caches/gd_variants.cpp
+        caches/random_variants.cpp
         caches/belady.cpp
         caches/lfo.cpp
         random_helper.cpp
         simulation.cpp
         simulation_lfo.cpp
         simulation_belady.cpp
-        caches/random_variants.cpp)
+        simulation_lr.cpp
+        caches/annotate.cpp)
 #message(123)
 
 find_package(Boost)
