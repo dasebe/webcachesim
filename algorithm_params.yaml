@@ -2,8 +2,8 @@ LFO:
   - cutoff: 0.5
     window: 10000000
 LR:
-  - sample_rate: 32
-    threshold: 1000000
+  - sample_rate: 64
+    threshold: 10000000
     batch_size: 100
     learning_rate: 0.0001
     n_past_intervals: 4

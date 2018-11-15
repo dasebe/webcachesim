@@ -101,4 +101,38 @@ public:
 
 static Factory<LRCache> factoryLR("LR");
 
+
+class BeladySampleCache : public RandomCache
+{
+public:
+    std::unordered_map<std::pair<uint64_t, uint64_t >, uint64_t > future_timestamp;
+    // sample_size
+    uint64_t sample_rate=32;
+    // threshold
+    uint64_t threshold=1000000;
+    double log1p_threshold=log1p(threshold);
+
+    BeladySampleCache()
+        : RandomCache()
+    {
+    }
+
+    virtual void setPar(std::string parName, std::string parValue) {
+        if (parName == "sample_rate")
+            sample_rate = stoull(parValue);
+        else if(parName == "threshold") {
+            threshold = stoull(parValue);
+            log1p_threshold = std::log1p(threshold);
+        }
+        else {
+       std::cerr << "unrecognized parameter: " << parName << std::endl;
+   }
+}
+    virtual bool lookup(SimpleRequest& req);
+    virtual void admit(SimpleRequest& req);
+    virtual void evict(uint64_t t);
+};
+
+static Factory<BeladySampleCache> factoryBeladySample("BeladySample");
+
 #endif //WEBCACHESIM_RANDOM_VARIANTS_H

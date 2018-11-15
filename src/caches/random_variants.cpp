@@ -97,8 +97,7 @@ void LRCache::evict(uint64_t t) {
             j++;
         }
         for (; j < n_past_intervals; j++)
-            past_intervals[j] = threshold;
-        //todo: get future_interval
+            past_intervals[j] = log1p_threshold;
         future_interval = 0;
         for (j = 0; j < n_past_intervals; j++)
             future_interval += weights[j] * past_intervals[j];
@@ -109,7 +108,7 @@ void LRCache::evict(uint64_t t) {
         //append training data
         uint64_t training_idx = future_timestamp[key];
         auto & _pending_gradients = pending_gradients[training_idx];
-        double diff = future_interval - log1p(training_idx-t);
+        double diff = future_interval+bias - log1p(training_idx-t);
         mean_diff = 0.5*mean_diff + 0.5*abs(diff);
 //        cout<<mean_diff<<endl;
 //        if (!(tmp_i%100000)) {
@@ -180,3 +179,57 @@ void LRCache::try_train(uint64_t t) {
 
 }
 
+bool BeladySampleCache::lookup(SimpleRequest &_req) {
+    auto & req = static_cast<AnnotatedRequest &>(_req);
+    //add timestamp
+
+    //update future timestamp. Can look only threshold far
+    if (req._t + threshold > req._next_t)
+        future_timestamp[{req._id, req._size}] = req._next_t;
+    else
+        future_timestamp[{req._id, req._size}] = req._t + threshold;
+
+//    try_train(req._t);
+
+    return RandomCache::lookup(req);
+}
+
+void BeladySampleCache::admit(SimpleRequest &_req) {
+    auto & req = static_cast<AnnotatedRequest &>(_req);
+    const uint64_t size = req.get_size();
+    // object feasible to store?
+    if (size > _cacheSize) {
+        LOG("L", _cacheSize, req.get_id(), size);
+        return;
+    }
+    // admit new object
+    key_space.insert({req.get_id(), req.get_size()});
+    _currentSize += size;
+
+    // check eviction needed
+    while (_currentSize > _cacheSize) {
+        evict(req._t);
+    }
+}
+
+void BeladySampleCache::evict(uint64_t t) {
+    static double future_interval;
+    static double max_future_interval;
+    static pair<uint64_t, uint64_t> max_key;
+
+    for (int i = 0; i < sample_rate; i++) {
+        const auto & key = key_space.pickRandom();
+        future_interval = 0;
+
+        //todo: use ground truth
+        future_interval = future_timestamp[key];
+
+        if (!i || future_interval > max_future_interval) {
+            max_future_interval = future_interval;
+            max_key = key;
+        }
+    }
+
+    key_space.erase(max_key);
+    _currentSize -= max_key.second;
+}
