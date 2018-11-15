@@ -1,0 +1,4 @@
+CMAKE_MINIMUM_REQUIRED(VERSION 3.5.1)
+
+set(SOURCE_FILES test.cpp)
+add_executable(test ${SOURCE_FILES})

@@ -2,6 +2,7 @@
 #define GD_VARIANTS_H
 
 #include <unordered_map>
+#include "utils.h"
 #include <map>
 #include <queue>
 #include "cache.h"

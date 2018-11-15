@@ -12,19 +12,7 @@
 #include <list>
 #include <cmath>
 
-// from boost hash combine: hashing of pairs for unordered_maps
 
-namespace std {
-    template<typename S, typename T>
-    struct hash<pair<S, T>> {
-        inline size_t operator()(const pair<S, T> &v) const {
-            size_t seed = 0;
-            hash_combine(seed, v.first);
-            hash_combine(seed, v.second);
-            return seed;
-        }
-    };
-}
 
 class RandomCache : public Cache
 {
@@ -53,7 +41,6 @@ static Factory<RandomCache> factoryRandom("Random");
 class LRCache : public RandomCache
 {
 public:
-    PickSet<std::pair<uint64_t, uint64_t> > key_space;
     // from id to intervals
     std::unordered_map<std::pair<uint64_t, uint64_t >, std::list<uint64_t> > past_timestamps;
     std::unordered_map<std::pair<uint64_t, uint64_t >, uint64_t > future_timestamp;
