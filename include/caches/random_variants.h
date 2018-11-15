@@ -47,7 +47,8 @@ public:
     // sample_size
     uint64_t sample_rate=32;
     // threshold
-    uint64_t threshold=100000;
+    uint64_t threshold=1000000;
+    double log1p_threshold=log1p(threshold);
     // batch_size
     uint64_t batch_size=100;
     // learning_rate 
@@ -57,6 +58,7 @@ public:
 
     double * weights;
     double bias;
+    double mean_diff=0;
     std::map<uint64_t, std::list<double>> pending_gradients;
 
 
@@ -66,13 +68,16 @@ public:
     }
     virtual ~LRCache()
     {
+        delete []weights;
     }
 
     virtual void setPar(std::string parName, std::string parValue) {
         if (parName == "sample_rate")
             sample_rate = stoull(parValue);
-        else if(parName == "threshold")
-            threshold = std::log1p(stoull(parValue));
+        else if(parName == "threshold") {
+            threshold = stoull(parValue);
+            log1p_threshold = std::log1p(threshold);
+        }
         else if(parName == "batch_size")
             batch_size = stoull(parValue);
         else if(parName == "learning_rate")

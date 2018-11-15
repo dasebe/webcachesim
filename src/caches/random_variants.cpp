@@ -81,8 +81,8 @@ void LRCache::evict(uint64_t t) {
     static double * past_intervals;
     static double future_interval;
     static double max_future_interval;
-    static double mean_diff = 0;
     static pair<uint64_t, uint64_t> max_key;
+//    static uint64_t tmp_i = 0;
 
     if (past_intervals == nullptr)
         past_intervals = new double[n_past_intervals];
@@ -112,6 +112,11 @@ void LRCache::evict(uint64_t t) {
         double diff = future_interval - log1p(training_idx-t);
         mean_diff = 0.5*mean_diff + 0.5*abs(diff);
 //        cout<<mean_diff<<endl;
+//        if (!(tmp_i%100000)) {
+//            cout<<past_timestamps.size()<<endl;
+//            ++tmp_i;
+//
+//        }
 
         for (j = 0; j < n_past_intervals; j++)
             _pending_gradients.push_back(diff * past_intervals[j]);
