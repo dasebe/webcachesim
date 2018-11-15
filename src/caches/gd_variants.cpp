@@ -124,88 +124,88 @@ long double GDSFCache::ageValue(SimpleRequest& req)
     return _currentL + static_cast<double>(_reqsMap[obj]) / static_cast<double>(obj.size);
 }
 
-///*
-//  LRU-K policy
-//*/
-//LRUKCache::LRUKCache()
-//    : GreedyDualBase(),
-//      _tk(2),
-//      _curTime(0)
-//{
-//}
+/*
+  LRU-K policy
+*/
+LRUKCache::LRUKCache()
+    : GreedyDualBase(),
+      _tk(2),
+      _curTime(0)
+{
+}
 
-//void LRUKCache::setPar(std::string parName, std::string parValue) {
-//    if(parName.compare("k") == 0) {
-//        const int k = stoi(parValue);
-//        assert(k>0);
-//        _tk = k;
-//    } else {
-//        std::cerr << "unrecognized parameter: " << parName << std::endl;
-//    }
-//}
-//
-//
-//bool LRUKCache::lookup(SimpleRequest* req)
-//{
-//    CacheObject obj(req);
-//    _curTime++;
-//    _refsMap[obj].push(_curTime);
-//    bool hit = GreedyDualBase::lookup(req);
-//    return hit;
-//}
-//
-//void LRUKCache::evict(SimpleRequest* req)
-//{
-//    CacheObject obj(req);
-//    _refsMap.erase(obj); // delete LRU-K info
-//    GreedyDualBase::evict(req);
-//}
-//
-//void LRUKCache::evict()
-//{
-//    // evict first list element (smallest value)
-//    if (_valueMap.size() > 0) {
-//        ValueMapIteratorType lit  = _valueMap.begin();
-//        if (lit == _valueMap.end()) {
-//            std::cerr << "underun: " << _currentSize << ' ' << _cacheSize << std::endl;
-//        }
-//        assert(lit != _valueMap.end()); // bug if this happens
-//        CacheObject obj = lit->second;
-//        _refsMap.erase(obj); // delete LRU-K info
-//        GreedyDualBase::evict();
-//    }
-//}
-//
-//long double LRUKCache::ageValue(SimpleRequest* req)
-//{
-//    CacheObject obj(req);
-//    long double newVal = 0.0L;
-//    if(_refsMap[obj].size() >= _tk) {
-//        newVal = _refsMap[obj].front();
-//        _refsMap[obj].pop();
-//    }
-//    //std::cerr << id << " " << _curTime << " " << _refsMap[id].size() << " " << newVal << " " << _currentL << std::endl;
-//    return newVal;
-//}
-//
-///*
-//  LFUDA
-//*/
-//bool LFUDACache::lookup(SimpleRequest* req)
-//{
-//    bool hit = GreedyDualBase::lookup(req);
-//    CacheObject obj(req);
-//    if (!hit) {
-//        _reqsMap[obj] = 1; //reset bec. reqs_map not updated when element removed
-//    } else {
-//        _reqsMap[obj]++;
-//    }
-//    return hit;
-//}
-//
-//long double LFUDACache::ageValue(SimpleRequest* req)
-//{
-//    CacheObject obj(req);
-//    return _currentL + _reqsMap[obj];
-//}
-//
+void LRUKCache::setPar(std::string parName, std::string parValue) {
+    if(parName.compare("k") == 0) {
+        const int k = stoi(parValue);
+        assert(k>0);
+        _tk = k;
+    } else {
+        std::cerr << "unrecognized parameter: " << parName << std::endl;
+    }
+}
+
+
+bool LRUKCache::lookup(SimpleRequest& req)
+{
+    CacheObject obj(req);
+    _curTime++;
+    _refsMap[obj].push(_curTime);
+    bool hit = GreedyDualBase::lookup(req);
+    return hit;
+}
+
+void LRUKCache::evict(SimpleRequest& req)
+{
+    CacheObject obj(req);
+    _refsMap.erase(obj); // delete LRU-K info
+    GreedyDualBase::evict(req);
+}
+
+void LRUKCache::evict()
+{
+    // evict first list element (smallest value)
+    if (_valueMap.size() > 0) {
+        ValueMapIteratorType lit  = _valueMap.begin();
+        if (lit == _valueMap.end()) {
+            std::cerr << "underun: " << _currentSize << ' ' << _cacheSize << std::endl;
+        }
+        assert(lit != _valueMap.end()); // bug if this happens
+        CacheObject obj = lit->second;
+        _refsMap.erase(obj); // delete LRU-K info
+        GreedyDualBase::evict();
+    }
+}
+
+long double LRUKCache::ageValue(SimpleRequest& req)
+{
+    CacheObject obj(req);
+    long double newVal = 0.0L;
+    if(_refsMap[obj].size() >= _tk) {
+        newVal = _refsMap[obj].front();
+        _refsMap[obj].pop();
+    }
+    //std::cerr << id << " " << _curTime << " " << _refsMap[id].size() << " " << newVal << " " << _currentL << std::endl;
+    return newVal;
+}
+
+/*
+  LFUDA
+*/
+bool LFUDACache::lookup(SimpleRequest& req)
+{
+    bool hit = GreedyDualBase::lookup(req);
+    CacheObject obj(req);
+    if (!hit) {
+        _reqsMap[obj] = 1; //reset bec. reqs_map not updated when element removed
+    } else {
+        _reqsMap[obj]++;
+    }
+    return hit;
+}
+
+long double LFUDACache::ageValue(SimpleRequest& req)
+{
+    CacheObject obj(req);
+    return _currentL + _reqsMap[obj];
+}
+

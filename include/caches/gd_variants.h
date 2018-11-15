@@ -93,56 +93,56 @@ public:
 
 static Factory<GDSFCache> factoryGDSF("GDSF");
 
-///*
-//  LRU-K policy
-//*/
-//typedef std::unordered_map<CacheObject, std::queue<uint64_t>> lrukMapType;
-//
-//class LRUKCache : public GreedyDualBase
-//{
-//protected:
-//    lrukMapType _refsMap;
-//    unsigned int _tk;
-//    uint64_t _curTime;
-//
-//    virtual long double ageValue(SimpleRequest* req);
-//
-//public:
-//    LRUKCache();
-//    virtual ~LRUKCache()
-//    {
-//    }
-//
-//    virtual void setPar(std::string parName, std::string parValue);
-//    virtual bool lookup(SimpleRequest* req);
-//    virtual void evict(SimpleRequest* req);
-//    virtual void evict();
-//};
-//
-//static Factory<LRUKCache> factoryLRUK("LRUK");
-//
-///*
-//  LFUDA
-//*/
-//class LFUDACache : public GreedyDualBase
-//{
-//protected:
-//    CacheStatsMapType _reqsMap;
-//
-//    virtual long double ageValue(SimpleRequest* req);
-//
-//public:
-//    LFUDACache()
-//        : GreedyDualBase()
-//    {
-//    }
-//    virtual ~LFUDACache()
-//    {
-//    }
-//
-//    virtual bool lookup(SimpleRequest* req);
-//};
-//
-//static Factory<LFUDACache> factoryLFUDA("LFUDA");
+/*
+  LRU-K policy
+*/
+typedef std::unordered_map<CacheObject, std::queue<uint64_t>> lrukMapType;
+
+class LRUKCache : public GreedyDualBase
+{
+protected:
+    lrukMapType _refsMap;
+    unsigned int _tk;
+    uint64_t _curTime;
+
+    virtual long double ageValue(SimpleRequest& req);
+
+public:
+    LRUKCache();
+    virtual ~LRUKCache()
+    {
+    }
+
+    virtual void setPar(std::string parName, std::string parValue);
+    virtual bool lookup(SimpleRequest& req);
+    virtual void evict(SimpleRequest& req);
+    virtual void evict();
+};
+
+static Factory<LRUKCache> factoryLRUK("LRUK");
+
+/*
+  LFUDA
+*/
+class LFUDACache : public GreedyDualBase
+{
+protected:
+    CacheStatsMapType _reqsMap;
+
+    virtual long double ageValue(SimpleRequest& req);
+
+public:
+    LFUDACache()
+        : GreedyDualBase()
+    {
+    }
+    virtual ~LFUDACache()
+    {
+    }
+
+    virtual bool lookup(SimpleRequest& req);
+};
+
+static Factory<LFUDACache> factoryLFUDA("LFUDA");
 
 #endif /* GD_VARIANTS_H */

@@ -81,6 +81,7 @@ void LRCache::evict(uint64_t t) {
     static double * past_intervals;
     static double future_interval;
     static double max_future_interval;
+    static double mean_diff = 0;
     static pair<uint64_t, uint64_t> max_key;
 
     if (past_intervals == nullptr)
@@ -109,6 +110,8 @@ void LRCache::evict(uint64_t t) {
         uint64_t training_idx = future_timestamp[key];
         auto & _pending_gradients = pending_gradients[training_idx];
         double diff = future_interval - log1p(training_idx-t);
+        mean_diff = 0.5*mean_diff + 0.5*abs(diff);
+//        cout<<mean_diff<<endl;
 
         for (j = 0; j < n_past_intervals; j++)
             _pending_gradients.push_back(diff * past_intervals[j]);
@@ -144,8 +147,10 @@ void LRCache::try_train(uint64_t t) {
             for (const auto & iit: it->second) {
                 if (i%(n_past_intervals+1) == n_past_intervals)
                     bias_update += iit;
-                else
+                else {
                     weight_update[i%n_past_intervals] += iit;
+                    ++n_update;
+                }
                 i++;
             }
             it = pending_gradients.erase(it);
