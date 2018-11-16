@@ -91,25 +91,34 @@ void LRCache::evict(uint64_t t) {
         const auto & key = key_space.pickRandom();
         //fill in past_interval
         const auto & _past_timestamps = past_timestamps[{key.first, key.second}];
-        int j = 0;
-        for (auto & it: _past_timestamps) {
-            past_intervals[j] = log1p(t - it);
-            j++;
+        {
+            int j = 0;
+            for (auto &it: _past_timestamps) {
+                uint64_t past_interval = t - it;
+                if (past_interval >= threshold)
+                    past_intervals[j] = log1p_threshold;
+                else
+                    past_intervals[j] = log1p(past_interval);
+                j++;
+            }
+            for (; j < n_past_intervals; j++)
+                past_intervals[j] = log1p_threshold;
         }
-        for (; j < n_past_intervals; j++)
-            past_intervals[j] = log1p_threshold;
+
         future_interval = 0;
-        for (j = 0; j < n_past_intervals; j++)
+        for (int j = 0; j < n_past_intervals; j++)
             future_interval += weights[j] * past_intervals[j];
+
         if (!i || future_interval > max_future_interval) {
             max_future_interval = future_interval;
             max_key = key;
         }
+
         //append training data
         uint64_t training_idx = future_timestamp[key];
         auto & _pending_gradients = pending_gradients[training_idx];
         double diff = future_interval+bias - log1p(training_idx-t);
-        mean_diff = 0.5*mean_diff + 0.5*abs(diff);
+        mean_diff = 0.99*mean_diff + 0.01*abs(diff);
 //        cout<<mean_diff<<endl;
 //        if (!(tmp_i%100000)) {
 //            cout<<past_timestamps.size()<<endl;
@@ -117,9 +126,23 @@ void LRCache::evict(uint64_t t) {
 //
 //        }
 
-        for (j = 0; j < n_past_intervals; j++)
-            _pending_gradients.push_back(diff * past_intervals[j]);
-        _pending_gradients.push_back(diff);
+        if (_pending_gradients.empty()) {
+            for (int j = 0; j < n_past_intervals; j++)
+                _pending_gradients.push_back(diff * past_intervals[j]);
+            _pending_gradients.push_back(diff);
+            _pending_gradients.push_back(1);  //n_sample
+        } else {
+            int j = 0;
+            for (auto & it: _pending_gradients) {
+                if (j < n_past_intervals)
+                    it += diff * past_intervals[j];
+                else if (j < n_past_intervals + 1)
+                    it += diff;
+                else
+                    it += 1;
+                ++j;
+            }
+        }
     }
 
     key_space.erase(max_key);
@@ -140,30 +163,24 @@ void LRCache::try_train(uint64_t t) {
         n_update = 0;
     }
 
-
-
     auto it = pending_gradients.cbegin();
     while (it != pending_gradients.cend()) {
-//        double tmp = it->first;
-//        auto tmp1 = it->second;
         if (it->first <= t) {
             int i = 0;
             for (const auto & iit: it->second) {
-                if (i%(n_past_intervals+1) == n_past_intervals)
+                if (i < n_past_intervals)
+                    weight_update[i] += iit;
+                else if (i < n_past_intervals + 1)
                     bias_update += iit;
-                else {
-                    weight_update[i%n_past_intervals] += iit;
-                    ++n_update;
-                }
-                i++;
+                else
+                    n_update += (uint64_t) iit;
+                ++i;
             }
+            ++n_update;
             it = pending_gradients.erase(it);
         }
         else
-        {
-            ++it;
             break;
-        }
     }
     if (n_update >= batch_size) {
         for (int i = 0; i < n_past_intervals; ++i)
@@ -174,6 +191,10 @@ void LRCache::try_train(uint64_t t) {
             weight_update[i] = 0;
         bias_update = 0;
         n_update = 0;
+//        cout<<"mean diff: "<<mean_diff<<endl;
+//        for (int i = 0; i < n_past_intervals; ++i)
+//            cout<<"weight "<<i<<": "<<weights[i]<<endl;
+//        cout<<"bias: "<<bias<<endl;
 
     }
 
