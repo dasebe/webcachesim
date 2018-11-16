@@ -50,13 +50,20 @@ bool LRCache::lookup(SimpleRequest &_req) {
 
     //update future timestamp. Can look only threshold far
     if (req._t + threshold > req._next_t)
-        future_timestamp.insert({{req._id, req._size}, req._next_t});
+        future_timestamp.left[make_pair(req._id, req._size)] = req._next_t;
     else
-        future_timestamp.insert({{req._id, req._size}, req._t + threshold});
+        future_timestamp.left[make_pair(req._id, req._size)] = req._t + threshold;
 
     try_train(req._t);
-//    try_gc(req._t);
-
+    try_gc(req._t);
+    static uint64_t i = 0;
+    if (!(i%1000000)) {
+        cout << "mean diff: " << mean_diff << endl;
+        for (int j = 0; j < n_past_intervals; ++j)
+            cout << "weight " << j << ": " << weights[j] << endl;
+        cout << "bias: " << bias << endl;
+    }
+    ++i;
     return RandomCache::lookup(req);
 }
 
@@ -204,10 +211,6 @@ void LRCache::try_train(uint64_t t) {
             weight_update[i] = 0;
         bias_update = 0;
         n_update = 0;
-//        cout<<"mean diff: "<<mean_diff<<endl;
-//        for (int i = 0; i < n_past_intervals; ++i)
-//            cout<<"weight "<<i<<": "<<weights[i]<<endl;
-//        cout<<"bias: "<<bias<<endl;
 
     }
 
