@@ -11,6 +11,8 @@
 #include <unordered_map>
 #include <list>
 #include <cmath>
+#include <boost/bimap.hpp>
+#include <boost/bimap/multiset_of.hpp>
 
 
 
@@ -43,7 +45,7 @@ class LRCache : public RandomCache
 public:
     // from id to intervals
     std::unordered_map<std::pair<uint64_t, uint64_t >, std::list<uint64_t> > past_timestamps;
-    std::unordered_map<std::pair<uint64_t, uint64_t >, uint64_t > future_timestamp;
+    boost::bimap<boost::bimaps::set_of<KeyT>, boost::bimaps::multiset_of<uint64_t>> future_timestamp;
     // sample_size
     uint64_t sample_rate=32;
     // threshold
@@ -97,6 +99,7 @@ public:
     virtual void admit(SimpleRequest& req);
     virtual void evict(uint64_t t);
     void try_train(uint64_t t);
+    void try_gc(uint64_t t);
 };
 
 static Factory<LRCache> factoryLR("LR");

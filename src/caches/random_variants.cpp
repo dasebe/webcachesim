@@ -50,13 +50,26 @@ bool LRCache::lookup(SimpleRequest &_req) {
 
     //update future timestamp. Can look only threshold far
     if (req._t + threshold > req._next_t)
-        future_timestamp[{req._id, req._size}] = req._next_t;
+        future_timestamp.insert({{req._id, req._size}, req._next_t});
     else
-        future_timestamp[{req._id, req._size}] = req._t + threshold;
+        future_timestamp.insert({{req._id, req._size}, req._t + threshold});
 
     try_train(req._t);
+//    try_gc(req._t);
 
     return RandomCache::lookup(req);
+}
+
+void LRCache::try_gc(uint64_t t) {
+    auto it = future_timestamp.right.begin();
+    while (it != future_timestamp.right.end()) {
+        if (it->first < t) {
+            past_timestamps.erase(it->second);
+            it = future_timestamp.right.erase(it);
+        }
+        else
+            break;
+    }
 }
 
 void LRCache::admit(SimpleRequest &_req) {
@@ -115,7 +128,7 @@ void LRCache::evict(uint64_t t) {
         }
 
         //append training data
-        uint64_t training_idx = future_timestamp[key];
+        uint64_t training_idx = future_timestamp.left.find(key)->second;
         auto & _pending_gradients = pending_gradients[training_idx];
         double diff = future_interval+bias - log1p(training_idx-t);
         mean_diff = 0.99*mean_diff + 0.01*abs(diff);

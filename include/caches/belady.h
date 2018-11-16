@@ -8,8 +8,8 @@
 #include "cache.h"
 #include <boost/bimap.hpp>
 #include <boost/bimap/multiset_of.hpp>
+#include <utils.h>
 
-typedef std::pair<std::uint64_t, std::uint64_t> KeyT;
 typedef boost::bimap<boost::bimaps::set_of<KeyT>,
         boost::bimaps::multiset_of<uint64_t, std::greater<uint64_t>>> Bimap;
 
