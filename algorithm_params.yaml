@@ -4,6 +4,6 @@ LFO:
 LR:
   - sample_rate: 32
     threshold: 10000000
-    batch_size: 100
-    learning_rate: 0.0001
+    batch_size: 10
+    learning_rate: 0.000001
     n_past_intervals: 4

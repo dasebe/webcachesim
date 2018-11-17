@@ -90,6 +90,7 @@ public:
             for (int i = 0; i < n_past_intervals; i++) {
                 weights[i] = 0;
             }
+            bias = 0;
         }
         else {
        std::cerr << "unrecognized parameter: " << parName << std::endl;
