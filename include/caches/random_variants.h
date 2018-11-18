@@ -12,7 +12,7 @@
 #include <list>
 #include <cmath>
 #include <boost/bimap.hpp>
-#include <boost/bimap/list_of.hpp>
+#include <boost/bimap/multiset_of.hpp>
 
 
 
@@ -45,7 +45,7 @@ class LRCache : public RandomCache
 public:
     // from id to intervals
     std::unordered_map<std::pair<uint64_t, uint64_t >, std::list<uint64_t> > past_timestamps;
-    boost::bimap<boost::bimaps::set_of<KeyT>, boost::bimaps::list_of<uint64_t>> future_timestamp;
+    boost::bimap<boost::bimaps::set_of<KeyT>, boost::bimaps::multiset_of<uint64_t>> future_timestamp;
     // sample_size
     uint64_t sample_rate=32;
     // threshold

@@ -48,11 +48,20 @@ bool LRCache::lookup(SimpleRequest &_req) {
         _past_timestamps.pop_back();
     _past_timestamps.push_front(req._t);
 
-    //update future timestamp. Can look only threshold far
+    uint64_t _future_timestamp;
     if (req._t + threshold > req._next_t)
-        future_timestamp.left[make_pair(req._id, req._size)] = req._next_t;
+        _future_timestamp = req._next_t;
     else
-        future_timestamp.left[make_pair(req._id, req._size)] = req._t + threshold;
+        _future_timestamp = req._t + threshold;
+    //update future timestamp. Can look only threshold far
+    auto it = future_timestamp.left.find(std::make_pair(req._id, req._size));
+    if (it != future_timestamp.left.end()) {
+        //replace
+        future_timestamp.left.replace_data(it, _future_timestamp);
+    } else {
+        //insert
+        future_timestamp.insert({{req._id, req._size}, _future_timestamp});
+    }
 
     try_train(req._t);
     try_gc(req._t);
