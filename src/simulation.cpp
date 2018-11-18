@@ -10,6 +10,7 @@
 #include "lru_variants.h"
 #include "gd_variants.h"
 #include "random_variants.h"
+#include "ucb.h"
 #include "request.h"
 #include "simulation_belady.h"
 #include "simulation_lfo.h"
