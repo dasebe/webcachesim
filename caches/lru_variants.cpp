@@ -269,10 +269,8 @@ bool AdaptSizeCache::lookup(SimpleRequest* req)
 
 void AdaptSizeCache::admit(SimpleRequest* req)
 {
-	const uint64_t RANGE = 1ull << 32; 
-	double roll = (uniform_int_distribution0(randGenerator0) % RANGE) * 1. 
-		/ RANGE;
-	double admitProb = std::exp(req->getSize()/c); 
+	double roll = uniform_real_distribution0(randGenerator0);
+	double admitProb = std::exp(-1.0 * double(req->getSize())/c); 
 
 	if(roll < admitProb) 
 		LRUCache::admit(req); 
