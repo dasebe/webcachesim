@@ -52,9 +52,9 @@ public:
     uint64_t threshold=1000000;
     double log1p_threshold=log1p(threshold);
     // batch_size
-    uint64_t batch_size=100;
+    uint64_t batch_size=10;
     // learning_rate 
-    double learning_rate=0.001;
+    double learning_rate=0.000001;
     // n_past_interval
     uint64_t n_past_intervals = 4;
 
