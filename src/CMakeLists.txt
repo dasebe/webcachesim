@@ -7,6 +7,12 @@ set(LIB_SOURCE
         caches/random_variants.cpp
         caches/belady.cpp
         caches/lfo.cpp
+        caches/lhd/lhd_variants.cpp
+        caches/lhd/adaptsize.cpp
+        caches/lhd/hitdensity.cpp
+        caches/lhd/hitdensity_class.cpp
+        caches/lhd/hitdensity_lookahead.cpp
+        caches/lhd/lhd.cpp
         random_helper.cpp
         simulation.cpp
         simulation_lfo.cpp
