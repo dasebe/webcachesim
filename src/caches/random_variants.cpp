@@ -39,8 +39,9 @@ void RandomCache::evict() {
 
 bool LRCache::lookup(SimpleRequest &_req) {
     AnnotatedRequest & req = static_cast<AnnotatedRequest &>(_req);
+    auto key = make_pair(req._id, req._size);
     //add timestamp
-    auto &_past_timestamps = past_timestamps[{req._id, req._size}];
+    auto &_past_timestamps = past_timestamps[key];
     const auto n_past_timestamps = _past_timestamps.size();
 
     //update past timestamps
@@ -54,16 +55,21 @@ bool LRCache::lookup(SimpleRequest &_req) {
     else
         _future_timestamp = req._t + threshold;
     //update future timestamp. Can look only threshold far
-    auto it = future_timestamp.left.find(std::make_pair(req._id, req._size));
-    if (it != future_timestamp.left.end()) {
-        //replace
-        future_timestamp.left.replace_data(it, _future_timestamp);
-    } else {
+    auto it = future_timestamp.left.find(key);
+    if (it == future_timestamp.left.end()) {
         //insert
         future_timestamp.insert({{req._id, req._size}, _future_timestamp});
+    } else {
+        //if has pending training data, put it
+        auto gradients = pending_gradients.find(req._t);
+        if (gradients != pending_gradients.end()) {
+            try_train(gradients->second);
+            pending_gradients.erase(gradients);
+        }
+        //replace
+        future_timestamp.left.replace_data(it, _future_timestamp);
     }
 
-    try_train(req._t);
     try_gc(req._t);
     static uint64_t i = 0;
     if (!(i%1000000)) {
@@ -77,9 +83,17 @@ bool LRCache::lookup(SimpleRequest &_req) {
 }
 
 void LRCache::try_gc(uint64_t t) {
+    /*
+     * objects that never request again
+     * */
     auto it = future_timestamp.right.begin();
     while (it != future_timestamp.right.end()) {
         if (it->first < t) {
+            auto gradients = pending_gradients.find(it->first);
+            if (gradients != pending_gradients.end()) {
+                try_train(gradients->second);
+                pending_gradients.erase(gradients);
+            }
             past_timestamps.erase(it->second);
             it = future_timestamp.right.erase(it);
         }
@@ -145,7 +159,6 @@ void LRCache::evict(uint64_t t) {
 
         //append training data
         uint64_t training_idx = future_timestamp.left.find(key)->second;
-        auto & _pending_gradients = pending_gradients[training_idx];
         double diff = future_interval+bias - log1p(training_idx-t);
         mean_diff = 0.99*mean_diff + 0.01*abs(diff);
 //        cout<<mean_diff<<endl;
@@ -155,22 +168,20 @@ void LRCache::evict(uint64_t t) {
 //
 //        }
 
-        if (_pending_gradients.empty()) {
+        auto _pending_gradients = pending_gradients.find(training_idx);
+        if (_pending_gradients == pending_gradients.end()) {
+            auto gradients = new double[n_past_intervals+2];
             for (int j = 0; j < n_past_intervals; j++)
-                _pending_gradients.push_back(diff * past_intervals[j]);
-            _pending_gradients.push_back(diff);
-            _pending_gradients.push_back(1);  //n_sample
+                gradients[j] = diff * past_intervals[j];
+            gradients[n_past_intervals] = diff;
+            gradients[n_past_intervals+1] = 1;
+            pending_gradients.insert({training_idx, gradients});
         } else {
-            int j = 0;
-            for (auto & it: _pending_gradients) {
-                if (j < n_past_intervals)
-                    it += diff * past_intervals[j];
-                else if (j < n_past_intervals + 1)
-                    it += diff;
-                else
-                    it += 1;
-                ++j;
-            }
+            auto gradients = _pending_gradients->second;
+            for (int j = 0; j < n_past_intervals; j++)
+                gradients[j] += diff * past_intervals[j];
+            gradients[n_past_intervals] += diff;
+            gradients[n_past_intervals+1] += 1;
         }
     }
 
@@ -178,7 +189,7 @@ void LRCache::evict(uint64_t t) {
     _currentSize -= max_key.second;
 }
 
-void LRCache::try_train(uint64_t t) {
+void LRCache::try_train(double * gradients) {
     //train
     static double * weight_update;
     static double bias_update;
@@ -192,25 +203,12 @@ void LRCache::try_train(uint64_t t) {
         n_update = 0;
     }
 
-    auto it = pending_gradients.cbegin();
-    while (it != pending_gradients.cend()) {
-        if (it->first <= t) {
-            int i = 0;
-            for (const auto & iit: it->second) {
-                if (i < n_past_intervals)
-                    weight_update[i] += iit;
-                else if (i < n_past_intervals + 1)
-                    bias_update += iit;
-                else
-                    n_update += (uint64_t) iit;
-                ++i;
-            }
-            ++n_update;
-            it = pending_gradients.erase(it);
-        }
-        else
-            break;
-    }
+    for (int i = 0; i < n_past_intervals; ++i)
+        weight_update[i] += gradients[i];
+    bias_update += gradients[n_past_intervals];
+    n_update += gradients[n_past_intervals+1];
+    delete [] gradients;
+
     if (n_update >= batch_size) {
         for (int i = 0; i < n_past_intervals; ++i)
             weights[i] = weights[i] - learning_rate / n_update * weight_update[i];

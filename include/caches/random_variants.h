@@ -61,7 +61,7 @@ public:
     double * weights;
     double bias;
     double mean_diff=0;
-    std::map<uint64_t, std::list<double>> pending_gradients;
+    std::unordered_map<uint64_t, double *> pending_gradients;
 
 
     LRCache()
@@ -99,7 +99,7 @@ public:
     virtual bool lookup(SimpleRequest& req);
     virtual void admit(SimpleRequest& req);
     virtual void evict(uint64_t t);
-    void try_train(uint64_t t);
+    void try_train(double * gradients);
     void try_gc(uint64_t t);
 };
 
