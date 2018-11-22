@@ -13,6 +13,8 @@
 #include <boost/bimap.hpp>
 #include <boost/bimap/multiset_of.hpp>
 
+typedef std::pair<uint64_t, uint64_t> KeyT;
+
 class UCBCache : public Cache
 {
 public:
