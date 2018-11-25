@@ -48,47 +48,44 @@ bool LRCache::lookup(SimpleRequest &_req) {
     }
     ++i;
 
+    //todo: deal with size consistently
+
     auto & req = static_cast<AnnotatedRequest &>(_req);
+
+    auto gradients = pending_gradients.begin();
+    while (gradients != pending_gradients.end()) {
+        if (gradients->first <= req._t) {
+            try_train(gradients->second);
+            gradients = pending_gradients.erase(gradients);
+            ++gradients;
+    //        pending_gradients.erase(gradients);
+    //        past_timestamps.erase(it->second);
+    //        unordered_future_timestamp.erase(it->second);
+        } else
+            break;
+    }
+
     auto it = key_map.find(req._id);
     if (it != key_map.end()) {
-        //add timestamp
         //update past timestamps
         bool & list_idx = it->second.first;
         uint32_t & pos_idx = it->second.second;
-//        auto tmp = meta_holder[list_idx][pos_idx];
         meta_holder[list_idx][pos_idx].append_past_timestamp(req._t);
 
-        uint64_t _future_timestamp;
-        if (req._t + threshold > req._next_t)
-            _future_timestamp = req._next_t;
-        else
-            _future_timestamp = req._t + threshold;
-        meta_holder[list_idx][pos_idx]._future_timestamp = _future_timestamp;
+        //update future timestamp. Can look only threshold far
+        meta_holder[list_idx][pos_idx]._future_timestamp = min(req._next_t, req._t + threshold);
 
         return !list_idx;
-        //update future timestamp. Can look only threshold far
-//        auto it = unordered_future_timestamp.find(key);
-//        if (it == unordered_future_timestamp.end()) {
-//            insert
-//            unordered_future_timestamp.insert({{req._id, req._size}, _future_timestamp});
-//            future_timestamp.insert({{req._id, req._size}, _future_timestamp});
-//        } else {
 //            if has pending training data, put it
-//            auto gradients = pending_gradients.find(req._t);
-//            if (gradients != pending_gradients.end()) {
-//                try_train(gradients->second);
-//                pending_gradients.erase(gradients);
-//            }
-//            replace
-//            it->second = _future_timestamp;
-//            future_timestamp.left.replace_data(future_timestamp.left.find(key), _future_timestamp);
+//        auto gradients = pending_gradients.find(req._t);
+//        if (gradients != pending_gradients.end()) {
+//            try_train(gradients->second);
+//            pending_gradients.erase(gradients);
 //        }
-
     }
+    return false;
 
 //    try_gc(req._t);
-
-//    return RandomCache::lookup(req);
 }
 
 //void LRCache::try_gc(uint64_t t) {
@@ -121,65 +118,40 @@ void LRCache::admit(SimpleRequest &_req) {
         return;
     }
 
-    if (size + _currentSize <= _cacheSize) {
-        //never evict
-        auto it = key_map.find(req._id);
-        if (it == key_map.end()) {
-            //fresh insert
-            key_map.insert({req._id, {0, (uint32_t) meta_holder[0].size()}});
-            uint64_t _future_timestamp;
-            if (req._t + threshold > req._next_t)
-                _future_timestamp = req._next_t;
-            else
-                _future_timestamp = req._t + threshold;
-            meta_holder[0].emplace_back(req._id, req._size, req._t, _future_timestamp);
-            _currentSize += size;
-            return;
-        } else {
-            //bring list 1 to list 0
-            uint32_t new_pos = meta_holder[0].size();
-            meta_holder[0].emplace_back(meta_holder[1][it->second.second]);
-            uint32_t deactivate_tail_pos = meta_holder[1].size()-1;
-            if (it->second.second !=  deactivate_tail_pos) {
-                //swap tail
-                meta_holder[1][it->second.second] = meta_holder[1][deactivate_tail_pos];
-                key_map.find(meta_holder[1][deactivate_tail_pos]._key)->second.second = it->second.second;
-            }
-            meta_holder[1].pop_back();
-            it->second.first = 0;
-            it->second.second = new_pos;
-            _currentSize += size;
-            return;
-        }
-    }
-
     auto it = key_map.find(req._id);
     if (it == key_map.end()) {
         //fresh insert
         key_map.insert({req._id, {0, (uint32_t) meta_holder[0].size()}});
-        uint64_t _future_timestamp;
-        if (req._t + threshold > req._next_t)
-            _future_timestamp = req._next_t;
-        else
-            _future_timestamp = req._t + threshold;
-        meta_holder[0].emplace_back(req._id, req._size, req._t, _future_timestamp);
+        meta_holder[0].emplace_back(req._id, req._size, req._t, min(req._next_t, req._t + threshold));
         _currentSize += size;
+        if (_currentSize <= _cacheSize)
+            return;
+    } else if (size + _currentSize <= _cacheSize){
+        //bring list 1 to list 0
+        //first move meta data, then modify hash table
+        uint32_t tail0_pos = meta_holder[0].size();
+        meta_holder[0].emplace_back(meta_holder[1][it->second.second]);
+        uint32_t tail1_pos = meta_holder[1].size()-1;
+        if (it->second.second !=  tail1_pos) {
+            //swap tail
+            meta_holder[1][it->second.second] = meta_holder[1][tail1_pos];
+            key_map.find(meta_holder[1][tail1_pos]._key)->second.second = it->second.second;
+        }
+        meta_holder[1].pop_back();
+        it->second = {0, tail0_pos};
+        _currentSize += size;
+        return;
     } else {
         //insert-evict
         auto epair = rank(req._t);
         auto & key0 = epair.first;
         auto & pos0 = epair.second;
-        auto & key1 = req._id;
         auto & pos1 = it->second.second;
         _currentSize = _currentSize - meta_holder[0][pos0]._size + req._size;
         swap(meta_holder[0][pos0], meta_holder[1][pos1]);
-        it->second.first = 0;
-        it->second.second = pos0;
-        auto iit = key_map.find(key0);
-        iit->second.first = 1;
-        iit->second.second = pos1;
+        swap(it->second, key_map.find(key0)->second);
     }
-    // check eviction needed
+    // check more eviction needed?
     while (_currentSize > _cacheSize) {
         evict(req._t);
     }
@@ -209,9 +181,6 @@ pair<uint64_t, uint32_t> LRCache::rank(const uint64_t & t) {
     for (i = 0; i < n_sample; i++) {
         uint32_t pos = (i+rand_idx)%meta_holder[0].size();
         auto & meta = meta_holder[0][pos];
-//        assert(meta._size == 1);
-//        auto it = key_map.find(meta._key);
-//        assert(it != key_map.end());
         //fill in past_interval
         for (j = 0; j < meta._past_timestamp_idx && j < n_past_intervals; ++j) {
             past_timestamp_idx = (meta._past_timestamp_idx - 1 - j) % n_past_intervals;
@@ -234,33 +203,34 @@ pair<uint64_t, uint32_t> LRCache::rank(const uint64_t & t) {
             max_pos = pos;
         }
 
-        //append training data
-//        uint64_t training_idx = unordered_future_timestamp.find(key)->second;
-//        double diff = future_interval+bias - log1p(training_idx-t);
-//        mean_diff = 0.99*mean_diff + 0.01*abs(diff);
+        //statistics
+        double diff = future_interval+bias - log1p(meta._future_timestamp-t);
+        mean_diff = 0.99*mean_diff + 0.01*abs(diff);
 //        cout<<mean_diff<<endl;
 //        if (!(tmp_i%100000)) {
 //            cout<<past_timestamps.size()<<endl;
 //            ++tmp_i;
 //
 //        }
-
-//        auto _pending_gradients = pending_gradients.find(training_idx);
-//        if (_pending_gradients == pending_gradients.end()) {
-//            auto gradients = new double[n_past_intervals+2];
-//            for (int j = 0; j < n_past_intervals; j++)
-//                gradients[j] = diff * past_intervals[j];
-//            gradients[n_past_intervals] = diff;
-//            gradients[n_past_intervals+1] = 1;
-//            pending_gradients.insert({training_idx, gradients});
-//        } else {
-//            auto gradients = _pending_gradients->second;
-//            for (int j = 0; j < n_past_intervals; j++)
-//                gradients[j] += diff * past_intervals[j];
-//            gradients[n_past_intervals] += diff;
-//            gradients[n_past_intervals+1] += 1;
-//        }
+//
+        //append training data
+        auto _pending_gradients = pending_gradients.find(meta._future_timestamp);
+        if (_pending_gradients == pending_gradients.end()) {
+            auto gradients = new double[n_past_intervals+2];
+            for (j = 0; j < n_past_intervals; j++)
+                gradients[j] = diff * past_intervals[j];
+            gradients[n_past_intervals] = diff;
+            gradients[n_past_intervals+1] = 1;
+            pending_gradients.insert({meta._future_timestamp, gradients});
+        } else {
+            auto gradients = _pending_gradients->second;
+            for (j = 0; j < n_past_intervals; j++)
+                gradients[j] += diff * past_intervals[j];
+            gradients[n_past_intervals] += diff;
+            gradients[n_past_intervals+1] += 1;
+        }
     }
+
     return {max_key, max_pos};
 //    key_space.erase(max_key);
 //    _currentSize -= max_key.second;
@@ -289,39 +259,37 @@ void LRCache::evict(const uint64_t & t) {
     _currentSize -= meta_holder[1][new_pos]._size;
 }
 
-//void LRCache::try_train(double * gradients) {
-//    //train
-//    static double * weight_update;
-//    static double bias_update;
-//    static uint64_t n_update;
-//
-//    if (weight_update == nullptr) {
-//        weight_update = new double[n_past_intervals];
-//        for (int i = 0; i < n_past_intervals; i++)
-//            weight_update[i] = 0;
-//        bias_update = 0;
-//        n_update = 0;
-//    }
-//
-//    for (int i = 0; i < n_past_intervals; ++i)
-//        weight_update[i] += gradients[i];
-//    bias_update += gradients[n_past_intervals];
-//    n_update += gradients[n_past_intervals+1];
-//    delete [] gradients;
-//
-//    if (n_update >= batch_size) {
-//        for (int i = 0; i < n_past_intervals; ++i)
-//            weights[i] = weights[i] - learning_rate / n_update * weight_update[i];
-//        bias = bias - learning_rate / n_update * bias_update;
-//
-//        for (int i = 0; i < n_past_intervals; ++i)
-//            weight_update[i] = 0;
-//        bias_update = 0;
-//        n_update = 0;
-//
-//    }
-//
-//}
+void LRCache::try_train(double * gradients) {
+    //train
+    static double * weight_update;
+    static double bias_update;
+    static uint64_t n_update;
+
+    if (weight_update == nullptr) {
+        weight_update = new double[n_past_intervals];
+        for (int i = 0; i < n_past_intervals; i++)
+            weight_update[i] = 0;
+        bias_update = 0;
+        n_update = 0;
+    }
+
+    for (int i = 0; i < n_past_intervals; ++i)
+        weight_update[i] += gradients[i];
+    bias_update += gradients[n_past_intervals];
+    n_update += gradients[n_past_intervals+1];
+    delete [] gradients;
+
+    if (n_update >= batch_size) {
+        for (int i = 0; i < n_past_intervals; ++i)
+            weights[i] = weights[i] - learning_rate / n_update * weight_update[i];
+        bias = bias - learning_rate / n_update * bias_update;
+
+        for (int i = 0; i < n_past_intervals; ++i)
+            weight_update[i] = 0;
+        bias_update = 0;
+        n_update = 0;
+    }
+}
 
 bool BeladySampleCache::lookup(SimpleRequest &_req) {
     auto & req = static_cast<AnnotatedRequest &>(_req);

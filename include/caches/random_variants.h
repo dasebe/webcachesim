@@ -59,7 +59,7 @@ public:
 //        _past_timestamps = new uint64_t[_n_past_intervals];
         _past_timestamps[0] = past_timestamp;
         _future_timestamp = future_timestamp;
-        _past_timestamp_idx = _past_timestamp_idx + (uint8_t) 1;
+        _past_timestamp_idx = (uint8_t) 1;
     }
 
 //    ~Meta() {
@@ -105,7 +105,7 @@ public:
     double * weights;
     double bias = 0;
     double mean_diff=0;
-    std::unordered_map<uint64_t, double *> pending_gradients;
+    std::map<uint64_t, double *> pending_gradients;
 
     //todo: seed and generator
     default_random_engine _generator = default_random_engine();
@@ -154,7 +154,7 @@ public:
     void evict() {};
     //sample, rank the 1st and return
     pair<uint64_t, uint32_t > rank(const uint64_t & t);
-//    void try_train(double * gradients);
+    void try_train(double * gradients);
 //    void try_gc(uint64_t t);
 };
 
