@@ -17,14 +17,12 @@ struct InputT{
 };
 
 
-#define webcachesim_test(input) \
+#define webcachesim_test(input, _margin) \
     for (auto& it : input) { \
         auto res = simulation(it.trace_file, it.cache_type, it.cache_size, it.params); \
-        REQUIRE( stod(res["byte_hit_rate"]) == Approx(it.expected_bhr).margin(0.01)); \
-        REQUIRE( stod(res["object_hit_rate"]) == Approx(it.expected_ohr).margin(0.01)); \
+        REQUIRE( stod(res["byte_hit_rate"]) == Approx(it.expected_bhr).margin(_margin)); \
+        REQUIRE( stod(res["object_hit_rate"]) == Approx(it.expected_ohr).margin(_margin)); \
     }
-
-
 
 InputT inputLRU[] = {
         {.trace_file = "../../test/test.tr", .cache_type = "LRU", .cache_size=1, .params={},
@@ -52,7 +50,7 @@ InputT inputLRU[] = {
 };
 
 TEST_CASE("webcachesimLRU") {
-    webcachesim_test(inputLRU);
+    webcachesim_test(inputLRU, 0.00001)
 }
 
 
@@ -82,7 +80,7 @@ InputT inputFIFO[] = {
 };
 
 TEST_CASE("webcachesimFIFO") {
-    webcachesim_test(inputFIFO);
+    webcachesim_test(inputFIFO, 0.00001);
 }
 
 InputT inputBelady[] = {
@@ -111,7 +109,7 @@ InputT inputBelady[] = {
 };
 
 TEST_CASE("webcachesimBelady") {
-    webcachesim_test(inputBelady);
+    webcachesim_test(inputBelady, 0);
 }
 
 InputT inputGDSF[] = {
@@ -128,7 +126,7 @@ InputT inputGDSF[] = {
 };
 
 TEST_CASE("webcachesimGDSF") {
-    webcachesim_test(inputGDSF);
+    webcachesim_test(inputGDSF, 0.01);
 }
 
 InputT inputUnitSize[] = {
@@ -143,7 +141,7 @@ InputT inputUnitSize[] = {
 };
 
 TEST_CASE("webcachesimUnitSize") {
-    webcachesim_test(inputUnitSize);
+    webcachesim_test(inputUnitSize, 0);
 }
 
 InputT inputWarmup[] = {
@@ -158,7 +156,7 @@ InputT inputWarmup[] = {
 };
 
 TEST_CASE("webcachesimWarmup") {
-    webcachesim_test(inputWarmup);
+    webcachesim_test(inputWarmup, 0);
 }
 
 InputT inputBeladyUnitSize[] = {
@@ -173,7 +171,7 @@ InputT inputBeladyUnitSize[] = {
 };
 
 TEST_CASE("webcachesimBeladyUnitSize") {
-    webcachesim_test(inputBeladyUnitSize);
+    webcachesim_test(inputBeladyUnitSize, 0);
 }
 
 InputT inputBeladyWarmup[] = {
@@ -188,5 +186,5 @@ InputT inputBeladyWarmup[] = {
 };
 
 TEST_CASE("webcachesimBeladyWarmup") {
-    webcachesim_test(inputBeladyWarmup);
+    webcachesim_test(inputBeladyWarmup, 0);
 }
