@@ -57,7 +57,6 @@ bool LRCache::lookup(SimpleRequest &_req) {
         if (gradients->first <= req._t) {
             try_train(gradients->second);
             gradients = pending_gradients.erase(gradients);
-            ++gradients;
     //        pending_gradients.erase(gradients);
     //        past_timestamps.erase(it->second);
     //        unordered_future_timestamp.erase(it->second);
