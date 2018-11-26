@@ -21,6 +21,6 @@ INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
 add_library(webcachesim SHARED ${LIB_SOURCE})
 
 target_include_directories(webcachesim PUBLIC include)
-target_include_directories(webcachesim PUBLIC LightGBM)
+target_include_directories(webcachesim PUBLIC ../lib/LightGBM/include)
 
-target_link_libraries(webcachesim LINK_PUBLIC ${Boost_LIBRARIES} _lightgbm)
+TARGET_LINK_LIBRARIES(webcachesim LINK_PUBLIC ${Boost_LIBRARIES} _lightgbm)

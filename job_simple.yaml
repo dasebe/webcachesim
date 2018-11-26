@@ -1,16 +1,13 @@
 scheduler_args:
   debug: true
+  algorithm_param_file: algorithm_params.yaml
 
 worker_args:
   cache_types:
-    - LRU
-    - Belady
+    - LFO
   trace_files:
-    'test.tr':
+    'trace_200m.tr':
     #cache_sizes
-      - 2
-      - 5
-      - 10
-      - 20
+      - 34359738368
 
 
