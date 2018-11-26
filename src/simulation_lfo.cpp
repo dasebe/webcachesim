@@ -372,15 +372,17 @@ map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64
 
   cout << "simulating" << endl;
   ClassifiedRequest req(0, 0, 0);
+  uint64_t seq = 0;
   while (infile >> t >> id >> size) {
+    seq++;
     if (uni_size)
       size = 1;
-    annotate(t, id, size, size);
+    annotate(seq, id, size, size);
     //todo: make sure no tail segment left at the trace
-    if (t % windowSize == 0) { // the end of a window
+    if (seq % windowSize == 0) { // the end of a window
       auto timeBegin = chrono::system_clock::now();
       auto timenow = chrono::system_clock::to_time_t(timeBegin);
-      resultFile << "Start processing window " << t / windowSize << ": " << ctime(&timenow);
+      resultFile << "Start processing window " << seq / windowSize << ": " << ctime(&timenow);
 
       calculateOPT();
 
@@ -405,8 +407,8 @@ map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64
             webcache->admit(req);
           }
         }
-        resultFile << "Window " << t / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
-        cout << "Window " << t / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
+        resultFile << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
+        cout << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
         windowResult.clear();
       }
 
@@ -425,7 +427,7 @@ map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64
 
       auto timeEnd = chrono::system_clock::now();
       timenow = chrono::system_clock::to_time_t(timeEnd);
-      resultFile << "Finish processing window " << t / windowSize << ": " << ctime(&timenow);
+      resultFile << "Finish processing window " << seq / windowSize << ": " << ctime(&timenow);
       resultFile << "Process window: " << chrono::duration_cast<chrono::milliseconds>(timeEnd - timeBegin).count()
                  << " ms" << endl << endl;
     }
