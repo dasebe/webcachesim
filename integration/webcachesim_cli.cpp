@@ -37,7 +37,7 @@ int main (int argc, char* argv[])
 
   auto res = simulation(argv[1], argv[2], std::stoull(argv[3]), params);
 
-  cout << "bhr: " << res["byte_hit_rate"] << endl << "ohr: " << res["object_hit_rate"] << endl;
+  cout << argv[1] << " c " << argv[2] << " s " << argv[3] << " b " << res["byte_hit_rate"] <<  " o " << res["object_hit_rate"] << endl;
 
   return 0;
 }

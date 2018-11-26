@@ -370,7 +370,7 @@ map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64
     return {};
   }
 
-  cout << "simulating" << endl;
+  cerr << "simulating" << endl;
   ClassifiedRequest req(0, 0, 0);
   uint64_t seq = 0;
   while (infile >> t >> id >> size) {

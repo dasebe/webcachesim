@@ -41,10 +41,10 @@ uint8_t Meta::_n_past_intervals = max_n_past_intervals;
 bool LRCache::lookup(SimpleRequest &_req) {
     static uint64_t i = 0;
     if (!(i%1000000)) {
-        cout << "mean diff: " << mean_diff << endl;
+        cerr << "mean diff: " << mean_diff << endl;
         for (int j = 0; j < n_past_intervals; ++j)
-            cout << "weight " << j << ": " << weights[j] << endl;
-        cout << "bias: " << bias << endl;
+            cerr << "weight " << j << ": " << weights[j] << endl;
+        cerr << "bias: " << bias << endl;
     }
     ++i;
 
@@ -57,7 +57,6 @@ bool LRCache::lookup(SimpleRequest &_req) {
         if (gradients->first <= req._t) {
             try_train(gradients->second);
             gradients = pending_gradients.erase(gradients);
-            ++gradients;
     //        pending_gradients.erase(gradients);
     //        past_timestamps.erase(it->second);
     //        unordered_future_timestamp.erase(it->second);
@@ -206,9 +205,9 @@ pair<uint64_t, uint32_t> LRCache::rank(const uint64_t & t) {
         //statistics
         double diff = future_interval+bias - log1p(meta._future_timestamp-t);
         mean_diff = 0.99*mean_diff + 0.01*abs(diff);
-//        cout<<mean_diff<<endl;
+//        cerr<<mean_diff<<endl;
 //        if (!(tmp_i%100000)) {
-//            cout<<past_timestamps.size()<<endl;
+//            cerr<<past_timestamps.size()<<endl;
 //            ++tmp_i;
 //
 //        }

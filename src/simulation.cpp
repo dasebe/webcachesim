@@ -76,8 +76,8 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
 //        cout << i << " " << t << " " << obj_hit << endl;
         if (!(++i%1000000)) {
             auto _t_now = chrono::system_clock::now();
-            cout<<"delta t: "<<chrono::duration_cast<std::chrono::milliseconds>(_t_now - t_now).count()/1000.<<endl;
-            cout << "seq: " << i << " hit rate: " << double(byte_hit) / byte_req << endl;
+            cerr<<"delta t: "<<chrono::duration_cast<std::chrono::milliseconds>(_t_now - t_now).count()/1000.<<endl;
+            cerr << "seq: " << i << " hit rate: " << double(byte_hit) / byte_req << endl;
             t_now = _t_now;
         }
     }
