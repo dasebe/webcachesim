@@ -26,7 +26,9 @@ def run_task(args):
             pathlib.Path(scheduler_args.write_dir).mkdir(parents=True)
         timestamp = arrow.utcnow().float_timestamp
         with open(f'{scheduler_args.write_dir}/{timestamp}.res', 'w') as f:
-            yaml.dump({'res': {k: float(v) for k, v in res.items()},
+            res = {k: float(v) for k, v in res.items()}
+            res.update({'elapse': elapsed})
+            yaml.dump({'res': res,
                        'scheduler_args': vars(scheduler_args),
                        'task': task}, f)
     else:

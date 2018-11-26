@@ -15,6 +15,7 @@
 #include "simulation_belady.h"
 #include "simulation_lfo.h"
 #include "simulation_lr.h"
+#include <chrono>
 
 using namespace std;
 
@@ -53,6 +54,7 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
 
     SimpleRequest req(0, 0);
     uint64_t i = 0;
+    auto t_now = chrono::system_clock::now();
     while (infile >> t >> id >> size) {
         if (uni_size)
             size = 1;
@@ -71,9 +73,13 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
         } else {
             webcache->admit(req);
         }
-//        cerr << i << " " << t << " " << obj_hit << endl;
-        if (!(++i%1000000))
-            cerr <<"seq: "<< i <<" hit rate: "<<double(byte_hit) / byte_req<< endl;
+//        cout << i << " " << t << " " << obj_hit << endl;
+        if (!(++i%1000000)) {
+            auto _t_now = chrono::system_clock::now();
+            cerr<<"delta t: "<<chrono::duration_cast<std::chrono::milliseconds>(_t_now - t_now).count()/1000.<<endl;
+            cerr << "seq: " << i << " hit rate: " << double(byte_hit) / byte_req << endl;
+            t_now = _t_now;
+        }
     }
 
     infile.close();
