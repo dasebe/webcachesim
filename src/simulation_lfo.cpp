@@ -372,7 +372,6 @@ map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64
 
   cout << "simulating" << endl;
   ClassifiedRequest req(0, 0, 0);
-  int i = 0;
   while (infile >> t >> id >> size) {
     if (uni_size)
       size = 1;
@@ -407,7 +406,7 @@ map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64
           }
         }
         resultFile << "Window " << t / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
-        cout << "Window " << t / windowSize << i << " byte hit rate: " << double(byte_hit) / byte_req << endl;
+        cout << "Window " << t / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
         windowResult.clear();
       }
 
