@@ -54,7 +54,7 @@ map<string, string> _simulation_lr(string trace_file, string cache_type, uint64_
     }
 
 
-    cout<<"simulating"<<endl;
+    cerr<<"simulating"<<endl;
     AnnotatedRequest req(0, 0, 0, 0);
     uint64_t i = 0;
     auto t_now = chrono::system_clock::now();
@@ -77,11 +77,11 @@ map<string, string> _simulation_lr(string trace_file, string cache_type, uint64_
         } else {
             webcache->admit(req);
         }
-//        cout << i << " " << t << " " << obj_hit << endl;
+//        cerr << i << " " << t << " " << obj_hit << endl;
         if (!(++i%1000000)) {
             auto _t_now = chrono::system_clock::now();
-            cout<<"delta t: "<<chrono::duration_cast<std::chrono::seconds>(_t_now - t_now).count()<<endl;
-            cout << "seq: " << i << " hit rate: " << double(byte_hit) / byte_req << endl;
+            cerr<<"delta t: "<<chrono::duration_cast<std::chrono::seconds>(_t_now - t_now).count()<<endl;
+            cerr << "seq: " << i << " hit rate: " << double(byte_hit) / byte_req << endl;
             t_now = _t_now;
         }
     }

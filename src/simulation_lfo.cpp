@@ -327,7 +327,7 @@ map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64
     }
 
 
-    cout<<"simulating"<<endl;
+    cerr<<"simulating"<<endl;
     ClassifiedRequest req(0, 0, 0);
     int i = 0;
     while (infile >> t >> id >> size) {
@@ -336,7 +336,7 @@ map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64
         annotate(t, id, size, size);
         //todo: make sure no  tail segment left at the trace
         if (t % windowSize == 0) { // the end of a window
-            cout << "windowTrace size: " << windowOpt.size() << endl;
+            cerr << "windowTrace size: " << windowOpt.size() << endl;
             calculateOPT();
 
             vector<float> labels;
@@ -348,7 +348,7 @@ map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64
 
             //skip evaluation on first window
             if (t != windowSize) {
-//                cout << "window result len: " << window_result.size() << " window trace len: " << windowTrace.size()
+//                cerr << "window result len: " << window_result.size() << " window trace len: " << windowTrace.size()
 //                     << endl;
                 auto rit = window_result.begin();
                 auto tit = windowTrace.begin();
@@ -367,7 +367,7 @@ map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64
                 }
                 window_result.clear();
             }
-            //        cout << i << " " << t << " " << obj_hit << endl;
+            //        cerr << i << " " << t << " " << obj_hit << endl;
 
             windowByteSum = 0;
             windowLastSeen.clear();
@@ -375,7 +375,7 @@ map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64
             windowTrace.clear();
         }
         if (!(++i % 1000000)) {
-            cout <<"seq: "<< i <<" hit rate: "<<double(byte_hit) / byte_req<< endl;
+            cerr <<"seq: "<< i <<" hit rate: "<<double(byte_hit) / byte_req<< endl;
         }
     }
 

@@ -71,9 +71,9 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
         } else {
             webcache->admit(req);
         }
-//        cout << i << " " << t << " " << obj_hit << endl;
+//        cerr << i << " " << t << " " << obj_hit << endl;
         if (!(++i%1000000))
-            cout <<"seq: "<< i <<" hit rate: "<<double(byte_hit) / byte_req<< endl;
+            cerr <<"seq: "<< i <<" hit rate: "<<double(byte_hit) / byte_req<< endl;
     }
 
     infile.close();

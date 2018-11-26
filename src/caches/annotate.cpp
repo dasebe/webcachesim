@@ -36,7 +36,7 @@ void annotate(string trace_file) {
     }
     while(infile>> t >> id >> size) {
         if (!(++i%1000000))
-            cout<<i<<endl;
+            cerr<<i<<endl;
         //default with infinite future interval
         trace.emplace_back(t, id, size, numeric_limits<uint64_t >::max()-1);
     }
@@ -50,7 +50,7 @@ void annotate(string trace_file) {
     map<pair<uint64_t, uint64_t>, uint64_t > lastSeen;
     for (auto it = trace.rbegin(); it != trace.rend(); ++it) {
         if (!(++i%1000000))
-            cout<<i<<endl;
+            cerr<<i<<endl;
         auto lit = lastSeen.find(make_pair(get<1>(*it), get<2>(*it)));
         if (lit != lastSeen.end())
             get<3>(*it) = lit->second;
@@ -63,7 +63,7 @@ void annotate(string trace_file) {
 
     ofstream outfile;
     auto tmp_file = "/tmp/" + to_string(timenow);
-    cout<<"writing the annotated trace "<<tmp_file<<endl;
+    cerr<<"writing the annotated trace "<<tmp_file<<endl;
 
     outfile.open(tmp_file);
     if (!outfile) {
