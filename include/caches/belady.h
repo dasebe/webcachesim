@@ -8,16 +8,11 @@
 #include "cache.h"
 #include <boost/bimap.hpp>
 #include <boost/bimap/multiset_of.hpp>
+#include <utils.h>
+#include <unordered_map>
 
-typedef std::pair<std::uint64_t, std::uint64_t> KeyT;
-typedef boost::bimap<boost::bimaps::set_of<KeyT>,
-        boost::bimaps::multiset_of<uint64_t, std::greater<uint64_t>>> Bimap;
-
-typedef Bimap::left_map::const_iterator left_const_iterator;
-typedef Bimap::right_map::const_iterator right_const_iterator;
-
-typedef Bimap::left_map::const_iterator left_iterator;
-typedef Bimap::right_map::const_iterator right_iterator;
+using namespace boost;
+using namespace std;
 
 /*
   Belady: Optimal for unit size
@@ -26,7 +21,8 @@ class BeladyCache : public Cache
 {
 protected:
     // list for recency order
-    Bimap _cacheMap;
+    bimap<bimaps::set_of<uint64_t>, bimaps::multiset_of<uint64_t, std::greater<uint64_t>>> _cacheMap;
+    unordered_map<uint64_t, uint64_t> object_size;
 
 public:
     BeladyCache()

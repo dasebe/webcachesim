@@ -74,7 +74,7 @@ map<string, string> _simulation_belady(string trace_file, string cache_type, uin
         }
 //        cout << i << " " << t << " " << obj_hit << endl;
         if (!(++i%1000000))
-            cout<<i<<endl;
+            cout <<"seq: "<< i <<" hit rate: "<<double(byte_hit) / byte_req<< endl;
     }
 
     infile.close();

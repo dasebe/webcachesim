@@ -7,6 +7,7 @@
 #include <fstream>
 #include "request.h"
 #include "annotate.h"
+#include <chrono>
 
 
 using namespace std;
@@ -56,6 +57,8 @@ map<string, string> _simulation_lr(string trace_file, string cache_type, uint64_
     cout<<"simulating"<<endl;
     AnnotatedRequest req(0, 0, 0, 0);
     uint64_t i = 0;
+    auto t_now = chrono::system_clock::now();
+
     while (infile >> t >> id >> size >> next_t) {
         if (uni_size)
             size = 1;
@@ -75,8 +78,12 @@ map<string, string> _simulation_lr(string trace_file, string cache_type, uint64_
             webcache->admit(req);
         }
 //        cout << i << " " << t << " " << obj_hit << endl;
-        if (!(++i%1000000))
-            cout <<"seq: "<< i <<" hit rate: "<<double(byte_hit) / byte_req<< endl;
+        if (!(++i%1000000)) {
+            auto _t_now = chrono::system_clock::now();
+            cout<<"delta t: "<<chrono::duration_cast<std::chrono::seconds>(_t_now - t_now).count()<<endl;
+            cout << "seq: " << i << " hit rate: " << double(byte_hit) / byte_req << endl;
+            t_now = _t_now;
+        }
     }
 
     infile.close();

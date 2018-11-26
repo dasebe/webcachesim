@@ -28,6 +28,4 @@ namespace std {
         }
     };
 }
-
-
 #endif //WEBCACHESIM_UTILS_H

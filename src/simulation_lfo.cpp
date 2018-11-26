@@ -1,28 +1,29 @@
-//
-// Created by zhenyus on 11/8/18.
-//
-
-#include "simulation_lfo.h"
-#include <fstream>
-#include "request.h"
-#include "lfo.h"
-#include <chrono>
-#include <unordered_map>
-#include <list>
-#include <regex>
-#include <math.h>
-#include <vector>
 #include <algorithm>
+#include <chrono>
+#include <ctime>
+#include <fstream>
+#include <iostream>
+#include <list>
+#include <map>
+#include <math.h>
+#include <random>
+#include <regex>
+#include <string>
+#include <unordered_map>
+#include <vector>
 #include <LightGBM/application.h>
 #include <LightGBM/c_api.h>
+#include "lfo.h"
+#include "request.h"
+#include "simulation_lfo.h"
 
 #define HISTFEATURES 50
 
 using namespace std;
 
 // from boost hash combine: hashing of pairs for unordered_maps
-template <class T>
-inline void hash_combine(size_t & seed, const T & v) {
+template<class T>
+inline void hash_combine(size_t &seed, const T &v) {
   hash<T> hasher;
   seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 }
@@ -44,7 +45,7 @@ struct optEntry {
   uint64_t volume;
   bool hasNext;
 
-  optEntry(uint64_t idx): idx(idx), volume(numeric_limits<uint64_t>::max()), hasNext(false) {};
+  optEntry(uint64_t idx) : idx(idx), volume(numeric_limits<uint64_t>::max()), hasNext(false) {};
 };
 
 struct trEntry {
@@ -56,22 +57,52 @@ struct trEntry {
   trEntry(uint64_t id, uint64_t size, double cost) : id(id), size(size), cost(cost), toCache(false) {};
 };
 
+random_device rd;  //Will be used to obtain a seed for the random number engine
+mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
+uniform_real_distribution<> dis(0.0, 1.0);
+
 uint64_t cacheSize;
 uint64_t windowSize;
+uint64_t sampleSize;
 double cutoff;
+int sampling;
 bool init = true;
 BoosterHandle booster;
+unordered_map<string, string> trainParams = {
+        {"boosting",                   "gbdt"},
+        {"objective",                  "binary"},
+        {"metric",                     "binary_logloss,auc"},
+        {"metric_freq",                "1"},
+        {"is_provide_training_metric", "true"},
+        {"max_bin",                    "255"},
+        {"num_iterations",             "50"},
+        {"learning_rate",              "0.1"},
+        {"num_leaves",                 "31"},
+        {"tree_learner",               "serial"},
+        {"num_threads",                "40"},
+        {"feature_fraction",           "0.8"},
+        {"bagging_freq",               "5"},
+        {"bagging_fraction",           "0.8"},
+        {"min_data_in_leaf",           "50"},
+        {"min_sum_hessian_in_leaf",    "5.0"},
+        {"is_enable_sparse",           "true"},
+        {"two_round",                  "false"},
+        {"save_binary",                "false"}
+};
 
 // from (id, size) to idx
 unordered_map<pair<uint64_t, uint64_t>, uint64_t> windowLastSeen;
 vector<optEntry> windowOpt;
 vector<trEntry> windowTrace;
-vector<double> window_result;
+vector<double> windowResult;
 uint64_t windowByteSum = 0;
 
 ofstream resultFile;
+
 void calculateOPT() {
-  sort(windowOpt.begin(), windowOpt.end(), [](const optEntry& lhs, const optEntry& rhs) {
+  auto timeBegin = chrono::system_clock::now();
+
+  sort(windowOpt.begin(), windowOpt.end(), [](const optEntry &lhs, const optEntry &rhs) {
     return lhs.volume < rhs.volume;
   });
 
@@ -81,7 +112,6 @@ void calculateOPT() {
   uint64_t bytehitc = 0;
   for (auto &it: windowOpt) {
     if (currentVolume > cacheVolume) {
-      resultFile << "break" << endl;
       break;
     }
     if (it.hasNext) {
@@ -91,11 +121,19 @@ void calculateOPT() {
       currentVolume += it.volume;
     }
   }
-  resultFile << "PFOO-L ohr: " << double(hitc)/windowSize << " bhr: " << double(bytehitc)/windowByteSum << endl;
+  resultFile << cacheSize << " " << windowSize << " " << double(hitc) / windowSize << " "
+             << double(bytehitc) / windowByteSum << endl;
+
+  resultFile << "Calculate OPT: "
+             << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - timeBegin).count() << " ms"
+             << endl;
 }
 
 // purpose: derive features and count how many features are inconsistent
-void deriveFeatures(vector<float> &labels, vector<int32_t> &indptr, vector<int32_t> &indices, vector<double> &data) {
+void deriveFeatures(vector<float> &labels, vector<int32_t> &indptr, vector<int32_t> &indices, vector<double> &data,
+                    int sampling) {
+  auto timeBegin = chrono::system_clock::now();
+
   int64_t cacheAvailBytes = cacheSize;
   // from id to intervals
   unordered_map<uint64_t, list<uint64_t> > statistics;
@@ -113,43 +151,45 @@ void deriveFeatures(vector<float> &labels, vector<int32_t> &indptr, vector<int32
       curQueue.pop_back();
     }
 
-    labels.push_back(it.toCache ? 1 : 0);
-
-    // derive features
-    int32_t idx = 0;
-    uint64_t lastReqTime = i;
-    for (auto &lit: curQueue) {
-      const uint64_t dist = lastReqTime - lit; // distance
-      indices.push_back(idx);
-      data.push_back(dist);
-      idx++;
-      lastReqTime = lit;
+    bool flag = true;
+    if (sampling == 1) {
+      flag = i >= (windowSize - sampleSize);
     }
+    if (sampling == 2) {
+      double rand = dis(gen);
+      flag = rand < (double) sampleSize / windowSize;
+    }
+    if (flag) {
+      labels.push_back(it.toCache ? 1 : 0);
 
-    // object size
-    indices.push_back(HISTFEATURES);
-    data.push_back(round(100.0*log2(it.size)));
-
-    double currentSize;
-    if (cacheAvailBytes <= 0) {
-      if (cacheAvailBytes < 0) {
-        negCacheSize++; // that's bad
+      // derive features
+      int32_t idx = 0;
+      uint64_t lastReqTime = i;
+      for (auto &lit: curQueue) {
+        const uint64_t dist = lastReqTime - lit; // distance
+        indices.push_back(idx);
+        data.push_back(dist);
+        idx++;
+        lastReqTime = lit;
       }
-      currentSize = 0;
-    } else {
-      currentSize = round(100.0*log2(cacheAvailBytes));
-    }
-    indices.push_back(HISTFEATURES + 1);
-    data.push_back(currentSize);
-    indices.push_back(HISTFEATURES + 2);
-    data.push_back(it.cost);
 
-    indptr.push_back(indptr[i] + idx + 3);
+      // object size
+      indices.push_back(HISTFEATURES);
+      data.push_back(round(100.0 * log2(it.size)));
+
+      double currentSize = cacheAvailBytes <= 0 ? 0 : round(100.0 * log2(cacheAvailBytes));
+      indices.push_back(HISTFEATURES + 1);
+      data.push_back(currentSize);
+      indices.push_back(HISTFEATURES + 2);
+      data.push_back(it.cost);
+
+      indptr.push_back(indptr[indptr.size() - 1] + idx + 3);
+    }
 
     // update cache size
     if (cache.count(it.id) == 0) {
       // we have never seen this id
-      if(it.toCache) {
+      if (it.toCache) {
         cacheAvailBytes -= it.size;
         cache[it.id] = it.size;
       }
@@ -162,62 +202,71 @@ void deriveFeatures(vector<float> &labels, vector<int32_t> &indptr, vector<int32
       }
     }
 
+    if (cacheAvailBytes < 0) {
+      negCacheSize++; // that's bad
+    }
+
     // update queue
     curQueue.push_front(i++);
   }
 
-  resultFile << "neg. cache size: " << negCacheSize << endl;
+  if (negCacheSize > 0) {
+    resultFile << "Negative cache size: " << negCacheSize << endl;
+  }
+
+  resultFile << "Derive features: "
+             << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - timeBegin).count() << " ms"
+             << endl;
 }
 
-void check(const vector<float> &labels, const vector<double> &result) {
+void evaluateModel() {
+  auto timeBegin = chrono::system_clock::now();
+
+  // evaluate booster
+  vector<float> labels;
+  vector<int32_t> indptr;
+  vector<int32_t> indices;
+  vector<double> data;
+  deriveFeatures(labels, indptr, indices, data, 0);
+  resultFile << "Data size for evaluation: " << labels.size() << endl;
+  int64_t len;
+  windowResult.resize(indptr.size() - 1);
+  LGBM_BoosterPredictForCSR(booster, static_cast<void *>(indptr.data()), C_API_DTYPE_INT32, indices.data(),
+                            static_cast<void *>(data.data()), C_API_DTYPE_FLOAT64,
+                            indptr.size(), data.size(), HISTFEATURES + 3,
+                            C_API_PREDICT_NORMAL, 0, trainParams, &len, windowResult.data());
+
   uint64_t fp = 0, fn = 0;
 
   for (size_t i = 0; i < labels.size(); i++) {
-    if (labels[i] < cutoff && result[i] >= cutoff) {
+    if (labels[i] < cutoff && windowResult[i] >= cutoff) {
       fp++;
     }
-    if (labels[i] >= cutoff && result[i] < cutoff) {
+    if (labels[i] >= cutoff && windowResult[i] < cutoff) {
       fn++;
     }
   }
 
-  resultFile << cutoff << " " << labels.size() << " " << fp << " " << fn << " " << endl;
+  resultFile << cacheSize << " " << windowSize << " " << sampleSize << " " << cutoff << " " << sampling << " "
+             << (double) fp / labels.size() << " " << (double) fn / labels.size() << endl;
+  resultFile << "Evaluate model: "
+             << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - timeBegin).count() << " ms"
+             << endl;
 }
 
 void trainModel(vector<float> &labels, vector<int32_t> &indptr, vector<int32_t> &indices, vector<double> &data) {
-  unordered_map<string, string> trainParams = {
-          {"boosting", "gbdt"},
-          {"objective", "binary"},
-          {"metric", "binary_logloss,auc"},
-          {"metric_freq", "1"},
-          {"is_provide_training_metric", "true"},
-          {"max_bin", "255"},
-          {"num_iterations", "50"},
-          {"learning_rate", "0.1"},
-          {"num_leaves", "31"},
-          {"tree_learner", "serial"},
-          {"num_threads", "64"},
-          {"feature_fraction", "0.8"},
-          {"bagging_freq", "5"},
-          {"bagging_fraction", "0.8"},
-          {"min_data_in_leaf", "50"},
-          {"min_sum_hessian_in_leaf", "5.0"},
-          {"is_enable_sparse", "true"},
-          {"two_round", "false"},
-          {"save_binary", "false"}
-  };
+  auto timeBegin = chrono::system_clock::now();
 
   // create training dataset
   DatasetHandle trainData;
-  LGBM_DatasetCreateFromCSR(static_cast<void*>(indptr.data()), C_API_DTYPE_INT32, indices.data(),
-                            static_cast<void*>(data.data()), C_API_DTYPE_FLOAT64,
+  LGBM_DatasetCreateFromCSR(static_cast<void *>(indptr.data()), C_API_DTYPE_INT32, indices.data(),
+                            static_cast<void *>(data.data()), C_API_DTYPE_FLOAT64,
                             indptr.size(), data.size(), HISTFEATURES + 3,
                             trainParams, nullptr, &trainData);
-  LGBM_DatasetSetField(trainData, "label", static_cast<void*>(labels.data()), labels.size(), C_API_DTYPE_FLOAT32);
+  LGBM_DatasetSetField(trainData, "label", static_cast<void *>(labels.data()), labels.size(), C_API_DTYPE_FLOAT32);
 
   if (init) {
     // init booster
-    resultFile << "init booster" << endl;
     LGBM_BoosterCreate(trainData, trainParams, &booster);
     // train
     for (int i = 0; i < stoi(trainParams["num_iterations"]); i++) {
@@ -229,40 +278,39 @@ void trainModel(vector<float> &labels, vector<int32_t> &indptr, vector<int32_t> 
     }
     init = false;
   } else {
-    // evaluate booster
-    int64_t len;
-    vector<double> result(indptr.size() - 1);
+    BoosterHandle newBooster;
+    LGBM_BoosterCreate(trainData, trainParams, &newBooster);
+
+    // refit existing booster
+//    resultFile << "Refit existing booster" << endl;
+//    int64_t len;
+//    LGBM_BoosterCalcNumPredict(booster, indptr.size() - 1, C_API_PREDICT_LEAF_INDEX, 0, &len);
+//    vector<double> tmp(len);
 //    LGBM_BoosterPredictForCSR(booster, static_cast<void*>(indptr.data()), C_API_DTYPE_INT32, indices.data(),
 //                              static_cast<void*>(data.data()), C_API_DTYPE_FLOAT64,
 //                              indptr.size(), data.size(), HISTFEATURES + 3,
-//                              C_API_PREDICT_RAW_SCORE, 0, trainParams, &len, result.data());
-    LGBM_BoosterPredictForCSR(booster, static_cast<void*>(indptr.data()), C_API_DTYPE_INT32, indices.data(),
-                              static_cast<void*>(data.data()), C_API_DTYPE_FLOAT64,
-                              indptr.size(), data.size(), HISTFEATURES + 3,
-                              C_API_PREDICT_NORMAL, 0, trainParams, &len, result.data());
-    check(labels, result);
-    for (auto &it: result) {
-        window_result.emplace_back(it);
+//                              C_API_PREDICT_LEAF_INDEX, 0, trainParams, &len, tmp.data());
+//    vector<int32_t> predLeaf(tmp.begin(), tmp.end());
+//    tmp.clear();
+//    LGBM_BoosterMerge(newBooster, booster);
+//    LGBM_BoosterRefit(newBooster, predLeaf.data(), indptr.size() - 1, predLeaf.size() / (indptr.size() - 1));
+
+    // alternative: train a new booster
+    resultFile << "Train a new booster" << endl;
+    for (int i = 0; i < stoi(trainParams["num_iterations"]); i++) {
+      int isFinished;
+      LGBM_BoosterUpdateOneIter(newBooster, &isFinished);
+      if (isFinished) {
+        break;
+      }
     }
-    // refit existing booster
-    resultFile << "refit booster" << endl;
-    LGBM_BoosterCalcNumPredict(booster, indptr.size() - 1, C_API_PREDICT_LEAF_INDEX, 0, &len);
-    result.resize(len);
-    LGBM_BoosterPredictForCSR(booster, static_cast<void*>(indptr.data()), C_API_DTYPE_INT32, indices.data(),
-                              static_cast<void*>(data.data()), C_API_DTYPE_FLOAT64,
-                              indptr.size(), data.size(), HISTFEATURES + 3,
-                              C_API_PREDICT_LEAF_INDEX, 0, trainParams, &len, result.data());
-    BoosterHandle newBooster;
-    LGBM_BoosterCreate(trainData, trainParams, &newBooster);
-    LGBM_BoosterMerge(newBooster, booster);
-    vector<int32_t> predLeaf(result.begin(), result.end());
-    result.clear();
-    LGBM_BoosterRefit(newBooster, predLeaf.data(), indptr.size() - 1, predLeaf.size() / (indptr.size() - 1));
+
     booster = newBooster;
   }
 
-  auto timenow = chrono::system_clock::to_time_t(chrono::system_clock::now());
-  resultFile << ctime(&timenow) << "finish training" << endl;
+  resultFile << "Train model: "
+             << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - timeBegin).count() << " ms"
+             << endl;
 }
 
 void annotate(uint64_t seq, uint64_t id, uint64_t size, double cost) {
@@ -279,111 +327,119 @@ void annotate(uint64_t seq, uint64_t id, uint64_t size, double cost) {
   windowTrace.emplace_back(id, size, cost);
 }
 
-
-typedef std::vector<double >::const_iterator iter_double;
-typedef std::vector<trEntry>::const_iterator iter_trEntry;
-
-
 map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64_t cache_size,
-                                       map<string, string> params){
-    // create cache
-    unique_ptr<Cache> webcache = move(Cache::create_unique(cache_type));
-    if(webcache == nullptr) {
-        cerr<<"cache type not implemented"<<endl;
-        return {};
-    }
+                                    map<string, string> params) {
+  // create cache
+  unique_ptr<Cache> webcache = move(Cache::create_unique(cache_type));
+  if (webcache == nullptr) {
+    cerr << "cache type not implemented" << endl;
+    return {};
+  }
 
-    // configure cache size
-    webcache->setSize(cache_size);
-    cacheSize = cache_size;
+  // configure cache size
+  webcache->setSize(cache_size);
+  cacheSize = cache_size;
 
-    bool uni_size = false;
-    for (auto& kv: params) {
-        webcache->setPar(kv.first, kv.second);
-        if (kv.first == "window")
-            windowSize = stoull(kv.second);
-        if (kv.first == "cutoff")
-            cutoff = stod(kv.second);
-        if (kv.first == "uni_size")
-            uni_size = static_cast<bool>(stoi(kv.second));
-    }
+  bool uni_size = false;
+  for (auto &kv: params) {
+    webcache->setPar(kv.first, kv.second);
+    if (kv.first == "window")
+      windowSize = stoull(kv.second);
+    if (kv.first == "sample_size")
+      sampleSize = stoull(kv.second);
+    if (kv.first == "sample_type")
+      sampling = stoi(kv.second);
+    if (kv.first == "cutoff")
+      cutoff = stod(kv.second);
+    if (kv.first == "uni_size")
+      uni_size = static_cast<bool>(stoi(kv.second));
+  }
 
+  auto timenow = chrono::system_clock::to_time_t(chrono::system_clock::now());
+  resultFile.open("/tmp/" + to_string(timenow));
+  resultFile << "Start: " << ctime(&timenow) << trace_file << " " << cacheSize << " " << windowSize << " " << sampleSize
+             << " " << cutoff << " " << sampling << endl << endl;
 
-    ifstream traceFile(trace_file);
-    auto timenow = chrono::system_clock::to_time_t(chrono::system_clock::now());
-    resultFile.open("/tmp/" + to_string(timenow));
-    resultFile << ctime(&timenow) << trace_file << " " << cacheSize << " " << windowSize << " " << cutoff << endl;
+  //suppose already annotated
+  ifstream infile;
+  uint64_t byte_req = 0, byte_hit = 0, obj_req = 0, obj_hit = 0;
+  uint64_t t, id, size;
 
+  infile.open(trace_file);
+  if (!infile) {
+    cerr << "exception opening/reading file" << endl;
+    return {};
+  }
 
-    //suppose already annotated
-    ifstream infile;
-    uint64_t byte_req = 0, byte_hit = 0, obj_req = 0, obj_hit = 0;
-    uint64_t t, id, size, next_t;
+  cout << "simulating" << endl;
+  ClassifiedRequest req(0, 0, 0);
+  int i = 0;
+  while (infile >> t >> id >> size) {
+    if (uni_size)
+      size = 1;
+    annotate(t, id, size, size);
+    //todo: make sure no tail segment left at the trace
+    if (t % windowSize == 0) { // the end of a window
+      auto timeBegin = chrono::system_clock::now();
+      auto timenow = chrono::system_clock::to_time_t(timeBegin);
+      resultFile << "Start processing window " << t / windowSize << ": " << ctime(&timenow);
 
-    infile.open(trace_file);
-    if (!infile) {
-        cerr << "exception opening/reading file"<<endl;
-        return {};
-    }
+      calculateOPT();
 
+      if (!init) {
+        evaluateModel();
+      }
 
-    cout<<"simulating"<<endl;
-    ClassifiedRequest req(0, 0, 0);
-    int i = 0;
-    while (infile >> t >> id >> size) {
-        if (uni_size)
-            size = 1;
-        annotate(t, id, size, size);
-        //todo: make sure no  tail segment left at the trace
-        if (t % windowSize == 0) { // the end of a window
-            cout << "windowTrace size: " << windowOpt.size() << endl;
-            calculateOPT();
+      vector<float> labels;
+      vector<int32_t> indptr;
+      vector<int32_t> indices;
+      vector<double> data;
+      deriveFeatures(labels, indptr, indices, data, sampling);
+      resultFile << "Data size for training: " << labels.size() << endl;
+      trainModel(labels, indptr, indices, data);
 
-            vector<float> labels;
-            vector<int32_t> indptr;
-            vector<int32_t> indices;
-            vector<double> data;
-            deriveFeatures(labels, indptr, indices, data);
-            trainModel(labels, indptr, indices, data);
+      //skip evaluation on first window
+      if (t != windowSize) {
+        auto rit = windowResult.begin();
+        auto tit = windowTrace.begin();
+        for (; rit != windowResult.end() && tit != windowTrace.end(); ++rit, ++tit) {
+          //for each window request
+          byte_req += tit->size;
+          obj_req++;
 
-            //skip evaluation on first window
-            if (t != windowSize) {
-//                cout << "window result len: " << window_result.size() << " window trace len: " << windowTrace.size()
-//                     << endl;
-                auto rit = window_result.begin();
-                auto tit = windowTrace.begin();
-                for (; rit != window_result.end() && tit != windowTrace.end(); ++rit, ++tit) {
-                    //for each window request
-                    byte_req += tit->size;
-                    obj_req++;
-
-                    req.reinit(tit->id, tit->size, *rit);
-                    if (webcache->lookup(req)) {
-                        byte_hit += tit->size;
-                        obj_hit++;
-                    } else {
-                        webcache->admit(req);
-                    }
-                }
-                window_result.clear();
-            }
-            //        cout << i << " " << t << " " << obj_hit << endl;
-
-            windowByteSum = 0;
-            windowLastSeen.clear();
-            windowOpt.clear();
-            windowTrace.clear();
+          req.reinit(tit->id, tit->size, *rit);
+          if (webcache->lookup(req)) {
+            byte_hit += tit->size;
+            obj_hit++;
+          } else {
+            webcache->admit(req);
+          }
         }
-        if (!(++i % 1000000)) {
-            cout <<"seq: "<< i <<" hit rate: "<<double(byte_hit) / byte_req<< endl;
-        }
+        windowResult.clear();
+      }
+
+      windowByteSum = 0;
+      windowLastSeen.clear();
+      windowOpt.clear();
+      windowTrace.clear();
+
+      auto timeEnd = chrono::system_clock::now();
+      timenow = chrono::system_clock::to_time_t(timeEnd);
+      resultFile << "Finish processing window " << t / windowSize << ": " << ctime(&timenow);
+      resultFile << "Process window: " << chrono::duration_cast<chrono::milliseconds>(timeEnd - timeBegin).count()
+                 << " ms" << endl << endl;
     }
+    if (!(++i % 1000000)) {
+      resultFile << "seq: " << i << " hit rate: " << double(byte_hit) / byte_req << endl;
+      cout << "seq: " << i << " hit rate: " << double(byte_hit) / byte_req << endl;
+    }
+  }
 
-    infile.close();
+  infile.close();
 
-    map<string, string> res = {
-            {"byte_hit_rate", to_string(double(byte_hit) / byte_req)},
-            {"object_hit_rate", to_string(double(obj_hit) / obj_req)},
-    };
-    return res;
+  map<string, string> res = {
+          {"byte_hit_rate",   to_string(double(byte_hit) / byte_req)},
+          {"object_hit_rate", to_string(double(obj_hit) / obj_req)},
+  };
+  return res;
 }
