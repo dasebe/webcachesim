@@ -28,7 +28,4 @@ namespace std {
         }
     };
 }
-
-typedef std::pair<std::uint64_t, std::uint64_t> KeyT;
-
 #endif //WEBCACHESIM_UTILS_H
