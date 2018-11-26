@@ -188,3 +188,22 @@ InputT inputBeladyWarmup[] = {
 TEST_CASE("webcachesimBeladyWarmup") {
     webcachesim_test(inputBeladyWarmup, 0);
 }
+
+InputT inputLRUK[] = {
+        {.trace_file = "../../test/test.tr", .cache_type = "LRUK", .cache_size=50, .params={{"k", "4"}},
+                .expected_bhr=0.348980658651333, .expected_ohr=0.35550895920701486},
+        {.trace_file = "../../test/test.tr", .cache_type = "LRUK", .cache_size=100, .params={{"k", "4"}},
+                .expected_bhr=0.4273392577104025, .expected_ohr=0.4603507434235608},
+        {.trace_file = "../../test/test.tr", .cache_type = "LRUK", .cache_size=200, .params={{"k", "4"}},
+                .expected_bhr=0.523993727130162, .expected_ohr=0.5415554708349218},
+        {.trace_file = "../../test/test.tr", .cache_type = "LRUK", .cache_size=500, .params={{"k", "4"}},
+                .expected_bhr=0.6888656560376372, .expected_ohr=0.6974837971788029},
+        {.trace_file = "../../test/test.tr", .cache_type = "LRUK", .cache_size=1000, .params={{"k", "4"}},
+                .expected_bhr=0.8169367485624673, .expected_ohr=0.8191002668699962},
+};
+
+TEST_CASE("webcachesimLRUK") {
+    webcachesim_test(inputLRUK, 0);
+}
+
+
