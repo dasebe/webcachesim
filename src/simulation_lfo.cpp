@@ -94,7 +94,6 @@ unordered_map<string, string> trainParams = {
 unordered_map<pair<uint64_t, uint64_t>, uint64_t> windowLastSeen;
 vector<optEntry> windowOpt;
 vector<trEntry> windowTrace;
-vector<double> windowResult;
 uint64_t windowByteSum = 0;
 
 ofstream resultFile;
@@ -219,7 +218,7 @@ void deriveFeatures(vector<float> &labels, vector<int32_t> &indptr, vector<int32
              << endl;
 }
 
-void evaluateModel() {
+void evaluateModel(vector<double> &result) {
   auto timeBegin = chrono::system_clock::now();
 
   // evaluate booster
@@ -230,19 +229,19 @@ void evaluateModel() {
   deriveFeatures(labels, indptr, indices, data, 0);
   resultFile << "Data size for evaluation: " << labels.size() << endl;
   int64_t len;
-  windowResult.resize(indptr.size() - 1);
+  result.resize(indptr.size() - 1);
   LGBM_BoosterPredictForCSR(booster, static_cast<void *>(indptr.data()), C_API_DTYPE_INT32, indices.data(),
                             static_cast<void *>(data.data()), C_API_DTYPE_FLOAT64,
                             indptr.size(), data.size(), HISTFEATURES + 3,
-                            C_API_PREDICT_NORMAL, 0, trainParams, &len, windowResult.data());
+                            C_API_PREDICT_NORMAL, 0, trainParams, &len, result.data());
 
   uint64_t fp = 0, fn = 0;
 
   for (size_t i = 0; i < labels.size(); i++) {
-    if (labels[i] < cutoff && windowResult[i] >= cutoff) {
+    if (labels[i] < cutoff && result[i] >= cutoff) {
       fp++;
     }
-    if (labels[i] >= cutoff && windowResult[i] < cutoff) {
+    if (labels[i] >= cutoff && result[i] < cutoff) {
       fn++;
     }
   }
@@ -371,9 +370,8 @@ map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64
     return {};
   }
 
-  cout << "simulating" << endl;
+  cerr << "simulating" << endl;
   ClassifiedRequest req(0, 0, 0);
-  int i = 0;
   while (infile >> t >> id >> size) {
     if (uni_size)
       size = 1;
@@ -386,20 +384,12 @@ map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64
 
       calculateOPT();
 
-      if (!init) {
-        evaluateModel();
-      }
-
-      vector<float> labels;
-      vector<int32_t> indptr;
-      vector<int32_t> indices;
-      vector<double> data;
-      deriveFeatures(labels, indptr, indices, data, sampling);
-      resultFile << "Data size for training: " << labels.size() << endl;
-      trainModel(labels, indptr, indices, data);
-
       //skip evaluation on first window
-      if (t != windowSize) {
+      if (!init) {
+        vector<double> windowResult;
+        evaluateModel(windowResult);
+
+        // simulate cache
         auto rit = windowResult.begin();
         auto tit = windowTrace.begin();
         for (; rit != windowResult.end() && tit != windowTrace.end(); ++rit, ++tit) {
@@ -415,8 +405,18 @@ map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64
             webcache->admit(req);
           }
         }
+        resultFile << "Window " << t / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
+        cerr << "Window " << t / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
         windowResult.clear();
       }
+
+      vector<float> labels;
+      vector<int32_t> indptr;
+      vector<int32_t> indices;
+      vector<double> data;
+      deriveFeatures(labels, indptr, indices, data, sampling);
+      resultFile << "Data size for training: " << labels.size() << endl;
+      trainModel(labels, indptr, indices, data);
 
       windowByteSum = 0;
       windowLastSeen.clear();
@@ -428,10 +428,6 @@ map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64
       resultFile << "Finish processing window " << t / windowSize << ": " << ctime(&timenow);
       resultFile << "Process window: " << chrono::duration_cast<chrono::milliseconds>(timeEnd - timeBegin).count()
                  << " ms" << endl << endl;
-    }
-    if (!(++i % 1000000)) {
-      resultFile << "seq: " << i << " hit rate: " << double(byte_hit) / byte_req << endl;
-      cout << "seq: " << i << " hit rate: " << double(byte_hit) / byte_req << endl;
     }
   }
 

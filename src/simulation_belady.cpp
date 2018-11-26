@@ -51,7 +51,7 @@ map<string, string> _simulation_belady(string trace_file, string cache_type, uin
         return {};
     }
 
-    cout<<"simulating"<<endl;
+    cerr<<"simulating"<<endl;
     AnnotatedRequest req(0, 0, 0, 0);
     uint64_t i = 0;
     while (infile >> t >> id >> size >> next_t) {
@@ -72,9 +72,9 @@ map<string, string> _simulation_belady(string trace_file, string cache_type, uin
         } else {
             webcache->admit(req);
         }
-//        cout << i << " " << t << " " << obj_hit << endl;
+//        cerr << i << " " << t << " " << obj_hit << endl;
         if (!(++i%1000000))
-            cout <<"seq: "<< i <<" hit rate: "<<double(byte_hit) / byte_req<< endl;
+            cerr <<"seq: "<< i <<" hit rate: "<<double(byte_hit) / byte_req<< endl;
     }
 
     infile.close();

@@ -24,7 +24,7 @@ int main (int argc, char* argv[])
 {
   // parameters
   if(argc!=7) {
-    cout << "\n number_of_objects repetition_count pareto_shape lower_pareto_bound higher_pareto_bound outputname\n";
+    cerr << "\n number_of_objects repetition_count pareto_shape lower_pareto_bound higher_pareto_bound outputname\n";
     return 1;
   }
   const long no_objs = atoi(argv[1]);
@@ -56,7 +56,7 @@ int main (int argc, char* argv[])
     while (size[i]<lowerb || size[i]>higherb);
     mean_size+=size[i];
   }
-  cout << "finished sizes. mean_size: " << mean_size/static_cast<double>(no_objs) << "\n";
+  cerr << "finished sizes. mean_size: " << mean_size/static_cast<double>(no_objs) << "\n";
 
   // initialize req sequence
   for (long i = 0; i < no_objs; i++) {
@@ -67,12 +67,12 @@ int main (int argc, char* argv[])
       reqseq.push_back(fi_pair_t(globalTime,i));
       globalTime += iaRandH(rnd_gen);
     }
-    //    cout << "markov high " << testh/testhc << " number " << testhc << " markov low " << testl/testlc << " number " << testlc << " changed states " << testchange << "\n";
+    //    cerr << "markov high " << testh/testhc << " number " << testhc << " markov low " << testl/testlc << " number " << testlc << " changed states " << testchange << "\n";
   }
   // sort tuples lexicographically, i.e., by time
-  cout << "finished raw req sequence.\n";
+  cerr << "finished raw req sequence.\n";
   reqseq.sort();
-  cout << "finished sorting req.\n";
+  cerr << "finished sorting req.\n";
 
   ofstream outfile;
   outfile.open(outputname);
@@ -84,7 +84,7 @@ int main (int argc, char* argv[])
     outfile << 1000*get<0>(*rit) << " " << get<1>(*rit) << " " << size[get<1>(*rit)] << "\n"; 
   }
 
-  cout << "finished output.\n";
+  cerr << "finished output.\n";
   outfile.close();
 
   delete size;
