@@ -28,7 +28,7 @@ pywebcachesim --help
 * To run a example configuration. Check the yaml file to see the detail configuration:
 
 ```bash
-pywebcachesim --config_file ${WEBCACHESIM_ROOT}/job_simple.yaml --write_dir ${WEBCACHESIM_ROOT}/log --trace_dir ${WEBCACHESIM_ROOT}/test --debug True
+pywebcachesim --config_file ${WEBCACHESIM_ROOT}/test/job_simple.yaml --write_dir ${WEBCACHESIM_ROOT}/log --trace_dir ${WEBCACHESIM_ROOT}/test --debug True
 ```
 
 * Install `jupyterlab`
