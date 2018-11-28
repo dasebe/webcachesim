@@ -219,8 +219,6 @@ void deriveFeatures(vector<float> &labels, vector<int32_t> &indptr, vector<int32
 }
 
 void evaluateModel(vector<double> &result) {
-  auto timeBegin = chrono::system_clock::now();
-
   // evaluate booster
   vector<float> labels;
   vector<int32_t> indptr;
@@ -228,6 +226,8 @@ void evaluateModel(vector<double> &result) {
   vector<double> data;
   deriveFeatures(labels, indptr, indices, data, 0);
   resultFile << "Data size for evaluation: " << labels.size() << endl;
+
+  auto timeBegin = chrono::system_clock::now();
   int64_t len;
   result.resize(indptr.size() - 1);
   LGBM_BoosterPredictForCSR(booster, static_cast<void *>(indptr.data()), C_API_DTYPE_INT32, indices.data(),
