@@ -408,7 +408,7 @@ map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64
           }
         }
         resultFile << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
-        cout << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
+        cerr << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
         windowResult.clear();
       }
 
