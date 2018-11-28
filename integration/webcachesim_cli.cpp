@@ -33,7 +33,7 @@ int main (int argc, char* argv[])
       cerr << "each cacheParam needs to be in form name=value" << endl;
       return 1;
     }
-    cout<<opmatch[1]<<endl<<opmatch[2]<<endl;
+    cerr<<opmatch[1]<<endl<<opmatch[2]<<endl;
     params[opmatch[1]] = opmatch[2];
     paramSummary += opmatch[2];
   }
