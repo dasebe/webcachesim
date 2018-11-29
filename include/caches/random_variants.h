@@ -91,16 +91,16 @@ public:
 
 //    std::unordered_map<KeyT, uint64_t> unordered_future_timestamp;
     // sample_size
-    uint8_t sample_rate;
+    uint8_t sample_rate = 32;
     // threshold
-    uint64_t threshold;
-    double log1p_threshold;
+    uint64_t threshold = 10000000;
+    double log1p_threshold = log1p(threshold);
     // batch_size
-    uint64_t batch_size;
+    uint64_t batch_size = 10;
     // learning_rate
-    double learning_rate;
+    double learning_rate = 0.000001;
     // n_past_interval
-    uint8_t n_past_intervals;
+    uint8_t n_past_intervals = 4;
 
     double * weights;
     double bias = 0;
@@ -120,33 +120,34 @@ public:
         delete []weights;
     }
 
-    virtual void setPar(std::string parName, std::string parValue) {
-        if (parName == "sample_rate")
-            sample_rate = stoull(parValue);
-        else if(parName == "threshold") {
-            threshold = stoull(parValue);
-            log1p_threshold = std::log1p(threshold);
-        }
-        else if(parName == "batch_size")
-            batch_size = stoull(parValue);
-        else if(parName == "learning_rate")
-            learning_rate = stod(parValue);
-        else if(parName == "n_past_intervals") {
-            n_past_intervals = (uint8_t) stoi(parValue);
-            if (n_past_intervals > max_n_past_intervals) {
-                cerr << "n_past_intervals exceeds max limitation: "<<max_n_past_intervals<<endl;
-                return;
+    void init_with_params(map<string, string> params) override {
+        //set params
+        for (auto& it: params) {
+            if (it.first == "sample_rate") {
+                sample_rate = (uint8_t) stoi(it.second);
+            } else if (it.first == "threshold") {
+                threshold = stoull(it.second);
+                log1p_threshold = std::log1p(threshold);
+            } else if (it.first == "batch_size") {
+                batch_size = stoull(it.second);
+            } else if (it.first == "learning_rate") {
+                learning_rate = stod(it.second);
+            } else if (it.first == "n_past_intervals") {
+                n_past_intervals = (uint8_t) stoi(it.second);
+            } else {
+                cerr << "unrecognized parameter: " << it.first << endl;
             }
-            weights = new double[n_past_intervals];
-            for (int i = 0; i < n_past_intervals; i++) {
-                weights[i] = 0;
-            }
-            Meta::_n_past_intervals = n_past_intervals;
         }
-        else {
-       std::cerr << "unrecognized parameter: " << parName << std::endl;
-   }
-}
+
+        //init
+        if (n_past_intervals > max_n_past_intervals) {
+            cerr << "error: n_past_intervals exceeds max limitation: " << max_n_past_intervals << endl;
+            assert(false);
+        }
+        weights = new double[n_past_intervals]();
+        Meta::_n_past_intervals = n_past_intervals;
+    }
+
     virtual bool lookup(SimpleRequest& req);
     virtual void admit(SimpleRequest& req);
     virtual void evict(const uint64_t & t);
@@ -168,7 +169,7 @@ public:
     // sample_size
     uint64_t sample_rate=32;
     // threshold
-    uint64_t threshold=1000000;
+    uint64_t threshold=10000000;
     double log1p_threshold=log1p(threshold);
 
     BeladySampleCache()
@@ -176,17 +177,20 @@ public:
     {
     }
 
-    virtual void setPar(std::string parName, std::string parValue) {
-        if (parName == "sample_rate")
-            sample_rate = stoull(parValue);
-        else if(parName == "threshold") {
-            threshold = stoull(parValue);
-            log1p_threshold = std::log1p(threshold);
+    void init_with_params(map<string, string> params) override {
+        //set params
+        for (auto& it: params) {
+            if (it.first == "sample_rate") {
+                sample_rate = (uint8_t) stoi(it.second);
+            } else if (it.first == "threshold") {
+                threshold = stoull(it.second);
+                log1p_threshold = std::log1p(threshold);
+            } else {
+                cerr << "unrecognized parameter: " << it.first << endl;
+            }
         }
-        else {
-       std::cerr << "unrecognized parameter: " << parName << std::endl;
-   }
-}
+    }
+
     virtual bool lookup(SimpleRequest& req);
     virtual void admit(SimpleRequest& req);
     virtual void evict();

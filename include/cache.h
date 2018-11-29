@@ -42,6 +42,8 @@ public:
         }
     }
     virtual void setPar(std::string parName, std::string parValue) {}
+    virtual void init_with_params(std::map<std::string, std::string> params) {}
+
 
     uint64_t getCurrentSize() const {
         return(_currentSize);

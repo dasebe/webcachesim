@@ -32,14 +32,20 @@ map<string, string> _simulation_lr(string trace_file, string cache_type, uint64_
 
     uint64_t n_warmup = 0;
     bool uni_size = false;
-    for (auto& kv: params) {
-        webcache->setPar(kv.first, kv.second);
-        if (kv.first == "n_warmup")
-            n_warmup = stoull(kv.second);
-        if (kv.first == "uni_size")
-            uni_size = static_cast<bool>(stoi(kv.second));
+
+    for (auto it = params.cbegin(); it != params.cend();) {
+        if (it->first == "n_warmup") {
+            n_warmup = stoull(it->second);
+            it = params.erase(it);
+        } else if (it->first == "uni_size") {
+            uni_size = static_cast<bool>(stoi(it->second));
+            it = params.erase(it);
+        } else {
+            ++it;
+        }
     }
 
+    webcache->init_with_params(params);
 
     //suppose already annotated
     ifstream infile;
