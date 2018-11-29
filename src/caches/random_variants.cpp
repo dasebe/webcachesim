@@ -295,14 +295,12 @@ bool BeladySampleCache::lookup(SimpleRequest &_req) {
     //add timestamp
 
     //update future timestamp. Can look only threshold far
-    uint64_t next_t;
-    if (req._t + threshold > req._next_t)
-        next_t = req._next_t;
-    else
-        next_t = req._t + threshold;
-    future_timestamp.find(req._id)->second = next_t;
-
-//    try_train(req._t);
+    auto it = future_timestamp.find(req._id);
+    if (it == future_timestamp.end()) {
+        future_timestamp.insert({req._id,  min(req._next_t, req._t + threshold)});
+    } else {
+        it->second = min(req._next_t, req._t + threshold);
+    }
 
     return RandomCache::lookup(req);
 }
@@ -333,8 +331,6 @@ void BeladySampleCache::evict() {
 
     for (int i = 0; i < sample_rate; i++) {
         const auto & key = key_space.pickRandom();
-        future_interval = 0;
-
         //todo: use ground truth
         future_interval = future_timestamp.find(key)->second;
 
