@@ -25,19 +25,22 @@ int main (int argc, char* argv[])
   cmatch opmatch;
   string paramSummary;
   for(int i=4; i<argc; i++) {
+    if(paramSummary.length()>0) {
+      paramSummary += "-";
+    }
     regex_match (argv[i],opmatch,opexp);
     if(opmatch.size()!=3) {
       cerr << "each cacheParam needs to be in form name=value" << endl;
       return 1;
     }
-    cout<<opmatch[1]<<endl<<opmatch[2]<<endl;
+    cerr<<opmatch[1]<<endl<<opmatch[2]<<endl;
     params[opmatch[1]] = opmatch[2];
     paramSummary += opmatch[2];
   }
 
   auto res = simulation(argv[1], argv[2], std::stoull(argv[3]), params);
 
-  cout << argv[1] << " c " << argv[2] << " s " << argv[3] << " b " << res["byte_hit_rate"] <<  " o " << res["object_hit_rate"] << endl;
+  cout << argv[1] << " c " << argv[2] << " s " << argv[3] << " b " << res["byte_hit_rate"] <<  " o " << res["object_hit_rate"] << " " << paramSummary << endl;
 
   return 0;
 }
