@@ -378,6 +378,11 @@ map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64
   ClassifiedRequest req(0, 0, 0);
   uint64_t seq = 0;
   while (infile >> t >> id >> size) {
+
+    if (uni_size) {
+      size = 1;
+    }
+
     if (seq && seq % windowSize == 0) {
       //train
       auto timeBegin = chrono::system_clock::now();
@@ -405,10 +410,6 @@ map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64
     }
 
     seq++;
-
-    if (uni_size) {
-      size = 1;
-    }
 
     annotate(seq, id, size, size);
 
