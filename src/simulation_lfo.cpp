@@ -303,9 +303,10 @@ void trainModel(vector<float> &labels, vector<int32_t> &indptr, vector<int32_t> 
         break;
       }
     }
-
+    LGBM_BoosterFree(booster);
     booster = newBooster;
   }
+  LGBM_DatasetFree(trainData);
 
   resultFile << "Train model: "
              << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - timeBegin).count() << " ms"
@@ -328,6 +329,9 @@ void annotate(uint64_t seq, uint64_t id, uint64_t size, double cost) {
 
 map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64_t cache_size,
                                     map<string, string> params) {
+  /*
+   * assumption: trace_length mod window == 0
+   */
   // create cache
   unique_ptr<Cache> webcache = move(Cache::create_unique(cache_type));
   if (webcache == nullptr) {
@@ -374,21 +378,43 @@ map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64
   ClassifiedRequest req(0, 0, 0);
   uint64_t seq = 0;
   while (infile >> t >> id >> size) {
-    seq++;
-    if (uni_size) {
-      size = 1;
-    }
-    annotate(seq, id, size, size);
-    //todo: make sure no tail segment left at the trace
-    if (seq % windowSize == 0) { // the end of a window
+    if (seq && seq % windowSize == 0) {
+      //train
       auto timeBegin = chrono::system_clock::now();
       auto timenow = chrono::system_clock::to_time_t(timeBegin);
       resultFile << "Start processing window " << seq / windowSize << ": " << ctime(&timenow);
-
       calculateOPT();
+      vector<float> labels;
+      vector<int32_t> indptr;
+      vector<int32_t> indices;
+      vector<double> data;
+      deriveFeatures(labels, indptr, indices, data, sampling);
+      resultFile << "Data size for training: " << labels.size() << endl;
+      trainModel(labels, indptr, indices, data);
 
+      windowByteSum = 0;
+      windowLastSeen.clear();
+      windowOpt.clear();
+      windowTrace.clear();
+
+      auto timeEnd = chrono::system_clock::now();
+      timenow = chrono::system_clock::to_time_t(timeEnd);
+      resultFile << "Finish processing window " << seq / windowSize << ": " << ctime(&timenow);
+      resultFile << "Process window: " << chrono::duration_cast<chrono::milliseconds>(timeEnd - timeBegin).count()
+                 << " ms" << endl << endl;
+    }
+
+    seq++;
+
+    if (uni_size) {
+      size = 1;
+    }
+
+    annotate(seq, id, size, size);
+
+    if (!init && seq % windowSize == 0) {
+      //the end of a window
       //skip evaluation on first window
-      if (!init) {
         vector<double> windowResult;
         evaluateModel(windowResult);
 
@@ -415,29 +441,9 @@ map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64
                    << endl;
         cout << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
         windowResult.clear();
-      }
-
-      vector<float> labels;
-      vector<int32_t> indptr;
-      vector<int32_t> indices;
-      vector<double> data;
-      deriveFeatures(labels, indptr, indices, data, sampling);
-      resultFile << "Data size for training: " << labels.size() << endl;
-      trainModel(labels, indptr, indices, data);
-
-      windowByteSum = 0;
-      windowLastSeen.clear();
-      windowOpt.clear();
-      windowTrace.clear();
-
-      auto timeEnd = chrono::system_clock::now();
-      timenow = chrono::system_clock::to_time_t(timeEnd);
-      resultFile << "Finish processing window " << seq / windowSize << ": " << ctime(&timenow);
-      resultFile << "Process window: " << chrono::duration_cast<chrono::milliseconds>(timeEnd - timeBegin).count()
-                 << " ms" << endl << endl;
     }
   }
-
+  LGBM_BoosterFree(booster);
   infile.close();
 
   map<string, string> res = {
