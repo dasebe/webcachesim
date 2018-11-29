@@ -219,8 +219,6 @@ void deriveFeatures(vector<float> &labels, vector<int32_t> &indptr, vector<int32
 }
 
 void evaluateModel(vector<double> &result) {
-  auto timeBegin = chrono::system_clock::now();
-
   // evaluate booster
   vector<float> labels;
   vector<int32_t> indptr;
@@ -228,6 +226,8 @@ void evaluateModel(vector<double> &result) {
   vector<double> data;
   deriveFeatures(labels, indptr, indices, data, 0);
   resultFile << "Data size for evaluation: " << labels.size() << endl;
+
+  auto timeBegin = chrono::system_clock::now();
   int64_t len;
   result.resize(indptr.size() - 1);
   LGBM_BoosterPredictForCSR(booster, static_cast<void *>(indptr.data()), C_API_DTYPE_INT32, indices.data(),
@@ -375,8 +375,9 @@ map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64
   uint64_t seq = 0;
   while (infile >> t >> id >> size) {
     seq++;
-    if (uni_size)
+    if (uni_size) {
       size = 1;
+    }
     annotate(seq, id, size, size);
     //todo: make sure no tail segment left at the trace
     if (seq % windowSize == 0) { // the end of a window
@@ -392,6 +393,7 @@ map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64
         evaluateModel(windowResult);
 
         // simulate cache
+        auto begin = chrono::system_clock::now();
         auto rit = windowResult.begin();
         auto tit = windowTrace.begin();
         for (; rit != windowResult.end() && tit != windowTrace.end(); ++rit, ++tit) {
@@ -408,7 +410,10 @@ map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64
           }
         }
         resultFile << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
-        cerr << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
+        resultFile << "Simulate cache: "
+                   << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - begin).count() << " ms"
+                   << endl;
+        cout << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
         windowResult.clear();
       }
 
