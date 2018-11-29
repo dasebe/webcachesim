@@ -375,8 +375,9 @@ map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64
   uint64_t seq = 0;
   while (infile >> t >> id >> size) {
     seq++;
-    if (uni_size)
+    if (uni_size) {
       size = 1;
+    }
     annotate(seq, id, size, size);
     //todo: make sure no tail segment left at the trace
     if (seq % windowSize == 0) { // the end of a window
@@ -392,6 +393,7 @@ map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64
         evaluateModel(windowResult);
 
         // simulate cache
+        auto begin = chrono::system_clock::now();
         auto rit = windowResult.begin();
         auto tit = windowTrace.begin();
         for (; rit != windowResult.end() && tit != windowTrace.end(); ++rit, ++tit) {
@@ -408,6 +410,9 @@ map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64
           }
         }
         resultFile << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
+        resultFile << "Simulate cache: "
+                   << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - begin).count() << " ms"
+                   << endl;
         cout << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
         windowResult.clear();
       }
