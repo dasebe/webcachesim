@@ -176,13 +176,13 @@ void deriveFeatures(vector<float> &labels, vector<int32_t> &indptr, vector<int32
       indices.push_back(HISTFEATURES);
       data.push_back(round(100.0 * log2(it.size)));
 
-      double currentSize = cacheAvailBytes <= 0 ? 0 : round(100.0 * log2(cacheAvailBytes));
-      indices.push_back(HISTFEATURES + 1);
-      data.push_back(currentSize);
+//      double currentSize = cacheAvailBytes <= 0 ? 0 : round(100.0 * log2(cacheAvailBytes));
+//      indices.push_back(HISTFEATURES + 1);
+//      data.push_back(currentSize);
       indices.push_back(HISTFEATURES + 2);
       data.push_back(it.cost);
 
-      indptr.push_back(indptr[indptr.size() - 1] + idx + 3);
+      indptr.push_back(indptr[indptr.size() - 1] + idx + 2);
     }
 
     // update cache size
