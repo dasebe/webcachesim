@@ -330,7 +330,7 @@ void annotate(uint64_t seq, uint64_t id, uint64_t size, double cost) {
 map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64_t cache_size,
                                     map<string, string> params) {
   /*
-   * assumption: trace_length mod window == 0
+   * todo: assumption: trace_length mod window == 0
    */
   // create cache
   unique_ptr<Cache> webcache = move(Cache::create_unique(cache_type));
@@ -444,6 +444,37 @@ map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64
         windowResult.clear();
     }
   }
+
+  if (seq % windowSize != 0) {
+    //the not mod part
+    vector<double> windowResult;
+    evaluateModel(windowResult);
+
+    // simulate cache
+    auto begin = chrono::system_clock::now();
+    auto rit = windowResult.begin();
+    auto tit = windowTrace.begin();
+    for (; rit != windowResult.end() && tit != windowTrace.end(); ++rit, ++tit) {
+      //for each window request
+      byte_req += tit->size;
+      obj_req++;
+
+      req.reinit(tit->id, tit->size, *rit);
+      if (webcache->lookup(req)) {
+        byte_hit += tit->size;
+        obj_hit++;
+      } else {
+        webcache->admit(req);
+      }
+    }
+    resultFile << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
+    resultFile << "Simulate cache: "
+               << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - begin).count() << " ms"
+               << endl;
+    cout << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
+    windowResult.clear();
+  }
+
   LGBM_BoosterFree(booster);
   infile.close();
 
