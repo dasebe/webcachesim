@@ -329,9 +329,6 @@ void annotate(uint64_t seq, uint64_t id, uint64_t size, double cost) {
 
 map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64_t cache_size,
                                     map<string, string> params) {
-  /*
-   * todo: assumption: trace_length mod window == 0
-   */
   // create cache
   unique_ptr<Cache> webcache = move(Cache::create_unique(cache_type));
   if (webcache == nullptr) {
