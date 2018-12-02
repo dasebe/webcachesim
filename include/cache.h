@@ -26,7 +26,7 @@ public:
           _currentSize(0)
     {
     }
-    virtual ~Cache(){};
+    virtual ~Cache() = default;
 
     // main cache management functions (to be defined by a policy)
     virtual bool lookup(SimpleRequest& req) = 0;

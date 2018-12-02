@@ -8,6 +8,6 @@
 #include <string>
 
 
-void annotate(std::string trace_file);
+void annotate(std::string & trace_file);
 
 #endif //WEBCACHESIM_ANNOTATE_H

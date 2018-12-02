@@ -12,7 +12,7 @@
 
 using namespace std;
 
-void annotate(string trace_file) {
+void annotate(string &trace_file) {
     //todo: there is a risk that multiple process write a same file
 
     auto expect_file = trace_file+".ant";

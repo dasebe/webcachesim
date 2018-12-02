@@ -7,9 +7,11 @@ set(LIB_SOURCE
         caches/random_variants.cpp
         caches/belady.cpp
         caches/lfo.cpp
+        caches/lfo2.cpp
         random_helper.cpp
         simulation.cpp
         simulation_lfo.cpp
+        simulation_lfo2.cpp
         simulation_belady.cpp
         simulation_lr.cpp
         caches/annotate.cpp caches/ucb.cpp)
