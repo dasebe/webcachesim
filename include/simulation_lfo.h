@@ -9,10 +9,14 @@
 #include <map>
 #include <string>
 
+
+namespace LFO {
 /*
  * single thread simulation. Returns results.
  */
-std::map<std::string, std::string> _simulation_lfo(std::string trace_file, std::string cache_type,
-                                              uint64_t cache_size, std::map<std::string, std::string> params);
+    std::map<std::string, std::string> _simulation_lfo(std::string trace_file, std::string cache_type,
+                                                            uint64_t cache_size,
+                                                            std::map<std::string, std::string> params);
 
+}
 #endif //WEBCACHESIM_SIMULATION_LFO_H
