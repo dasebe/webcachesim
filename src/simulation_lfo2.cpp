@@ -115,15 +115,6 @@ map<string, string> _simulation_lfo2(string trace_file, string cache_type, uint6
 
         //shadow cache
         {
-            shadow_byte_req += size;
-            shadow_obj_req++;
-            //train
-            if (webcachea->lookup(req)) {
-                shadow_byte_hit += size;
-                shadow_obj_hit++;
-            } else
-                webcachea->admit(req);
-
             //update model
             if (seq && !(seq % window_size)) {
                 cerr << "training model" << endl;
@@ -138,6 +129,21 @@ map<string, string> _simulation_lfo2(string trace_file, string cache_type, uint6
                     move_b_a(webcacheb, webcachea);
                 }
             }
+
+            if (seq == n_warmup) {
+                cerr<<"reset shadow metric to align with brighten"<<endl;
+                shadow_byte_hit = shadow_byte_req = shadow_obj_hit = shadow_obj_req = 0;
+            }
+
+            shadow_byte_req += size;
+            shadow_obj_req++;
+            //train
+            if (webcachea->lookup(req)) {
+                shadow_byte_hit += size;
+                shadow_obj_hit++;
+            } else
+                webcachea->admit(req);
+
         }
 
 
@@ -162,7 +168,8 @@ map<string, string> _simulation_lfo2(string trace_file, string cache_type, uint6
             }
         }
 
-        if (seq && !(seq%1000000)) {
+        ++seq;
+        if (seq && !(seq%10000)) {
             auto _t_now = system_clock::now();
             cerr<<"\ndelta t: "<<duration_cast<seconds>(_t_now - t_now).count()<<endl;
             cerr<<"seq: " << seq << endl;
@@ -170,7 +177,6 @@ map<string, string> _simulation_lfo2(string trace_file, string cache_type, uint6
             cerr<<"shadow bhr: " << double(shadow_byte_hit) / shadow_byte_req << endl;
             t_now = _t_now;
         }
-        ++seq;
     }
 
   infile.close();
