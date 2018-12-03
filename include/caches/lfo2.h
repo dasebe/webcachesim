@@ -18,6 +18,8 @@ using namespace std;
 
 #define MAX_N_INTERVAL 50
 
+
+
 class LFOACache : public Cache
 {
 public:
@@ -60,7 +62,7 @@ public:
 static Factory<LFOACache> factoryLFOA("LFOA");
 
 
-class Meta {
+class LFOMeta {
 public:
     //todo: currently set as a constant
     //idx should increase 0 -> max, and then periodicaly max -> 2 * max. This prevent ambiguity of 0 intervals
@@ -73,7 +75,7 @@ public:
     uint8_t _past_interval_idx;
     uint64_t _past_intervals[MAX_N_INTERVAL];
 
-    Meta(const uint64_t & key, const uint64_t & size, const uint64_t & past_timestamp, const uint64_t & future_timestamp) {
+    LFOMeta(const uint64_t & key, const uint64_t & size, const uint64_t & past_timestamp, const uint64_t & future_timestamp) {
         _key = key;
         _size = size;
         _past_timestamp = past_timestamp;
@@ -81,7 +83,7 @@ public:
         _past_interval_idx = (uint8_t) 0;
     }
 
-    Meta(const uint64_t & key, const uint64_t & size, const uint64_t & past_timestamp,
+    LFOMeta(const uint64_t & key, const uint64_t & size, const uint64_t & past_timestamp,
             const uint64_t & future_timestamp, const list<uint64_t > & past_intervals) {
         _key = key;
         _size = size;
@@ -107,6 +109,7 @@ public:
         if (_past_interval_idx >= MAX_N_INTERVAL * 2)
             _past_interval_idx -= MAX_N_INTERVAL;
         _past_timestamp = past_timestamp;
+        _future_timestamp = future_timestamp;
     }
 };
 
@@ -117,7 +120,7 @@ class LFOBCache : public Cache
 public:
     //key -> (0/1 list, idx)
     unordered_map<uint64_t, pair<bool, uint32_t>> key_map;
-    vector<Meta> meta_holder[2];
+    vector<LFOMeta> meta_holder[2];
 
     // sample_size
     uint8_t sample_rate = 32;
@@ -135,10 +138,10 @@ public:
 
     virtual bool lookup(SimpleRequest& req);
     virtual void admit(SimpleRequest& req);
-    virtual void evict(SimpleRequest& req) {
-        //no need to use it
-    };
-    virtual void evict();
+    virtual void evict(SimpleRequest& req) {}
+    virtual void evict() {}
+    void evict(const uint64_t & t);
+    pair<uint64_t, uint32_t > rank(const uint64_t & t);
 };
 
 static Factory<LFOBCache> factoryLFOB("LFOB");

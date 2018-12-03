@@ -36,7 +36,7 @@ void RandomCache::evict() {
     object_size.erase(key);
 }
 
-uint8_t Meta::_n_past_intervals = max_n_past_intervals;
+uint8_t LRMeta::_n_past_intervals = max_n_past_intervals;
 
 bool LRCache::lookup(SimpleRequest &_req) {
     static uint64_t i = 0;
@@ -154,7 +154,6 @@ void LRCache::admit(SimpleRequest &_req) {
     while (_currentSize > _cacheSize) {
         evict(req._t);
     }
-
 }
 
 

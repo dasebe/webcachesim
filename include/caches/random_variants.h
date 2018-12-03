@@ -44,7 +44,7 @@ public:
 static Factory<RandomCache> factoryRandom("Random");
 
 
-class Meta {
+class LRMeta {
 public:
     static uint8_t _n_past_intervals;
     uint64_t _key;
@@ -53,7 +53,7 @@ public:
     uint8_t _past_timestamp_idx;
     uint64_t _past_timestamps[max_n_past_intervals];
 
-    Meta(const uint64_t & key, const uint64_t & size, const uint64_t & past_timestamp, const uint64_t & future_timestamp) {
+    LRMeta(const uint64_t & key, const uint64_t & size, const uint64_t & past_timestamp, const uint64_t & future_timestamp) {
         _key = key;
         _size = size;
 //        _past_timestamps = new uint64_t[_n_past_intervals];
@@ -87,7 +87,7 @@ public:
 //    map<uint64_t, set<uint64_t>> gc_timestamp;
     //key -> (0/1 list, idx)
     unordered_map<uint64_t, pair<bool, uint32_t>> key_map;
-    vector<Meta> meta_holder[2];
+    vector<LRMeta> meta_holder[2];
 
 //    std::unordered_map<KeyT, uint64_t> unordered_future_timestamp;
     // sample_size
@@ -145,7 +145,7 @@ public:
             assert(false);
         }
         weights = new double[n_past_intervals]();
-        Meta::_n_past_intervals = n_past_intervals;
+        LRMeta::_n_past_intervals = n_past_intervals;
     }
 
     virtual bool lookup(SimpleRequest& req);

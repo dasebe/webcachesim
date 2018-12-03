@@ -14,24 +14,22 @@ using namespace chrono;
 
 
 void move_a_b(LFOACache * c_a, LFOBCache * c_b) {
-    auto & meta0 = c_b->meta_holder[0];
-    auto & meta1 = c_b->meta_holder[1];
     for (auto it_key = c_a->object_size.begin(); it_key != c_a->object_size.end(); ++it_key) {
         const uint64_t & key = it_key->first;
         const uint64_t & size = it_key->second;
         const uint64_t & past_timestamp = c_a->past_timestamp.find(key)->second;
         const uint64_t & future_timestamp = c_a->future_timestamp.find(key)->second;
         const list<uint64_t > & past_intervals = c_a->past_intervals.find(key)->second;
-        uint8_t list_idx = 0;  //default add to list 0
-        if (c_a->_cacheMap.left.find(key) == c_a->_cacheMap.left.end()) {
+        uint8_t list_idx;
+        if (c_a->_cacheMap.left.find(key) != c_a->_cacheMap.left.end()) {
             //add to list 1
-            uint8_t list_idx = 1;
+            list_idx = 0;
+            c_b->_currentSize += size;
+        } else {
+            list_idx = 1;
         }
-        c_b->key_map.insert({key, {list_idx, (uint32_t) meta0.size()}});
-        c_b->meta_holder[0].emplace_back(key, size, past_timestamp, future_timestamp, past_intervals);
-//        c_b->meta_holder[0].emplace_back(key, size, past_timestamp, future_timestamp, past_intervals);
-//        c_b->meta_holder[0].emplace_back(key, size, past_timestamp, future_timestamp, past_intervals);
-        c_b->_currentSize += size;
+        c_b->key_map.insert({key, {list_idx, (uint32_t) c_b->meta_holder[list_idx].size() }});
+        c_b->meta_holder[list_idx].emplace_back(key, size, past_timestamp, future_timestamp, past_intervals);
     }
     assert(c_a->_currentSize == c_b->_currentSize);
 
@@ -121,7 +119,6 @@ map<string, string> _simulation_lfo2(string trace_file, string cache_type, uint6
                 webcachea->train();
                 webcacheb->booster = webcachea->booster;
                 if (seq / window_size == 2){
-                    //todo: cache state A -> B
                     cerr<<"copying cache state A -> B"<<endl;
                     move_a_b(webcachea, webcacheb);
                 } else if (seq / window_size > 2) {
