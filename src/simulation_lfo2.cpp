@@ -88,7 +88,7 @@ map<string, string> _simulation_lfo2(string trace_file, string cache_type, uint6
     }
 
     //only eval after 2 window
-    assert(2*window_size <= n_warmup);
+    assert(window_size <= n_warmup);
 
     ifstream infile(trace_file+".ant");
     if (!infile) {
@@ -120,10 +120,10 @@ map<string, string> _simulation_lfo2(string trace_file, string cache_type, uint6
                 cerr << "training model" << endl;
                 webcachea->train();
                 webcacheb->booster = webcachea->booster;
-                if (seq / window_size == 2){
+                if (seq == window_size){
                     cerr<<"copying cache state A -> B"<<endl;
                     move_a_b(webcachea, webcacheb);
-                } else if (seq / window_size > 2) {
+                } else if (seq > window_size) {
                     //todo: cache state B -> A
                     cerr<<"copying cache state B -> A"<<endl;
                     move_b_a(webcacheb, webcachea);
@@ -149,7 +149,7 @@ map<string, string> _simulation_lfo2(string trace_file, string cache_type, uint6
 
         //brighten cache. Not sure whether it is a good name
         {
-            if (seq / window_size >= 2) {
+            if (seq >= window_size) {
                 if (seq >= n_warmup) {
                     byte_req += size;
                     obj_req++;
