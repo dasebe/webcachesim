@@ -226,6 +226,16 @@ void LFOACache::train() {
     }
     cerr<<"training accuracy: "<<double(correct)/total<<endl;
 
+    vector<double > importance(MAX_N_INTERVAL+2);
+    int succeed = LGBM_BoosterFeatureImportance(booster,
+                                            0,
+                                            1,
+                                            importance.data());
+    cerr<<"\nimportance: ";
+    for (auto & it: importance) {
+        cerr<<it<<endl;
+    }
+
     LGBM_DatasetFree(trainData);
     labels.clear();
     indptr.clear();
