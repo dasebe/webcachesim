@@ -120,10 +120,12 @@ void LFOACache::evict(uint64_t &t) {
         indices.push_back(MAX_N_INTERVAL+1);
         data.push_back(object_size.find(key0)->second);
 
-        indices.push_back(MAX_N_INTERVAL+2);
-        data.push_back(future_timestamp.find(key0)->second-t);
-
-        indptr.push_back(indptr[indptr.size() - 1] + idx + 3);
+        //remove future t
+        indptr.push_back(indptr[indptr.size() - 1] + idx + 2);
+        //add future t
+//        indices.push_back(MAX_N_INTERVAL+2);
+//        data.push_back(future_timestamp.find(key0)->second-t);
+//        indptr.push_back(indptr[indptr.size() - 1] + idx + 3);
 
 
         //key 1 is the exact key to keep
@@ -149,10 +151,13 @@ void LFOACache::evict(uint64_t &t) {
             indices.push_back(MAX_N_INTERVAL+1);
             data.push_back(future_timestamp.find(key1)->second-t);
 
-            indices.push_back(MAX_N_INTERVAL+2);
-            data.push_back(object_size.find(key1)->second);
+            //remove future t
+            indptr.push_back(indptr[indptr.size() - 1] + idx + 2);
 
-            indptr.push_back(indptr[indptr.size() - 1] + idx + 3);
+            //add future t
+//            indices.push_back(MAX_N_INTERVAL+2);
+//            data.push_back(object_size.find(key1)->second);
+//            indptr.push_back(indptr[indptr.size() - 1] + idx + 3);
         }
     }
 
@@ -173,7 +178,8 @@ void LFOACache::train() {
             C_API_DTYPE_FLOAT64,
             indptr.size(),
             data.size(),
-            MAX_N_INTERVAL + 3,
+            MAX_N_INTERVAL + 2,  //remove future t
+//            MAX_N_INTERVAL + 3,  //add future t
             LFO2_train_params,
             nullptr,
             &trainData);
@@ -205,7 +211,8 @@ void LFOACache::train() {
             C_API_DTYPE_FLOAT64,
             indptr.size(),
             data.size(),
-            MAX_N_INTERVAL+3,
+            MAX_N_INTERVAL + 2,  //remove future t
+//            MAX_N_INTERVAL + 3,  //add future t
             C_API_PREDICT_NORMAL,
             0,
             LFO2_train_params,
@@ -325,10 +332,13 @@ pair<uint64_t, uint32_t> LFOBCache::rank(const uint64_t & t) {
         indices.push_back(MAX_N_INTERVAL+1);
         data.push_back(meta._size);
 
-        indices.push_back(MAX_N_INTERVAL+2);
-        data.push_back(meta._future_timestamp-t);
+        //remove future t
+        indptr.push_back(indptr[indptr.size() - 1] + j + 2);
 
-        indptr.push_back(indptr[indptr.size() - 1] + j + 3);
+        //add future t
+//        indices.push_back(MAX_N_INTERVAL+2);
+//        data.push_back(meta._future_timestamp-t);
+//        indptr.push_back(indptr[indptr.size() - 1] + j + 3);
     }
     int64_t len;
     vector<double> result;
@@ -341,7 +351,8 @@ pair<uint64_t, uint32_t> LFOBCache::rank(const uint64_t & t) {
             C_API_DTYPE_FLOAT64,
             indptr.size(),
             data.size(),
-            MAX_N_INTERVAL + 3,
+            MAX_N_INTERVAL + 2,  //remove future t
+//            MAX_N_INTERVAL + 3,  //add future t
             C_API_PREDICT_NORMAL,
             0,
             LFO2_train_params,
