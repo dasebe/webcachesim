@@ -220,6 +220,11 @@ void LFOACache::train() {
     cerr<<"training accuracy: "<<double(correct)/total<<endl;
 
     LGBM_DatasetFree(trainData);
+    labels.clear();
+    indptr.clear();
+    indptr.push_back(0);
+    indices.clear();
+    data.clear();
 }
 
 bool LFOBCache::lookup(SimpleRequest& _req) {

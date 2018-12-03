@@ -35,6 +35,17 @@ void move_a_b(LFOACache * c_a, LFOBCache * c_b) {
 
 }
 
+void move_b_a(LFOBCache * c_b, LFOACache * c_a) {
+    c_a->_currentSize = 0;
+    c_a->_cacheMap.clear();
+
+    for (auto & meta: c_b->meta_holder[0]) {
+        c_a->_cacheMap.left.insert({meta._key, meta._future_timestamp});
+        c_a->_currentSize += meta._size;
+    }
+
+    assert(c_a->_currentSize == c_b->_currentSize);
+}
 
 map<string, string> _simulation_lfo2(string trace_file, string cache_type, uint64_t cache_size,
                                     map<string, string> params) {
@@ -124,6 +135,7 @@ map<string, string> _simulation_lfo2(string trace_file, string cache_type, uint6
                 } else if (seq / window_size > 2) {
                     //todo: cache state B -> A
                     cerr<<"copying cache state B -> A"<<endl;
+                    move_b_a(webcacheb, webcachea);
                 }
             }
         }
@@ -136,7 +148,6 @@ map<string, string> _simulation_lfo2(string trace_file, string cache_type, uint6
                     byte_req += size;
                     obj_req++;
                 }
-
 
                 //eval
                 //only start from window 2+
