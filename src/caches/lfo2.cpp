@@ -5,6 +5,7 @@
 #include "request.h"
 #include "lfo2.h"
 #include <chrono>
+#include <cmath>
 
 using namespace std;
 using namespace chrono;
@@ -149,14 +150,14 @@ void LFOACache::evict(uint64_t &t) {
             data.push_back(t-past_timestamp.find(key1)->second);
 
             indices.push_back(MAX_N_INTERVAL+1);
-            data.push_back(future_timestamp.find(key1)->second-t);
+            data.push_back(object_size.find(key1)->second);
 
             //remove future t
             indptr.push_back(indptr[indptr.size() - 1] + idx + 2);
 
             //add future t
 //            indices.push_back(MAX_N_INTERVAL+2);
-//            data.push_back(object_size.find(key1)->second);
+//            data.push_back(future_timestamp.find(key1)->second-t);
 //            indptr.push_back(indptr[indptr.size() - 1] + idx + 3);
         }
     }
