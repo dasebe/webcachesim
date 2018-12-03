@@ -97,7 +97,7 @@ map<string, string> simulation(string trace_file, string cache_type,
     if (cache_type == "Belady")
         return _simulation_belady(trace_file, cache_type, cache_size, params);
     else if (cache_type == "LFO")
-        return _simulation_lfo(trace_file, cache_type, cache_size, params);
+        return LFO::_simulation_lfo(trace_file, cache_type, cache_size, params);
     else if (cache_type == "LFO2")
         return _simulation_lfo2(trace_file, cache_type, cache_size, params);
     else if (cache_type == "LR" || cache_type == "BeladySample")

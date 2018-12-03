@@ -84,7 +84,7 @@ public:
     // from id to intervals
 //    std::unordered_map<std::pair<uint64_t, uint64_t >, std::list<uint64_t> > past_timestamps;
 //    boost::bimap<boost::bimaps::set_of<KeyT>, boost::bimaps::multiset_of<uint64_t>> future_timestamp;
-    map<uint64_t, set<uint64_t>> gc_timestamp;
+//    map<uint64_t, set<uint64_t>> gc_timestamp;
     //key -> (0/1 list, idx)
     unordered_map<uint64_t, pair<bool, uint32_t>> key_map;
     vector<Meta> meta_holder[2];

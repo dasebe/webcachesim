@@ -66,7 +66,6 @@ public:
         return Cache_instance;
     }
 
-protected:
     // basic cache properties
     uint64_t _cacheSize; // size of cache in bytes
     uint64_t _currentSize; // total size of objects in cache in bytes
