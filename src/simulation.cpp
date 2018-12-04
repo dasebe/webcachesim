@@ -43,7 +43,7 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
             n_warmup = stoull(kv.second);
         if (kv.first == "uni_size")
             uni_size = static_cast<bool>(stoi(kv.second));
-        if (kv.first == "window")
+        if (kv.first == "segment_window")
             window = stoull(kv.second);
     }
 
