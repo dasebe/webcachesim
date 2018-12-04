@@ -17,6 +17,7 @@
 #include "simulation_lfo2.h"
 #include "simulation_lr.h"
 #include <chrono>
+#include "utils.h"
 
 using namespace std;
 
@@ -54,31 +55,34 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     }
 
     SimpleRequest req(0, 0);
-    uint64_t i = 0;
+    uint64_t seq = 0;
     auto t_now = chrono::system_clock::now();
     while (infile >> t >> id >> size) {
         if (uni_size)
             size = 1;
 
-        if (i >= n_warmup) {
-            byte_req += size;
-            obj_req++;
+        if (seq >= n_warmup) {
+            update_metric_req(byte_req, obj_req, size);
+            update_metric_req(seg_byte_req, seg_obj_req, size);
         }
 
         req.reinit(id, size);
         if (webcache->lookup(req)) {
-            if (i >= n_warmup) {
-                byte_hit += size;
-                obj_hit++;
+            if (seq >= n_warmup) {
+                update_metric_req(byte_hit, obj_hit, size);
+                update_metric_req(seg_byte_hit, seg_obj_hit, size);
             }
         } else {
             webcache->admit(req);
         }
-//        cout << i << " " << t << " " << obj_hit << endl;
-        if (!(++i%1000000)) {
+
+        ++seq;
+
+        if (!(seq%window)) {
             auto _t_now = chrono::system_clock::now();
             cerr<<"delta t: "<<chrono::duration_cast<std::chrono::milliseconds>(_t_now - t_now).count()/1000.<<endl;
-            cerr << "seq: " << i << " hit rate: " << double(byte_hit) / byte_req << endl;
+            cerr<<"seq: " << seq << endl;
+            cerr<<"accu bhr: " << double(byte_hit) / byte_req << endl;
             t_now = _t_now;
         }
     }

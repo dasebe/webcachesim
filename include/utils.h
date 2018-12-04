@@ -28,4 +28,9 @@ namespace std {
         }
     };
 }
+
+#define update_metric_req(byte_metric, object_metric, size) \
+    {byte_metric += size; ++object_metric;}
+
+
 #endif //WEBCACHESIM_UTILS_H
