@@ -36,17 +36,25 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
 
     uint64_t n_warmup = 0;
     bool uni_size = false;
+    uint64_t window = 1000000;
     for (auto& kv: params) {
         webcache->setPar(kv.first, kv.second);
         if (kv.first == "n_warmup")
             n_warmup = stoull(kv.second);
         if (kv.first == "uni_size")
             uni_size = static_cast<bool>(stoi(kv.second));
+        if (kv.first == "window")
+            uni_size = static_cast<bool>(stoi(kv.second));
     }
 
     ifstream infile;
     uint64_t byte_req = 0, byte_hit = 0, obj_req = 0, obj_hit = 0;
     uint64_t t, id, size;
+    uint64_t seg_byte_req = 0, seg_byte_hit = 0, seg_obj_req = 0, seg_obj_hit = 0;
+    string seg_bhr;
+    string seg_ohr;
+
+
 
     infile.open(trace_file);
     if (!infile) {
@@ -82,7 +90,13 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
             auto _t_now = chrono::system_clock::now();
             cerr<<"delta t: "<<chrono::duration_cast<std::chrono::milliseconds>(_t_now - t_now).count()/1000.<<endl;
             cerr<<"seq: " << seq << endl;
+            double _seg_bhr = double(seg_byte_hit) / seg_byte_req;
+            double _seg_ohr = double(seg_obj_hit) / seg_obj_req;
             cerr<<"accu bhr: " << double(byte_hit) / byte_req << endl;
+            cerr<<"seg bhr: " << _seg_bhr << endl;
+            seg_bhr+=to_string(_seg_bhr)+"\t";
+            seg_ohr+=to_string(_seg_ohr)+"\t";
+            seg_byte_hit=seg_obj_hit=seg_byte_req=seg_obj_req=0;
             t_now = _t_now;
         }
     }
