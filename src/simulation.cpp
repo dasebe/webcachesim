@@ -44,7 +44,7 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
         if (kv.first == "uni_size")
             uni_size = static_cast<bool>(stoi(kv.second));
         if (kv.first == "window")
-            uni_size = static_cast<bool>(stoi(kv.second));
+            window = stoull(kv.second);
     }
 
     ifstream infile;
@@ -69,17 +69,15 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
         if (uni_size)
             size = 1;
 
-        if (seq >= n_warmup) {
+        if (seq >= n_warmup)
             update_metric_req(byte_req, obj_req, size);
-            update_metric_req(seg_byte_req, seg_obj_req, size);
-        }
+        update_metric_req(seg_byte_req, seg_obj_req, size);
 
         req.reinit(id, size);
         if (webcache->lookup(req)) {
-            if (seq >= n_warmup) {
+            if (seq >= n_warmup)
                 update_metric_req(byte_hit, obj_hit, size);
-                update_metric_req(seg_byte_hit, seg_obj_hit, size);
-            }
+            update_metric_req(seg_byte_hit, seg_obj_hit, size);
         } else {
             webcache->admit(req);
         }
@@ -106,6 +104,8 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     map<string, string> res = {
             {"byte_hit_rate", to_string(double(byte_hit) / byte_req)},
             {"object_hit_rate", to_string(double(obj_hit) / obj_req)},
+            {"segment_byte_hit_rate", seg_bhr},
+            {"segment_object_hit_rate", seg_ohr},
     };
     return res;
 }
