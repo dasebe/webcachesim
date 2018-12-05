@@ -78,6 +78,17 @@ public:
 };
 
 
+class Gradient {
+public:
+    double weights[max_n_past_intervals];
+    double bias = 0;
+    uint64_t n_update = 0;
+    Gradient() {
+        for (auto & it: weights)
+            it = 0;
+    }
+};
+
 class LRCache : public Cache
 {
 public:
@@ -105,7 +116,9 @@ public:
     double * weights;
     double bias = 0;
     double mean_diff=0;
-    std::map<uint64_t, double *> pending_gradients;
+
+    vector<Gradient> pending_gradients;
+    uint64_t gradient_window = 10000;
 
     //todo: seed and generator
     default_random_engine _generator = default_random_engine();
@@ -134,6 +147,8 @@ public:
                 learning_rate = stod(it.second);
             } else if (it.first == "n_past_intervals") {
                 n_past_intervals = (uint8_t) stoi(it.second);
+            } else if (it.first == "gradient_window") {
+                gradient_window = stoull(it.second);
             } else {
                 cerr << "unrecognized parameter: " << it.first << endl;
             }

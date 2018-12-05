@@ -52,16 +52,22 @@ bool LRCache::lookup(SimpleRequest &_req) {
 
     auto & req = static_cast<AnnotatedRequest &>(_req);
 
-    auto gradients = pending_gradients.begin();
-    while (gradients != pending_gradients.end()) {
-        if (gradients->first <= req._t) {
-            try_train(gradients->second);
-            gradients = pending_gradients.erase(gradients);
-    //        pending_gradients.erase(gradients);
-    //        past_timestamps.erase(it->second);
-    //        unordered_future_timestamp.erase(it->second);
-        } else
-            break;
+    if (req._t >= gradient_window) {
+        //look at previous window
+        auto gradient_window_idx = req._t / gradient_window - 1;
+        if (gradient_window_idx < pending_gradients.size()) {
+            auto & gradients = pending_gradients[gradient_window_idx];
+            if (gradients.n_update) {
+                for (uint i = 0; i < n_past_intervals; ++i) {
+                    weights[i] = weights[i] - learning_rate / gradients.n_update * gradients.weights[i];
+                    gradients.weights[i] = 0;
+                }
+                bias = bias - learning_rate / gradients.n_update * gradients.bias;
+                gradients.bias = 0;
+                gradients.n_update = 0;
+            }
+        }
+
     }
 
     auto it = key_map.find(req._id);
@@ -75,16 +81,9 @@ bool LRCache::lookup(SimpleRequest &_req) {
         meta_holder[list_idx][pos_idx]._future_timestamp = min(req._next_t, req._t + threshold);
 
         return !list_idx;
-//            if has pending training data, put it
-//        auto gradients = pending_gradients.find(req._t);
-//        if (gradients != pending_gradients.end()) {
-//            try_train(gradients->second);
-//            pending_gradients.erase(gradients);
-//        }
     }
     return false;
 
-//    try_gc(req._t);
 }
 
 //void LRCache::try_gc(uint64_t t) {
@@ -211,22 +210,15 @@ pair<uint64_t, uint32_t> LRCache::rank(const uint64_t & t) {
 //
 //        }
 //
-        //append training data
-        auto _pending_gradients = pending_gradients.find(meta._future_timestamp);
-        if (_pending_gradients == pending_gradients.end()) {
-            auto gradients = new double[n_past_intervals+2];
-            for (j = 0; j < n_past_intervals; j++)
-                gradients[j] = diff * past_intervals[j];
-            gradients[n_past_intervals] = diff;
-            gradients[n_past_intervals+1] = 1;
-            pending_gradients.insert({meta._future_timestamp, gradients});
-        } else {
-            auto gradients = _pending_gradients->second;
-            for (j = 0; j < n_past_intervals; j++)
-                gradients[j] += diff * past_intervals[j];
-            gradients[n_past_intervals] += diff;
-            gradients[n_past_intervals+1] += 1;
-        }
+        //update gradient
+        auto gradient_window_idx = t / gradient_window;
+        if (gradient_window_idx >= pending_gradients.size())
+            pending_gradients.resize(gradient_window_idx+1);
+        auto & gradient = pending_gradients[gradient_window_idx];
+        for (uint i = 0; i < n_past_intervals; ++i)
+            gradient.weights[i] += diff * past_intervals[i];
+        gradient.bias += diff;
+        ++ gradient.n_update;
     }
 
     return {max_key, max_pos};
