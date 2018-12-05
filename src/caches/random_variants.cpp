@@ -211,7 +211,7 @@ pair<uint64_t, uint32_t> LRCache::rank(const uint64_t & t) {
 //        }
 //
         //update gradient
-        auto gradient_window_idx = t / gradient_window;
+        auto gradient_window_idx = meta._future_timestamp / gradient_window;
         if (gradient_window_idx >= pending_gradients.size())
             pending_gradients.resize(gradient_window_idx+1);
         auto & gradient = pending_gradients[gradient_window_idx];
