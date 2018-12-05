@@ -1,15 +1,27 @@
 LRUK:
-  - k: 4
+  k: 4
 LFO:
-  - cutoff: 0.5
-    window: 10000000
-    sample_size: 1000000
-    sample_type: 2
+  cutoff: 0.5
+  window: 10000000
+  sample_size: 1000000
+  sample_type: 2
 LFO2:
-  - window: 10000000
+  window: 10000000
 LR:
-  - sample_rate: 32
-    threshold: 10000000
-    batch_size: 10
-    learning_rate: 0.000001
-    n_past_intervals: 4
+  sample_rate: 32
+  threshold: 10000000
+  batch_size:
+    - 1
+    - 10
+    - 100
+    - 1000
+    - 10000
+    - 100000
+  learning_rate:
+    - 0.000001
+    - 0.00001
+    - 0.0001
+    - 0.001
+    - 0.01
+    - 0.1
+  n_past_intervals: 4

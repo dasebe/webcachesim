@@ -41,6 +41,29 @@ def parse_cmd_args():
     return scheduler_args, worker_args
 
 
+def extend_params(param: dict):
+    worklist = [param]
+    res = []
+
+    while len(worklist):
+        p = worklist.pop()
+        split = False
+        for k in p:
+            if type(p[k]) == list:
+                _p = {_k: _v for _k, _v in p.items() if _k != k}
+                for v in p[k]:
+                    worklist.append({
+                        **_p,
+                        k: v,
+                    })
+                split = True
+                break
+
+        if not split:
+            res.append(p)
+
+    return res
+
 def job_to_tasks(scheduler_args, worker_args):
     """
     convert job config to list of task
@@ -64,6 +87,8 @@ def job_to_tasks(scheduler_args, worker_args):
     if scheduler_args.algorithm_param_file is not None:
         with open(scheduler_args.algorithm_param_file) as f:
             algorithm_params = yaml.load(f)
+        for alg in algorithm_params:
+            algorithm_params[alg] = extend_params(algorithm_params[alg])
 
     tasks = []
     for trace_file in worker_args.trace_files:
@@ -82,10 +107,10 @@ def job_to_tasks(scheduler_args, worker_args):
                         'cache_size': cache_size,
                         **parameters,
                     }
-                for k, v in vars(worker_args).items():
-                    if k not in ['cache_sizes', 'cache_types', 'trace_files'] and v is not None:
-                        task[k] = v
-                tasks.append(task)
+                    for k, v in vars(worker_args).items():
+                        if k not in ['cache_sizes', 'cache_types', 'trace_files'] and v is not None:
+                            task[k] = v
+                    tasks.append(task)
     return scheduler_args, tasks
 
 
