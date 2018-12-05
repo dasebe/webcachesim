@@ -5,6 +5,8 @@ LFO:
     window: 10000000
     sample_size: 1000000
     sample_type: 2
+LFO2:
+  - window: 10000000
 LR:
   - sample_rate: 32
     threshold: 10000000

@@ -3,7 +3,6 @@
 //
 
 #include "simulation.h"
-
 #include <fstream>
 #include <string>
 #include <regex>
@@ -48,19 +47,18 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     }
 
     ifstream infile;
+    infile.open(trace_file);
+    if (!infile) {
+        cerr << "Exception opening/reading file"<<endl;
+        return {};
+    }
+
     uint64_t byte_req = 0, byte_hit = 0, obj_req = 0, obj_hit = 0;
     uint64_t t, id, size;
     uint64_t seg_byte_req = 0, seg_byte_hit = 0, seg_obj_req = 0, seg_obj_hit = 0;
     string seg_bhr;
     string seg_ohr;
 
-
-
-    infile.open(trace_file);
-    if (!infile) {
-        cerr << "Exception opening/reading file"<<endl;
-        return {};
-    }
 
     SimpleRequest req(0, 0);
     uint64_t seq = 0;
