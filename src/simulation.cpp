@@ -19,6 +19,7 @@
 #include "utils.h"
 
 using namespace std;
+using namespace chrono;
 
 
 map<string, string> _simulation(string trace_file, string cache_type, uint64_t cache_size,
@@ -62,7 +63,7 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
 
     SimpleRequest req(0, 0);
     uint64_t seq = 0;
-    auto t_now = chrono::system_clock::now();
+    auto t_now = system_clock::now();
     while (infile >> t >> id >> size) {
         if (uni_size)
             size = 1;
