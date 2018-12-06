@@ -8,7 +8,13 @@ LFO:
 LFO2:
   window: 10000000
 LR:
-  sample_rate: 32
+  sample_rate:
+    - 32
+    - 64
+    - 128
+    - 256
+    - 512
+    - 1024
   threshold: 10000000
   gradient_window:
 #    - 10
@@ -25,3 +31,4 @@ LR:
 #    - 0.01
 #    - 0.1
   n_past_intervals: 4
+  version: LRUK
