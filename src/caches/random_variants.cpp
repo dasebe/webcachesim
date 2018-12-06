@@ -157,31 +157,27 @@ void LRCache::admit(SimpleRequest &_req) {
 
 
 pair<uint64_t, uint32_t> LRCache::rank(const uint64_t & t) {
-    double past_intervals[max_n_past_intervals];
-    double future_interval;
     double max_future_interval;
     uint64_t max_key;
     uint32_t max_pos;
-    uint32_t i;
-    uint8_t j;
-    uint8_t past_timestamp_idx;
-    uint64_t past_interval;
+    uint64_t min_past_timestamp;
 
-//    static uint64_t tmp_i = 0;
     uint32_t rand_idx = _distribution(_generator) % meta_holder[0].size();
-    uint8_t n_sample;
+    uint n_sample;
     if (sample_rate < meta_holder[0].size())
         n_sample = sample_rate;
     else
         n_sample = meta_holder[0].size();
 
-    for (i = 0; i < n_sample; i++) {
+    for (uint32_t i = 0; i < n_sample; i++) {
         uint32_t pos = (i+rand_idx)%meta_holder[0].size();
         auto & meta = meta_holder[0][pos];
         //fill in past_interval
+        uint8_t j = 0;
+        double past_intervals[max_n_past_intervals];
         for (j = 0; j < meta._past_timestamp_idx && j < n_past_intervals; ++j) {
-            past_timestamp_idx = (meta._past_timestamp_idx - 1 - j) % n_past_intervals;
-            past_interval = t - meta._past_timestamps[past_timestamp_idx];
+            uint8_t past_timestamp_idx = (meta._past_timestamp_idx - 1 - j) % n_past_intervals;
+            uint64_t past_interval = t - meta._past_timestamps[past_timestamp_idx];
             if (past_interval >= threshold)
                 past_intervals[j] = log1p_threshold;
             else
@@ -190,14 +186,25 @@ pair<uint64_t, uint32_t> LRCache::rank(const uint64_t & t) {
         for (; j < n_past_intervals; j++)
             past_intervals[j] = log1p_threshold;
 
-        future_interval = 0;
+        double future_interval = 0;
         for (j = 0; j < n_past_intervals; j++)
             future_interval += weights[j] * past_intervals[j];
 
-        if (!i || future_interval > max_future_interval) {
+
+        uint8_t oldest_idx;
+        if (meta._past_timestamp_idx < n_past_intervals)
+            oldest_idx = 0;
+        else
+            oldest_idx = meta._past_timestamp_idx%n_past_intervals;
+        uint64_t past_timestamp = meta._past_timestamps[oldest_idx];
+
+
+        if (!i || future_interval > max_future_interval ||
+                (future_interval == max_future_interval && (past_timestamp < min_past_timestamp))) {
             max_future_interval = future_interval;
             max_key = meta._key;
             max_pos = pos;
+            min_past_timestamp = past_timestamp;
         }
 
         //statistics
