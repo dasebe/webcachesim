@@ -315,7 +315,7 @@ void LFOBCache::admit(SimpleRequest& _req) {
 
 pair<uint64_t, uint32_t> LFOBCache::rank(const uint64_t & t) {
     uint32_t rand_idx = _distribution(_generator) % meta_holder[0].size();
-    uint8_t n_sample;
+    uint n_sample;
     if (sample_rate < meta_holder[0].size())
         n_sample = sample_rate;
     else

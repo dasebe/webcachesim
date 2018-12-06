@@ -102,7 +102,7 @@ public:
 
 //    std::unordered_map<KeyT, uint64_t> unordered_future_timestamp;
     // sample_size
-    uint8_t sample_rate = 32;
+    uint sample_rate = 32;
     // threshold
     uint64_t threshold = 10000000;
     double log1p_threshold = log1p(threshold);
@@ -137,7 +137,7 @@ public:
         //set params
         for (auto& it: params) {
             if (it.first == "sample_rate") {
-                sample_rate = (uint8_t) stoi(it.second);
+                sample_rate = stoul(it.second);
             } else if (it.first == "threshold") {
                 threshold = stoull(it.second);
                 log1p_threshold = std::log1p(threshold);
