@@ -79,6 +79,8 @@ map<string, string> _simulation_lr(string trace_file, string cache_type, uint64_
         if (uni_size)
             size = 1;
 
+        DPRINTF("seq: %lu\n", seq);
+
         if (seq >= n_warmup)
             update_metric_req(byte_req, obj_req, size);
         update_metric_req(seg_byte_req, seg_obj_req, size);

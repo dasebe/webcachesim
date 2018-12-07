@@ -2,6 +2,13 @@
 #include <cassert>
 #include "gd_variants.h"
 
+#ifdef CDEBUG
+#include <vector>
+#include <algorithm>
+#endif
+
+using namespace std;
+
 /*
   GD: greedy dual eviction (base class)
 */
@@ -20,10 +27,22 @@ bool GreedyDualBase::lookup(SimpleRequest& req)
 
 void GreedyDualBase::admit(SimpleRequest& req)
 {
+#ifdef CDEBUG
+    {
+        DPRINTF("cache state: \n");
+        vector<uint64_t> cache_state;
+        for (auto &it: _cacheMap)
+            cache_state.push_back(it.first.id);
+        sort(cache_state.begin(), cache_state.end());
+        for (auto &it: cache_state)
+            DPRINTF("%lu\n", it);
+    }
+#endif
+
     const uint64_t size = req.get_size();
     // object feasible to store?
     if (size >= _cacheSize) {
-        LOG("error", _cacheSize, req.get_id(), size);
+        LOG("L", _cacheSize, req.get_id(), size);
         return;
     }
     // admit new object with new GF value
@@ -32,12 +51,23 @@ void GreedyDualBase::admit(SimpleRequest& req)
     LOG("a", ageVal, obj.id, obj.size);
     _cacheMap[obj] = _valueMap.emplace(ageVal, obj);
     _currentSize += size;
-    LOG("csize", _currentSize, 0, 0);
+//    LOG("csize", _currentSize, 0, 0);
     // check eviction needed
     while (_currentSize > _cacheSize) {
         evict();
     }
 
+#ifdef CDEBUG
+    {
+        DPRINTF("cache state: \n");
+        vector<uint64_t> cache_state;
+        for (auto &it: _cacheMap)
+            cache_state.push_back(it.first.id);
+        sort(cache_state.begin(), cache_state.end());
+        for (auto &it: cache_state)
+            DPRINTF("%lu\n", it);
+    }
+#endif
 }
 
 void GreedyDualBase::evict(SimpleRequest& req)
@@ -68,7 +98,7 @@ void GreedyDualBase::evict()
         LOG("e", lit->first, toDelObj.id, toDelObj.size);
         _currentSize -= toDelObj.size;
         _cacheMap.erase(toDelObj);
-        LOG("csize", _currentSize, 0, 0);
+//        LOG("csize", _currentSize, 0, 0);
         // update L
         _currentL = lit->first;
         _valueMap.erase(lit);

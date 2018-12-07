@@ -68,6 +68,8 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
         if (uni_size)
             size = 1;
 
+        DPRINTF("seq: %lu\n", seq);
+
         if (seq >= n_warmup)
             update_metric_req(byte_req, obj_req, size);
         update_metric_req(seg_byte_req, seg_obj_req, size);
@@ -117,7 +119,7 @@ map<string, string> simulation(string trace_file, string cache_type,
         return LFO::_simulation_lfo(trace_file, cache_type, cache_size, params);
     else if (cache_type == "LFO2")
         return _simulation_lfo2(trace_file, cache_type, cache_size, params);
-    else if (cache_type == "LR" || cache_type == "BeladySample")
+    else if (cache_type == "LR" || cache_type == "BeladySample" || cache_type == "LRUKSample")
         return _simulation_lr(trace_file, cache_type, cache_size, params);
     else
         return _simulation(trace_file, cache_type, cache_size, params);

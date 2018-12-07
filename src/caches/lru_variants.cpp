@@ -26,7 +26,7 @@ void LRUCache::admit(SimpleRequest& req)
     const uint64_t size = req.get_size();
     // object feasible to store?
     if (size > _cacheSize) {
-        LOG("L", _cacheSize, req.getId(), size);
+        LOG("L", _cacheSize, req._id, size);
         return;
     }
     // check eviction needed
