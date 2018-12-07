@@ -190,12 +190,7 @@ pair<uint64_t, uint32_t> LRCache::rank(const uint64_t & t) {
         for (j = 0; j < n_past_intervals; j++)
             future_interval += weights[j] * past_intervals[j];
 
-
-        uint8_t oldest_idx;
-        if (meta._past_timestamp_idx < n_past_intervals)
-            oldest_idx = 0;
-        else
-            oldest_idx = meta._past_timestamp_idx%n_past_intervals;
+        uint8_t oldest_idx = (meta._past_timestamp_idx - 1)%n_past_intervals;
         uint64_t past_timestamp = meta._past_timestamps[oldest_idx];
 
 
