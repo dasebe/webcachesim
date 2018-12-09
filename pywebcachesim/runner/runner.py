@@ -51,7 +51,7 @@ def runner_run(scheduler_args, tasks):
     else:
         # normal mode
         # use less CPU, otherwise some task may stuck in the middle,  causing the job not return
-        with multiprocessing.Pool(multiprocessing.cpu_count()//2) as pool:
+        with multiprocessing.Pool(multiprocessing.cpu_count()-4) as pool:
             for _ in tqdm.tqdm(pool.imap_unordered(run_task, tasks), total=len(tasks)):
                 pass
 
