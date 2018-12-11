@@ -6,12 +6,10 @@
 #define WEBCACHESIM_BELADY_H
 
 #include "cache.h"
-#include <boost/bimap.hpp>
-#include <boost/bimap/multiset_of.hpp>
 #include <utils.h>
 #include <unordered_map>
+#include <map>
 
-using namespace boost;
 using namespace std;
 
 /*
@@ -21,8 +19,9 @@ class BeladyCache : public Cache
 {
 protected:
     // list for recency order
-    bimap<bimaps::set_of<uint64_t>, bimaps::multiset_of<uint64_t, std::greater<uint64_t>>> _cacheMap;
-    unordered_map<uint64_t, uint64_t> object_size;
+    multimap<uint64_t , uint64_t, greater<uint64_t >> _valueMap;
+    // only store in-cache object, value is size
+    unordered_map<uint64_t, uint64_t> _cacheMap;
 
 public:
     BeladyCache()
