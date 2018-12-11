@@ -170,7 +170,8 @@ public:
     void evict() {};
     //sample, rank the 1st and return
     pair<uint64_t, uint32_t > rank(const uint64_t & t);
-    void try_train(double * gradients);
+    void try_train(uint64_t & t);
+    void sample(uint64_t &t);
 //    void try_gc(uint64_t t);
 };
 
