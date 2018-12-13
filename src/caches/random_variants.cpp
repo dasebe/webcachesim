@@ -96,6 +96,13 @@ void LRCache::sample(uint64_t &t) {
             double diff = future_interval + bias - log1p(meta._future_timestamp - t);
             mean_diff = 0.99 * mean_diff + 0.01 * abs(diff);
 
+            //print distribution
+            if (!i) {
+                for (uint k = 0; k < n_past_intervals; ++k)
+                    cout << past_intervals[k] << " ";
+                cout << log1p(meta._future_timestamp - t) << endl;
+            }
+
             //update gradient
             auto gradient_window_idx = meta._future_timestamp / gradient_window;
             if (gradient_window_idx >= pending_gradients.size())
@@ -163,6 +170,14 @@ void LRCache::sample(uint64_t &t) {
             //statistics
             double diff = future_interval + bias - log1p(meta._future_timestamp - t);
             mean_diff = 0.99 * mean_diff + 0.01 * abs(diff);
+
+
+            //print distribution
+            if (!i) {
+                for (uint k = 0; k < n_past_intervals; ++k)
+                    cout << past_intervals[k] << " ";
+                cout << log1p(meta._future_timestamp - t) << endl;
+            }
 
             //update gradient
             auto gradient_window_idx = meta._future_timestamp / gradient_window;
