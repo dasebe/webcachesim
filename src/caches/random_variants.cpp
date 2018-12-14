@@ -60,6 +60,13 @@ void LRCache::try_train(uint64_t &t) {
 }
 
 void LRCache::sample(uint64_t &t) {
+    //todo: sample rate
+//    cout<<meta_holder[0].size()<<" "<<meta_holder[1].size()<<endl;
+    bool log_flag = ((double) rand() / (RAND_MAX)) < 0.01;
+//    uint n_out_window = 0;
+
+
+
     //sample list 0
     if (!meta_holder[0].empty()) {
         uint32_t rand_idx = _distribution(_generator) % meta_holder[0].size();
@@ -98,12 +105,13 @@ void LRCache::sample(uint64_t &t) {
             double diff = future_interval + bias - log1p(meta._future_timestamp - t);
             mean_diff = 0.99 * mean_diff + 0.01 * abs(diff);
 
-//            //print distribution
-//            if (!i) {
-//                for (uint k = 0; k < n_past_intervals; ++k)
-//                    cout << past_intervals[k] << " ";
-//                cout << log1p(meta._future_timestamp - t) << endl;
-//            }
+            //print distribution
+            if (log_flag) {
+                cout << 0 <<" ";
+                for (uint k = 0; k < n_past_intervals; ++k)
+                    cout << past_intervals[k] << " ";
+                cout << log1p(meta._future_timestamp - t) << endl;
+            }
 
             //update gradient
             auto gradient_window_idx = meta._future_timestamp / gradient_window;
@@ -174,12 +182,13 @@ void LRCache::sample(uint64_t &t) {
             mean_diff = 0.99 * mean_diff + 0.01 * abs(diff);
 
 
-//            //print distribution
-//            if (!i) {
-//                for (uint k = 0; k < n_past_intervals; ++k)
-//                    cout << past_intervals[k] << " ";
-//                cout << log1p(meta._future_timestamp - t) << endl;
-//            }
+            //print distribution
+            if (log_flag) {
+                cout << 1 <<" ";
+                for (uint k = 0; k < n_past_intervals; ++k)
+                    cout << past_intervals[k] << " ";
+                cout << log1p(meta._future_timestamp - t) << endl;
+            }
 
             //update gradient
             auto gradient_window_idx = meta._future_timestamp / gradient_window;
@@ -283,6 +292,8 @@ pair<uint64_t, uint32_t> LRCache::rank(const uint64_t & t) {
     uint32_t max_pos;
     uint64_t min_past_timestamp;
 
+    bool log_flag = ((double) rand() / (RAND_MAX)) < 0.01;
+
     uint32_t rand_idx = _distribution(_generator) % meta_holder[0].size();
     uint n_sample;
     if (sample_rate < meta_holder[0].size())
@@ -321,6 +332,13 @@ pair<uint64_t, uint32_t> LRCache::rank(const uint64_t & t) {
             max_key = meta._key;
             max_pos = pos;
             min_past_timestamp = past_timestamp;
+        }
+
+        if (log_flag) {
+            cout << 2 <<" ";
+            for (uint k = 0; k < n_past_intervals; ++k)
+                cout << past_intervals[k] << " ";
+            cout << log1p(meta._future_timestamp - t) << endl;
         }
 
         //statistics
