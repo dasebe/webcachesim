@@ -3,6 +3,7 @@
 //
 
 #include "random_variants.h"
+#include <algorithm>
 
 using namespace std;
 
@@ -60,19 +61,29 @@ void LRCache::try_train(uint64_t &t) {
 
 void LRCache::sample(uint64_t &t) {
     //todo: sample rate
+//    cout<<meta_holder[0].size()<<" "<<meta_holder[1].size()<<endl;
+
+//    uint n_out_window = 0;
+
+
 
     //sample list 0
     if (meta_holder[0].size()) {
         uint32_t rand_idx = _distribution(_generator) % meta_holder[0].size();
-        uint n_sample;
-        if (sample_rate < meta_holder[0].size())
-            n_sample = sample_rate;
-        else
-            n_sample = meta_holder[0].size();
+        uint n_sample = min(sample_rate*meta_holder[0].size()/(meta_holder[0].size()+meta_holder[1].size()),
+                meta_holder[0].size());
+//        cout<<n_sample<<" ";
 
         for (uint32_t i = 0; i < n_sample; i++) {
             uint32_t pos = (i + rand_idx) % meta_holder[0].size();
             auto &meta = meta_holder[0][pos];
+
+//            uint8_t oldest_idx = (meta._past_timestamp_idx - (uint8_t) 1)%n_past_intervals;
+//            uint64_t & past_timestamp = meta._past_timestamps[oldest_idx];
+//            if (past_timestamp + threshold < t) {
+//                ++n_out_window;
+//            }
+
 
             //fill in past_interval
             uint8_t j = 0;
@@ -96,12 +107,12 @@ void LRCache::sample(uint64_t &t) {
             double diff = future_interval + bias - log1p(meta._future_timestamp - t);
             mean_diff = 0.99 * mean_diff + 0.01 * abs(diff);
 
-            //print distribution
-            if (!i) {
-                for (uint k = 0; k < n_past_intervals; ++k)
-                    cout << past_intervals[k] << " ";
-                cout << log1p(meta._future_timestamp - t) << endl;
-            }
+//            //print distribution
+//            if (!i) {
+//                for (uint k = 0; k < n_past_intervals; ++k)
+//                    cout << past_intervals[k] << " ";
+//                cout << log1p(meta._future_timestamp - t) << endl;
+//            }
 
             //update gradient
             auto gradient_window_idx = meta._future_timestamp / gradient_window;
@@ -115,14 +126,14 @@ void LRCache::sample(uint64_t &t) {
         }
     }
 
+//    cout<<n_out_window<<endl;
+
     //sample list 1
     if (meta_holder[1].size()){
         uint32_t rand_idx = _distribution(_generator) % meta_holder[1].size();
-        uint n_sample;
-        if (sample_rate < meta_holder[1].size())
-            n_sample = sample_rate;
-        else
-            n_sample = meta_holder[1].size();
+        uint n_sample = min(sample_rate*meta_holder[1].size()/(meta_holder[0].size()+meta_holder[1].size()),
+                            meta_holder[1].size());
+//        cout<<n_sample<<endl;
 
         for (uint32_t i = 0; i < n_sample; i++) {
             //garbage collection
@@ -172,12 +183,12 @@ void LRCache::sample(uint64_t &t) {
             mean_diff = 0.99 * mean_diff + 0.01 * abs(diff);
 
 
-            //print distribution
-            if (!i) {
-                for (uint k = 0; k < n_past_intervals; ++k)
-                    cout << past_intervals[k] << " ";
-                cout << log1p(meta._future_timestamp - t) << endl;
-            }
+//            //print distribution
+//            if (!i) {
+//                for (uint k = 0; k < n_past_intervals; ++k)
+//                    cout << past_intervals[k] << " ";
+//                cout << log1p(meta._future_timestamp - t) << endl;
+//            }
 
             //update gradient
             auto gradient_window_idx = meta._future_timestamp / gradient_window;
