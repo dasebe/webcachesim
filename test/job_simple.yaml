@@ -4,11 +4,7 @@ scheduler_args:
 worker_args:
   cache_types:
     - LRU
-    - Belady
   trace_files:
     'test.tr':
     #cache_sizes
-      - 2
-      - 5
-      - 10
-      - 20
+      - 500
