@@ -2,23 +2,25 @@
 // Created by zhenyus on 11/8/18.
 //
 
-#include "simulation_belady.h"
+#include <chrono>
+#include "simulation_future.h"
+#include "random_variants.h"
 #include <fstream>
 #include "request.h"
-#include "lru_variants.h"
 #include "annotate.h"
-#include <chrono>
 #include "utils.h"
 
+
 using namespace std;
+using namespace chrono;
 
 
 
-map<string, string> _simulation_belady(string trace_file, string cache_type, uint64_t cache_size,
-                                       map<string, string> params){
+map<string, string> _simulation_future(string trace_file, string cache_type, uint64_t cache_size,
+                                    map<string, string> params){
     //annotate a file
+    //not necessary to annotate, but it's easier
     annotate(trace_file);
-
 
     // create cache
     unique_ptr<Cache> webcache = move(Cache::create_unique(cache_type));
@@ -32,39 +34,52 @@ map<string, string> _simulation_belady(string trace_file, string cache_type, uin
 
     uint64_t n_warmup = 0;
     bool uni_size = false;
-    uint64_t window = 1000000;
-    for (auto& kv: params) {
-        webcache->setPar(kv.first, kv.second);
-        if (kv.first == "n_warmup")
-            n_warmup = stoull(kv.second);
-        if (kv.first == "uni_size")
-            uni_size = static_cast<bool>(stoi(kv.second));
-        if (kv.first == "segment_window")
-            window = stoull(kv.second);
+    uint64_t segment_window = 1000000;
+
+    for (auto it = params.cbegin(); it != params.cend();) {
+        if (it->first == "n_warmup") {
+            n_warmup = stoull(it->second);
+            it = params.erase(it);
+        } else if (it->first == "uni_size") {
+            uni_size = static_cast<bool>(stoi(it->second));
+            it = params.erase(it);
+        } else if (it->first == "segment_window") {
+            segment_window = stoull((it->second));
+            it = params.erase(it);
+        } else {
+            ++it;
+        }
     }
 
-    //suppose already annotated
+    webcache->init_with_params(params);
+
     ifstream infile;
-    uint64_t byte_req = 0, byte_hit = 0, obj_req = 0, obj_hit = 0;
-    uint64_t t, id, size, next_t;
-    uint64_t seg_byte_req = 0, seg_byte_hit = 0, seg_obj_req = 0, seg_obj_hit = 0;
-    string seg_bhr;
-    string seg_ohr;
-
     trace_file += ".ant";
-
     infile.open(trace_file);
     if (!infile) {
         cerr << "exception opening/reading file"<<endl;
         return {};
     }
 
+    //suppose already annotated
+    uint64_t byte_req = 0, byte_hit = 0, obj_req = 0, obj_hit = 0;
+    uint64_t t, id, size, next_t;
+    uint64_t seg_byte_req = 0, seg_byte_hit = 0, seg_obj_req = 0, seg_obj_hit = 0;
+    string seg_bhr;
+    string seg_ohr;
+
+
+
+    cerr<<"simulating"<<endl;
     AnnotatedRequest req(0, 0, 0, 0);
     uint64_t seq = 0;
-    auto t_now = chrono::system_clock::now();
+    auto t_now = system_clock::now();
+
     while (infile >> t >> id >> size >> next_t) {
         if (uni_size)
             size = 1;
+
+        DPRINTF("seq: %lu\n", seq);
 
         if (seq >= n_warmup)
             update_metric_req(byte_req, obj_req, size);
@@ -81,7 +96,7 @@ map<string, string> _simulation_belady(string trace_file, string cache_type, uin
 
         ++seq;
 
-        if (!(seq%window)) {
+        if (!(seq%segment_window)) {
             auto _t_now = chrono::system_clock::now();
             cerr<<"delta t: "<<chrono::duration_cast<std::chrono::milliseconds>(_t_now - t_now).count()/1000.<<endl;
             cerr<<"seq: " << seq << endl;

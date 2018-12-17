@@ -10,8 +10,9 @@
 
 /*
  * single thread simulation. Returns results.
+ * data contains label of next_t
  */
-std::map<std::string, std::string> _simulation_lr(std::string trace_file, std::string cache_type,
+std::map<std::string, std::string> _simulation_future(std::string trace_file, std::string cache_type,
                                                    uint64_t cache_size, std::map<std::string, std::string> params);
 
 #endif //WEBCACHESIM_SIMULATION_LR_H

@@ -11,10 +11,9 @@
 #include "random_variants.h"
 #include "ucb.h"
 #include "request.h"
-#include "simulation_belady.h"
 #include "simulation_lfo.h"
 #include "simulation_lfo2.h"
-#include "simulation_lr.h"
+#include "simulation_future.h"
 #include <chrono>
 #include "utils.h"
 
@@ -113,14 +112,12 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
 
 map<string, string> simulation(string trace_file, string cache_type,
         uint64_t cache_size, map<string, string> params){
-    if (cache_type == "Belady")
-        return _simulation_belady(trace_file, cache_type, cache_size, params);
+    if (cache_type == "LR" || cache_type == "Belady" || cache_type == "BeladySample" || cache_type == "LRUKSample")
+        return _simulation_future(trace_file, cache_type, cache_size, params);
     else if (cache_type == "LFO")
         return LFO::_simulation_lfo(trace_file, cache_type, cache_size, params);
     else if (cache_type == "LFO2")
         return _simulation_lfo2(trace_file, cache_type, cache_size, params);
-    else if (cache_type == "LR" || cache_type == "BeladySample" || cache_type == "LRUKSample")
-        return _simulation_lr(trace_file, cache_type, cache_size, params);
     else
         return _simulation(trace_file, cache_type, cache_size, params);
 }
