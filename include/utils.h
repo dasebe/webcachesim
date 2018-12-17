@@ -32,5 +32,6 @@ namespace std {
 #define update_metric_req(byte_metric, object_metric, size) \
     {byte_metric += size; ++object_metric;}
 
+//#define LOG_SAMPLE_RATE 0.01
 
 #endif //WEBCACHESIM_UTILS_H

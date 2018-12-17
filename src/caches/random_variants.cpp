@@ -4,10 +4,10 @@
 
 #include "random_variants.h"
 #include <algorithm>
+#include "utils.h"
 
 using namespace std;
 
-#define LOG_SAMPLE_RATE 0.01
 
 bool RandomCache::lookup(SimpleRequest &req) {
     return key_space.exist(req._id);
@@ -64,7 +64,9 @@ void LRCache::try_train(uint64_t &t) {
 void LRCache::sample(uint64_t &t) {
     //todo: sample rate
 //    cout<<meta_holder[0].size()<<" "<<meta_holder[1].size()<<endl;
+#ifdef LOG_SAMPLE_RATE
     bool log_flag = ((double) rand() / (RAND_MAX)) < LOG_SAMPLE_RATE;
+#endif
 //    uint n_out_window = 0;
 
 
@@ -107,6 +109,7 @@ void LRCache::sample(uint64_t &t) {
             double diff = future_interval + bias - log1p(meta._future_timestamp - t);
             mean_diff = 0.99 * mean_diff + 0.01 * abs(diff);
 
+#ifdef LOG_SAMPLE_RATE
             //print distribution
             if (log_flag) {
                 cout << 0 <<" ";
@@ -114,6 +117,7 @@ void LRCache::sample(uint64_t &t) {
                     cout << past_intervals[k] << " ";
                 cout << log1p(meta._future_timestamp - t) << endl;
             }
+#endif
 
             //update gradient
             auto gradient_window_idx = meta._future_timestamp / gradient_window;
@@ -184,6 +188,7 @@ void LRCache::sample(uint64_t &t) {
             mean_diff = 0.99 * mean_diff + 0.01 * abs(diff);
 
 
+#ifdef LOG_SAMPLE_RATE
             //print distribution
             if (log_flag) {
                 cout << 1 <<" ";
@@ -191,6 +196,7 @@ void LRCache::sample(uint64_t &t) {
                     cout << past_intervals[k] << " ";
                 cout << log1p(meta._future_timestamp - t) << endl;
             }
+#endif
 
             //update gradient
             auto gradient_window_idx = meta._future_timestamp / gradient_window;

@@ -2,7 +2,7 @@
 // Created by zhenyus on 12/17/18.
 //
 
-#import "lruk_sample.h"
+#include "lruk_sample.h"
 
 bool LRUKSampleCache::lookup(SimpleRequest &_req) {
     auto & req = static_cast<AnnotatedRequest &>(_req);

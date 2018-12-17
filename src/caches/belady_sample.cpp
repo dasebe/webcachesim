@@ -3,13 +3,16 @@
 //
 
 #include "belady_sample.h"
+#include "utils.h"
 
 using namespace std;
 
-#define LOG_SAMPLE_RATE 0.01
 
 void BeladySampleCache::sample(uint64_t &t) {
+#ifdef LOG_SAMPLE_RATE
     bool log_flag = ((double) rand() / (RAND_MAX)) < LOG_SAMPLE_RATE;
+#endif
+
     //sample list 0
     if (!meta_holder[0].empty()) {
         uint32_t rand_idx = _distribution(_generator) % meta_holder[0].size();
@@ -39,6 +42,7 @@ void BeladySampleCache::sample(uint64_t &t) {
             for (; j < n_past_intervals; j++)
                 past_intervals[j] = log1p_threshold;
 
+#ifdef LOG_SAMPLE_RATE
             //print distribution
             if (log_flag) {
                 cout << 0 <<" ";
@@ -46,6 +50,7 @@ void BeladySampleCache::sample(uint64_t &t) {
                     cout << past_intervals[k] << " ";
                 cout << log1p(meta._future_timestamp - t) << endl;
             }
+#endif
         }
     }
 
