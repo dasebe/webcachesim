@@ -3,7 +3,6 @@
 //
 
 #include "belady_sample.h"
-//#include <algorithm>
 
 using namespace std;
 
@@ -14,8 +13,7 @@ void BeladySampleCache::sample(uint64_t &t) {
     //sample list 0
     if (!meta_holder[0].empty()) {
         uint32_t rand_idx = _distribution(_generator) % meta_holder[0].size();
-        uint n_sample = min(sample_rate*meta_holder[0].size()/(meta_holder[0].size()+meta_holder[1].size()),
-                meta_holder[0].size());
+        uint n_sample = min(sample_rate, (uint) meta_holder[0].size());
 
         for (uint32_t i = 0; i < n_sample; i++) {
             uint32_t pos = (i + rand_idx) % meta_holder[0].size();
