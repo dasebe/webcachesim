@@ -4,6 +4,7 @@ from pywebcachesim.simulation import simulation
 from pywebcachesim.runner import parser
 import timeit
 from pymongo import MongoClient
+from collections import OrderedDict
 
 
 def run_task(args):
@@ -41,12 +42,14 @@ def run_task(args):
             "worker_extra_args": worker_extra_args,
             "task": task,
         }
+        # sort second level keys
+        for k in record:
+            record[k] = dict(OrderedDict(sorted(record[k].items())))
         uri = (f'mongodb://{scheduler_args["dbuser"]}:{scheduler_args["dbpassword"]}@{scheduler_args["dburl"]}:'
                f'{scheduler_args["dbport"]}/{scheduler_args["dbname"]}')
         client = MongoClient(uri)
         db = client.get_database()
         collection = db[scheduler_args["dbcollection"]]
-        # todo: the task must sorted in unique order in order to make db unique key
         collection.replace_one({'task': record["task"]}, record, upsert=True)
 
     return res
