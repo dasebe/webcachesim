@@ -34,7 +34,7 @@ map<string, string> _simulation_lr(string trace_file, string cache_type, uint64_
 
     uint64_t n_warmup = 0;
     bool uni_size = false;
-    uint64_t window = 1000000;
+    uint64_t segment_window = 1000000;
 
     for (auto it = params.cbegin(); it != params.cend();) {
         if (it->first == "n_warmup") {
@@ -44,7 +44,7 @@ map<string, string> _simulation_lr(string trace_file, string cache_type, uint64_
             uni_size = static_cast<bool>(stoi(it->second));
             it = params.erase(it);
         } else if (it->first == "segment_window") {
-            window = stoull((it->second));
+            segment_window = stoull((it->second));
             it = params.erase(it);
         } else {
             ++it;
@@ -96,7 +96,7 @@ map<string, string> _simulation_lr(string trace_file, string cache_type, uint64_
 
         ++seq;
 
-        if (!(seq%window)) {
+        if (!(seq%segment_window)) {
             auto _t_now = chrono::system_clock::now();
             cerr<<"delta t: "<<chrono::duration_cast<std::chrono::milliseconds>(_t_now - t_now).count()/1000.<<endl;
             cerr<<"seq: " << seq << endl;

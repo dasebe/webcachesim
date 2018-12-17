@@ -14,7 +14,7 @@ set(LIB_SOURCE
         simulation_lfo2.cpp
         simulation_belady.cpp
         simulation_lr.cpp
-        caches/annotate.cpp caches/ucb.cpp)
+        caches/annotate.cpp caches/ucb.cpp caches/belady_sample.cpp)
 #message(123)
 
 find_package(Boost)

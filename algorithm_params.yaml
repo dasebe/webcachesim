@@ -47,3 +47,6 @@ LR:
   version: balance
 LRUKSample:
   sample_rate: 32
+BeladySample:
+  sample_rate: 32
+  threshold: 10000000

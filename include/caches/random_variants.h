@@ -92,24 +92,17 @@ public:
 class LRCache : public Cache
 {
 public:
-    // from id to intervals
-//    std::unordered_map<std::pair<uint64_t, uint64_t >, std::list<uint64_t> > past_timestamps;
-//    boost::bimap<boost::bimaps::set_of<KeyT>, boost::bimaps::multiset_of<uint64_t>> future_timestamp;
-//    map<uint64_t, set<uint64_t>> gc_timestamp;
     //key -> (0/1 list, idx)
     unordered_map<uint64_t, pair<bool, uint32_t>> key_map;
     vector<LRMeta> meta_holder[2];
 
-//    std::unordered_map<KeyT, uint64_t> unordered_future_timestamp;
     // sample_size
     uint sample_rate = 32;
     // threshold
     uint64_t threshold = 10000000;
     double log1p_threshold = log1p(threshold);
-    // batch_size
-    uint64_t batch_size = 10;
     // learning_rate
-    double learning_rate = 0.000001;
+    double learning_rate = 0.0001;
     // n_past_interval
     uint8_t n_past_intervals = 4;
 
@@ -141,8 +134,6 @@ public:
             } else if (it.first == "threshold") {
                 threshold = stoull(it.second);
                 log1p_threshold = std::log1p(threshold);
-            } else if (it.first == "batch_size") {
-                batch_size = stoull(it.second);
             } else if (it.first == "learning_rate") {
                 learning_rate = stod(it.second);
             } else if (it.first == "n_past_intervals") {
@@ -172,7 +163,6 @@ public:
     pair<uint64_t, uint32_t > rank(const uint64_t & t);
     void try_train(uint64_t & t);
     void sample(uint64_t &t);
-//    void try_gc(uint64_t t);
 };
 
 static Factory<LRCache> factoryLR("LR");
@@ -231,42 +221,4 @@ public:
 };
 
 static Factory<LRUKSampleCache> factoryLRUKSample("LRUKSample");
-
-
-class BeladySampleCache : public RandomCache
-{
-public:
-    unordered_map<uint64_t, uint64_t > future_timestamp;
-    // sample_size
-    uint64_t sample_rate=32;
-    // threshold
-    uint64_t threshold=10000000;
-    double log1p_threshold=log1p(threshold);
-
-    BeladySampleCache()
-        : RandomCache()
-    {
-    }
-
-    void init_with_params(map<string, string> params) override {
-        //set params
-        for (auto& it: params) {
-            if (it.first == "sample_rate") {
-                sample_rate = (uint8_t) stoi(it.second);
-            } else if (it.first == "threshold") {
-                threshold = stoull(it.second);
-                log1p_threshold = std::log1p(threshold);
-            } else {
-                cerr << "unrecognized parameter: " << it.first << endl;
-            }
-        }
-    }
-
-    virtual bool lookup(SimpleRequest& req);
-    virtual void admit(SimpleRequest& req);
-    virtual void evict();
-};
-
-static Factory<BeladySampleCache> factoryBeladySample("BeladySample");
-
 #endif //WEBCACHESIM_RANDOM_VARIANTS_H

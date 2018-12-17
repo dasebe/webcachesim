@@ -60,19 +60,11 @@ void LRCache::try_train(uint64_t &t) {
 }
 
 void LRCache::sample(uint64_t &t) {
-    //todo: sample rate
-//    cout<<meta_holder[0].size()<<" "<<meta_holder[1].size()<<endl;
-
-//    uint n_out_window = 0;
-
-
-
     //sample list 0
-    if (meta_holder[0].size()) {
+    if (!meta_holder[0].empty()) {
         uint32_t rand_idx = _distribution(_generator) % meta_holder[0].size();
         uint n_sample = min(sample_rate*meta_holder[0].size()/(meta_holder[0].size()+meta_holder[1].size()),
                 meta_holder[0].size());
-//        cout<<n_sample<<" ";
 
         for (uint32_t i = 0; i < n_sample; i++) {
             uint32_t pos = (i + rand_idx) % meta_holder[0].size();
@@ -83,7 +75,6 @@ void LRCache::sample(uint64_t &t) {
 //            if (past_timestamp + threshold < t) {
 //                ++n_out_window;
 //            }
-
 
             //fill in past_interval
             uint8_t j = 0;
@@ -345,8 +336,6 @@ pair<uint64_t, uint32_t> LRCache::rank(const uint64_t & t) {
     }
 
     return {max_key, max_pos};
-//    key_space.erase(max_key);
-//    _currentSize -= max_key.second;
 }
 
 void LRCache::evict(const uint64_t & t) {
@@ -554,59 +543,4 @@ void LRUKSampleCache::evict(const uint64_t & t) {
     it->second.first = 1;
     it->second.second = new_pos;
     _currentSize -= meta_holder[1][new_pos]._size;
-}
-
-
-bool BeladySampleCache::lookup(SimpleRequest &_req) {
-    auto & req = static_cast<AnnotatedRequest &>(_req);
-    //add timestamp
-
-    //update future timestamp. Can look only threshold far
-    auto it = future_timestamp.find(req._id);
-    if (it == future_timestamp.end()) {
-        future_timestamp.insert({req._id,  min(req._next_t, req._t + threshold)});
-    } else {
-        it->second = min(req._next_t, req._t + threshold);
-    }
-
-    return RandomCache::lookup(req);
-}
-
-void BeladySampleCache::admit(SimpleRequest &_req) {
-    auto & req = static_cast<AnnotatedRequest &>(_req);
-    const uint64_t size = req._size;
-    // object feasible to store?
-    if (size > _cacheSize) {
-        LOG("L", _cacheSize, req.get_id(), size);
-        return;
-    }
-    // admit new object
-    key_space.insert(req._id);
-    object_size.insert({req._id, req._size});
-    _currentSize += size;
-
-    // check eviction needed
-    while (_currentSize > _cacheSize) {
-        evict();
-    }
-}
-
-void BeladySampleCache::evict() {
-    static uint64_t future_interval;
-    static uint64_t max_future_interval;
-    static uint64_t max_key;
-
-    for (int i = 0; i < sample_rate; i++) {
-        const auto & key = key_space.pickRandom();
-        //todo: use ground truth
-        future_interval = future_timestamp.find(key)->second;
-
-        if (!i || future_interval > max_future_interval) {
-            max_future_interval = future_interval;
-            max_key = key;
-        }
-    }
-
-    key_space.erase(max_key);
-    _currentSize -= object_size.find(max_key)->second;
 }
