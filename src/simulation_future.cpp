@@ -53,14 +53,11 @@ map<string, string> _simulation_future(string trace_file, string cache_type, uin
 
     webcache->init_with_params(params);
 
-    ifstream infile;
-    trace_file += ".ant";
-    infile.open(trace_file);
+    ifstream infile(trace_file+".ant");
     if (!infile) {
-        cerr << "exception opening/reading file"<<endl;
+        cerr << "exception opening/reading file" << endl;
         return {};
     }
-
     //suppose already annotated
     uint64_t byte_req = 0, byte_hit = 0, obj_req = 0, obj_hit = 0;
     uint64_t t, id, size, next_t;
