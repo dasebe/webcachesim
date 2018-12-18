@@ -98,8 +98,8 @@ map<string, string> _simulation_lr_belady(string trace_file, string cache_type, 
 //        if (seq <= sync_window) {
         {
             //update model
-            if (seq && !(seq % sync_window)) {
-                cerr << "training model" << endl;
+//            if (seq && !(seq % sync_window)) {
+//                cerr << "training model" << endl;
 //                if (seq == sync_window){
 //                    cerr<<"copying cache state A -> B"<<endl;
 //                    webcacheb->_currentSize = webcachea->_currentSize;
@@ -114,7 +114,7 @@ map<string, string> _simulation_lr_belady(string trace_file, string cache_type, 
 //                    webcachea->meta_holder[0] = webcacheb->meta_holder[0];
 //                    webcachea->meta_holder[1] = webcacheb->meta_holder[1];
 //                }
-            }
+//            }
 
             if (seq == n_warmup) {
                 cerr<<"reset shadow metric to align with brighten"<<endl;
