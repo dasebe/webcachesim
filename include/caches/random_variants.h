@@ -155,6 +155,7 @@ public:
     }
 
     virtual bool lookup(SimpleRequest& req);
+    bool lookup_without_update(SimpleRequest &_req);
     virtual void admit(SimpleRequest& req);
     virtual void evict(const uint64_t & t);
     void evict(SimpleRequest & req) {};
@@ -163,6 +164,7 @@ public:
     pair<uint64_t, uint32_t > rank(const uint64_t & t);
     void try_train(uint64_t & t);
     void sample(uint64_t &t);
+    void sample_without_update(uint64_t &t);
 };
 
 static Factory<LRCache> factoryLR("LR");

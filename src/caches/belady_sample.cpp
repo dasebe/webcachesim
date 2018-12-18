@@ -58,6 +58,72 @@ void BeladySampleCache::sample(uint64_t &t) {
 
 }
 
+void BeladySampleCache::sample(uint64_t &t, vector<Gradient> & ext_pending_gradients,
+        double * ext_weights, double & ext_bias, uint64_t & ext_gradient_window) {
+#ifdef LOG_SAMPLE_RATE
+    bool log_flag = ((double) rand() / (RAND_MAX)) < LOG_SAMPLE_RATE;
+#endif
+
+    //sample list 0
+    if (!meta_holder[0].empty()) {
+        uint32_t rand_idx = _distribution(_generator) % meta_holder[0].size();
+        uint n_sample = min(sample_rate, (uint) meta_holder[0].size());
+
+        for (uint32_t i = 0; i < n_sample; i++) {
+            uint32_t pos = (i + rand_idx) % meta_holder[0].size();
+            auto &meta = meta_holder[0][pos];
+
+//            uint8_t oldest_idx = (meta._past_timestamp_idx - (uint8_t) 1)%n_past_intervals;
+//            uint64_t & past_timestamp = meta._past_timestamps[oldest_idx];
+//            if (past_timestamp + threshold < t) {
+//                ++n_out_window;
+//            }
+
+            //fill in past_interval
+            uint8_t j = 0;
+            double past_intervals[max_n_past_intervals];
+            for (j = 0; j < meta._past_timestamp_idx && j < n_past_intervals; ++j) {
+                uint8_t past_timestamp_idx = (meta._past_timestamp_idx - 1 - j) % n_past_intervals;
+                uint64_t past_interval = t - meta._past_timestamps[past_timestamp_idx];
+                if (past_interval >= threshold)
+                    past_intervals[j] = log1p_threshold;
+                else
+                    past_intervals[j] = log1p(past_interval);
+            }
+            for (; j < n_past_intervals; j++)
+                past_intervals[j] = log1p_threshold;
+
+#ifdef LOG_SAMPLE_RATE
+            //print distribution
+            if (log_flag) {
+                cout << 0 <<" ";
+                for (uint k = 0; k < n_past_intervals; ++k)
+                    cout << past_intervals[k] << " ";
+                cout << log1p(meta._future_timestamp - t) << endl;
+            }
+#endif
+            double future_interval = 0;
+            for (j = 0; j < n_past_intervals; j++)
+                future_interval += ext_weights[j] * past_intervals[j];
+
+            //statistics
+            double diff = future_interval + ext_bias - log1p(meta._future_timestamp - t);
+            //update gradient
+            auto gradient_window_idx = meta._future_timestamp / ext_gradient_window;
+            if (gradient_window_idx >= ext_pending_gradients.size())
+                ext_pending_gradients.resize(gradient_window_idx + 1);
+            auto &gradient = ext_pending_gradients[gradient_window_idx];
+            for (uint k = 0; k < n_past_intervals; ++k)
+                gradient.weights[k] += diff * past_intervals[k];
+            gradient.bias += diff;
+            ++gradient.n_update;
+        }
+    }
+
+//    cout<<n_out_window<<endl;
+
+}
+
 
 bool BeladySampleCache::lookup(SimpleRequest &_req) {
     auto & req = dynamic_cast<AnnotatedRequest &>(_req);
@@ -79,6 +145,29 @@ bool BeladySampleCache::lookup(SimpleRequest &_req) {
     }
     return false;
 }
+
+bool BeladySampleCache::lookup(SimpleRequest &_req, vector<Gradient> & ext_pending_gradients,
+        double * ext_weights, double & ext_bias, uint64_t & ext_gradient_window) {
+    auto & req = dynamic_cast<AnnotatedRequest &>(_req);
+
+    //todo: deal with size consistently
+    sample(req._t, ext_pending_gradients, ext_weights, ext_bias, ext_gradient_window);
+
+    auto it = key_map.find(req._id);
+    if (it != key_map.end()) {
+        //update past timestamps
+        bool & list_idx = it->second.first;
+        uint32_t & pos_idx = it->second.second;
+        meta_holder[list_idx][pos_idx].append_past_timestamp(req._t);
+
+        //update future timestamp. Can look only threshold far
+        meta_holder[list_idx][pos_idx]._future_timestamp = min(req._next_t, req._t + threshold);
+
+        return !list_idx;
+    }
+    return false;
+}
+
 
 void BeladySampleCache::admit(SimpleRequest &_req) {
     AnnotatedRequest & req = static_cast<AnnotatedRequest &>(_req);

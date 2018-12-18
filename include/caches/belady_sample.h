@@ -59,6 +59,8 @@ public:
     }
 
     virtual bool lookup(SimpleRequest& req);
+    bool lookup(SimpleRequest &_req, vector<Gradient> & ext_pending_gradients,
+            double * ext_weights, double & ext_bias, uint64_t & ext_gradient_window);
     virtual void admit(SimpleRequest& req);
     virtual void evict(const uint64_t & t);
     void evict(SimpleRequest & req) {};
@@ -67,6 +69,8 @@ public:
     pair<uint64_t, uint32_t > rank(const uint64_t & t);
     void try_train(uint64_t & t);
     void sample(uint64_t &t);
+    void sample(uint64_t &t, vector<Gradient> & ext_pending_gradients,
+        double * ext_weights, double & ext_bias, uint64_t & ext_gradient_window);
 };
 
 static Factory<BeladySampleCache> factoryBeladySample("BeladySample");

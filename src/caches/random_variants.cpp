@@ -62,7 +62,6 @@ void LRCache::try_train(uint64_t &t) {
 }
 
 void LRCache::sample(uint64_t &t) {
-    //todo: sample rate
 //    cout<<meta_holder[0].size()<<" "<<meta_holder[1].size()<<endl;
 #ifdef LOG_SAMPLE_RATE
     bool log_flag = ((double) rand() / (RAND_MAX)) < LOG_SAMPLE_RATE;
@@ -101,14 +100,6 @@ void LRCache::sample(uint64_t &t) {
             for (; j < n_past_intervals; j++)
                 past_intervals[j] = log1p_threshold;
 
-            double future_interval = 0;
-            for (j = 0; j < n_past_intervals; j++)
-                future_interval += weights[j] * past_intervals[j];
-
-            //statistics
-            double diff = future_interval + bias - log1p(meta._future_timestamp - t);
-            mean_diff = 0.99 * mean_diff + 0.01 * abs(diff);
-
 #ifdef LOG_SAMPLE_RATE
             //print distribution
             if (log_flag) {
@@ -118,6 +109,13 @@ void LRCache::sample(uint64_t &t) {
                 cout << log1p(meta._future_timestamp - t) << endl;
             }
 #endif
+            double future_interval = 0;
+            for (j = 0; j < n_past_intervals; j++)
+                future_interval += weights[j] * past_intervals[j];
+
+            //statistics
+            double diff = future_interval + bias - log1p(meta._future_timestamp - t);
+            mean_diff = 0.99 * mean_diff + 0.01 * abs(diff);
 
             //update gradient
             auto gradient_window_idx = meta._future_timestamp / gradient_window;
@@ -209,10 +207,113 @@ void LRCache::sample(uint64_t &t) {
             ++gradient.n_update;
         }
     }
-
-
 }
 
+void LRCache::sample_without_update(uint64_t &t) {
+#ifdef LOG_SAMPLE_RATE
+    bool log_flag = ((double) rand() / (RAND_MAX)) < LOG_SAMPLE_RATE;
+#endif
+
+    //sample list 0
+    if (!meta_holder[0].empty()) {
+        uint32_t rand_idx = _distribution(_generator) % meta_holder[0].size();
+        uint n_sample = min(sample_rate*meta_holder[0].size()/(meta_holder[0].size()+meta_holder[1].size()),
+                meta_holder[0].size());
+
+        for (uint32_t i = 0; i < n_sample; i++) {
+            uint32_t pos = (i + rand_idx) % meta_holder[0].size();
+            auto &meta = meta_holder[0][pos];
+
+//            uint8_t oldest_idx = (meta._past_timestamp_idx - (uint8_t) 1)%n_past_intervals;
+//            uint64_t & past_timestamp = meta._past_timestamps[oldest_idx];
+//            if (past_timestamp + threshold < t) {
+//                ++n_out_window;
+//            }
+
+            //fill in past_interval
+            uint8_t j = 0;
+            double past_intervals[max_n_past_intervals];
+            for (j = 0; j < meta._past_timestamp_idx && j < n_past_intervals; ++j) {
+                uint8_t past_timestamp_idx = (meta._past_timestamp_idx - 1 - j) % n_past_intervals;
+                uint64_t past_interval = t - meta._past_timestamps[past_timestamp_idx];
+                if (past_interval >= threshold)
+                    past_intervals[j] = log1p_threshold;
+                else
+                    past_intervals[j] = log1p(past_interval);
+            }
+            for (; j < n_past_intervals; j++)
+                past_intervals[j] = log1p_threshold;
+
+#ifdef LOG_SAMPLE_RATE
+            //print distribution
+            if (log_flag) {
+                cout << 1 <<" ";
+                for (uint k = 0; k < n_past_intervals; ++k)
+                    cout << past_intervals[k] << " ";
+                cout << log1p(meta._future_timestamp - t) << endl;
+            }
+#endif
+        }
+    }
+
+    //sample list 1
+    if (meta_holder[1].size()){
+        uint32_t rand_idx = _distribution(_generator) % meta_holder[1].size();
+        uint n_sample = min(sample_rate*meta_holder[1].size()/(meta_holder[0].size()+meta_holder[1].size()),
+                            meta_holder[1].size());
+//        cout<<n_sample<<endl;
+
+        for (uint32_t i = 0; i < n_sample; i++) {
+            //garbage collection
+            while (meta_holder[1].size()) {
+                uint32_t pos = (i + rand_idx) % meta_holder[1].size();
+                auto &meta = meta_holder[1][pos];
+                uint8_t oldest_idx = (meta._past_timestamp_idx - (uint8_t) 1)%n_past_intervals;
+                uint64_t & past_timestamp = meta._past_timestamps[oldest_idx];
+                if (past_timestamp + threshold < t) {
+                    uint64_t & ekey = meta._key;
+                    key_map.erase(ekey);
+                    //evict
+                    uint32_t tail1_pos = meta_holder[1].size()-1;
+                    if (pos !=  tail1_pos) {
+                        //swap tail
+                        meta_holder[1][pos] = meta_holder[1][tail1_pos];
+                        key_map.find(meta_holder[1][tail1_pos]._key)->second.second = pos;
+                    }
+                    meta_holder[1].pop_back();
+                } else
+                    break;
+            }
+            if (!meta_holder[1].size())
+                break;
+            uint32_t pos = (i + rand_idx) % meta_holder[1].size();
+            auto &meta = meta_holder[1][pos];
+            //fill in past_interval
+            uint8_t j = 0;
+            double past_intervals[max_n_past_intervals];
+            for (j = 0; j < meta._past_timestamp_idx && j < n_past_intervals; ++j) {
+                uint8_t past_timestamp_idx = (meta._past_timestamp_idx - 1 - j) % n_past_intervals;
+                uint64_t past_interval = t - meta._past_timestamps[past_timestamp_idx];
+                if (past_interval >= threshold)
+                    past_intervals[j] = log1p_threshold;
+                else
+                    past_intervals[j] = log1p(past_interval);
+            }
+            for (; j < n_past_intervals; j++)
+                past_intervals[j] = log1p_threshold;
+
+#ifdef LOG_SAMPLE_RATE
+            //print distribution
+            if (log_flag) {
+                cout << 2 <<" ";
+                for (uint k = 0; k < n_past_intervals; ++k)
+                    cout << past_intervals[k] << " ";
+                cout << log1p(meta._future_timestamp - t) << endl;
+            }
+#endif
+        }
+    }
+}
 
 bool LRCache::lookup(SimpleRequest &_req) {
     auto & req = dynamic_cast<AnnotatedRequest &>(_req);
@@ -242,7 +343,36 @@ bool LRCache::lookup(SimpleRequest &_req) {
         return !list_idx;
     }
     return false;
+}
 
+bool LRCache::lookup_without_update(SimpleRequest &_req) {
+    auto & req = dynamic_cast<AnnotatedRequest &>(_req);
+    static uint64_t i = 0;
+    if (!(i%1000000)) {
+        cerr << "mean diff: " << mean_diff << endl;
+        for (int j = 0; j < n_past_intervals; ++j)
+            cerr << "weight " << j << ": " << weights[j] << endl;
+        cerr << "bias: " << bias << endl;
+    }
+    ++i;
+
+    //todo: deal with size consistently
+    try_train(req._t);
+    sample_without_update(req._t);
+
+    auto it = key_map.find(req._id);
+    if (it != key_map.end()) {
+        //update past timestamps
+        bool & list_idx = it->second.first;
+        uint32_t & pos_idx = it->second.second;
+        meta_holder[list_idx][pos_idx].append_past_timestamp(req._t);
+
+        //update future timestamp. Can look only threshold far
+        meta_holder[list_idx][pos_idx]._future_timestamp = min(req._next_t, req._t + threshold);
+
+        return !list_idx;
+    }
+    return false;
 }
 
 void LRCache::admit(SimpleRequest &_req) {

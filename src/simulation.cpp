@@ -14,6 +14,7 @@
 #include "simulation_lfo.h"
 #include "simulation_lfo2.h"
 #include "simulation_future.h"
+#include "simulation_lr_belady.h"
 #include <chrono>
 #include "utils.h"
 
@@ -118,6 +119,8 @@ map<string, string> simulation(string trace_file, string cache_type,
         return LFO::_simulation_lfo(trace_file, cache_type, cache_size, params);
     else if (cache_type == "LFO2")
         return _simulation_lfo2(trace_file, cache_type, cache_size, params);
+    else if (cache_type == "LRBelady")
+        return _simulation_lr_belady(trace_file, cache_type, cache_size, params);
     else
         return _simulation(trace_file, cache_type, cache_size, params);
 }
