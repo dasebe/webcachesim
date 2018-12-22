@@ -136,10 +136,7 @@ bool BeladySampleCache::lookup(SimpleRequest &_req) {
         //update past timestamps
         bool & list_idx = it->second.first;
         uint32_t & pos_idx = it->second.second;
-        meta_holder[list_idx][pos_idx].append_past_timestamp(req._t);
-
-        //update future timestamp. Can look only threshold far
-        meta_holder[list_idx][pos_idx]._future_timestamp = min(req._next_t, req._t + threshold);
+        meta_holder[list_idx][pos_idx].update(req._t, req._next_t);
 
         return !list_idx;
     }
@@ -158,10 +155,7 @@ bool BeladySampleCache::lookup(SimpleRequest &_req, vector<Gradient> & ext_pendi
         //update past timestamps
         bool & list_idx = it->second.first;
         uint32_t & pos_idx = it->second.second;
-        meta_holder[list_idx][pos_idx].append_past_timestamp(req._t);
-
-        //update future timestamp. Can look only threshold far
-        meta_holder[list_idx][pos_idx]._future_timestamp = min(req._next_t, req._t + threshold);
+        meta_holder[list_idx][pos_idx].update(req._t, req._next_t);
 
         return !list_idx;
     }
@@ -182,7 +176,7 @@ void BeladySampleCache::admit(SimpleRequest &_req) {
     if (it == key_map.end()) {
         //fresh insert
         key_map.insert({req._id, {0, (uint32_t) meta_holder[0].size()}});
-        meta_holder[0].emplace_back(req._id, req._size, req._t, min(req._next_t, req._t + threshold));
+        meta_holder[0].emplace_back(req._id, req._size, req._t, req._next_t);
         _currentSize += size;
         if (_currentSize <= _cacheSize)
             return;

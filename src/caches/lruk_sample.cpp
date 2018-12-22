@@ -12,7 +12,7 @@ bool LRUKSampleCache::lookup(SimpleRequest &_req) {
         //update past timestamps
         bool & list_idx = it->second.first;
         uint32_t & pos_idx = it->second.second;
-        meta_holder[list_idx][pos_idx].append_past_timestamp(req._t);
+        meta_holder[list_idx][pos_idx].update(req._t, req._next_t);
 
         return !list_idx;
     }

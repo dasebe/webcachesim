@@ -67,20 +67,21 @@ public:
 //    }
 // todo: custom assign function
 
-    inline void append_past_timestamp(const uint64_t & past_timestamp) {
+    inline void update(const uint64_t &past_timestamp, const uint64_t &future_timestamp) {
         _past_timestamps[_past_timestamp_idx%_n_past_intervals] = past_timestamp;
         _past_timestamp_idx = _past_timestamp_idx + (uint8_t) 1;
         //todo: can use bit-wise
         // prevent overflow
         if (_past_timestamp_idx >= _n_past_intervals * 2)
             _past_timestamp_idx -= _n_past_intervals;
+        _future_timestamp = future_timestamp;
     }
 };
 
 
 class Gradient {
 public:
-    double weights[max_n_past_intervals];
+    double weights[max_n_past_intervals+1];
     double bias = 0;
     uint64_t n_update = 0;
     Gradient() {
@@ -150,7 +151,7 @@ public:
             cerr << "error: n_past_intervals exceeds max limitation: " << max_n_past_intervals << endl;
             assert(false);
         }
-        weights = new double[n_past_intervals]();
+        weights = new double[n_past_intervals+1]();
         LRMeta::_n_past_intervals = n_past_intervals;
     }
 

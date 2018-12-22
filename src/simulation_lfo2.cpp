@@ -116,6 +116,10 @@ map<string, string> _simulation_lfo2(string trace_file, string cache_type, uint6
         if (uni_size)
             size = 1;
         //can only look window far
+        /*
+         * todo: this implementation is not correct, as next_t should bounded by current timestamp instead 
+         *   of access timestamp
+        */
         next_t = min(next_t, t + window_size);
         req.reinit(id, size, t, next_t);
 

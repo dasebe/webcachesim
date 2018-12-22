@@ -62,7 +62,8 @@ void LRCache::try_train(uint64_t &t) {
 }
 
 void LRCache::sample(uint64_t &t) {
-//    cout<<meta_holder[0].size()<<" "<<meta_holder[1].size()<<endl;
+    if (meta_holder[0].empty() || meta_holder[1].empty())
+        return;
 #ifdef LOG_SAMPLE_RATE
     bool log_flag = ((double) rand() / (RAND_MAX)) < LOG_SAMPLE_RATE;
 #endif
@@ -71,10 +72,10 @@ void LRCache::sample(uint64_t &t) {
 
 
     //sample list 0
-    if (!meta_holder[0].empty()) {
+    {
         uint32_t rand_idx = _distribution(_generator) % meta_holder[0].size();
-        uint n_sample = min(sample_rate*meta_holder[0].size()/(meta_holder[0].size()+meta_holder[1].size()),
-                meta_holder[0].size());
+        uint n_sample = min( (uint) ceil((double) sample_rate*meta_holder[0].size()/(meta_holder[0].size()+meta_holder[1].size())),
+                             (uint) meta_holder[0].size());
 
         for (uint32_t i = 0; i < n_sample; i++) {
             uint32_t pos = (i + rand_idx) % meta_holder[0].size();
@@ -100,25 +101,36 @@ void LRCache::sample(uint64_t &t) {
             for (; j < n_past_intervals; j++)
                 past_intervals[j] = log1p_threshold;
 
+            uint64_t known_future_interval;
+            double log1p_known_future_interval;
+            if (meta._future_timestamp - t < threshold) {
+                known_future_interval = meta._future_timestamp - t;
+                log1p_known_future_interval = log1p(known_future_interval);
+            }
+            else {
+                known_future_interval = threshold;
+                log1p_known_future_interval = log1p_threshold;
+            }
+
 #ifdef LOG_SAMPLE_RATE
             //print distribution
             if (log_flag) {
                 cout << 0 <<" ";
                 for (uint k = 0; k < n_past_intervals; ++k)
                     cout << past_intervals[k] << " ";
-                cout << log1p(meta._future_timestamp - t) << endl;
+                cout << log1p_known_future_interval << endl;
             }
 #endif
-            double future_interval = 0;
+            double score = 0;
             for (j = 0; j < n_past_intervals; j++)
-                future_interval += weights[j] * past_intervals[j];
+                score += weights[j] * past_intervals[j];
 
             //statistics
-            double diff = future_interval + bias - log1p(meta._future_timestamp - t);
+            double diff = score + bias - log1p_known_future_interval;
             mean_diff = 0.99 * mean_diff + 0.01 * abs(diff);
 
             //update gradient
-            auto gradient_window_idx = meta._future_timestamp / gradient_window;
+            auto gradient_window_idx = (t + known_future_interval) / gradient_window;
             if (gradient_window_idx >= pending_gradients.size())
                 pending_gradients.resize(gradient_window_idx + 1);
             auto &gradient = pending_gradients[gradient_window_idx];
@@ -134,8 +146,9 @@ void LRCache::sample(uint64_t &t) {
     //sample list 1
     if (meta_holder[1].size()){
         uint32_t rand_idx = _distribution(_generator) % meta_holder[1].size();
-        uint n_sample = min(sample_rate*meta_holder[1].size()/(meta_holder[0].size()+meta_holder[1].size()),
-                            meta_holder[1].size());
+        //sample less from list 1 as there are gc
+        uint n_sample = min( (uint) floor( (double) sample_rate*meta_holder[1].size()/(meta_holder[0].size()+meta_holder[1].size())),
+                             (uint) meta_holder[1].size());
 //        cout<<n_sample<<endl;
 
         for (uint32_t i = 0; i < n_sample; i++) {
@@ -177,14 +190,16 @@ void LRCache::sample(uint64_t &t) {
             for (; j < n_past_intervals; j++)
                 past_intervals[j] = log1p_threshold;
 
-            double future_interval = 0;
-            for (j = 0; j < n_past_intervals; j++)
-                future_interval += weights[j] * past_intervals[j];
-
-            //statistics
-            double diff = future_interval + bias - log1p(meta._future_timestamp - t);
-            mean_diff = 0.99 * mean_diff + 0.01 * abs(diff);
-
+            uint64_t known_future_interval;
+            double log1p_known_future_interval;
+            if (meta._future_timestamp - t < threshold) {
+                known_future_interval = meta._future_timestamp - t;
+                log1p_known_future_interval = log1p(known_future_interval);
+            }
+            else {
+                known_future_interval = threshold;
+                log1p_known_future_interval = log1p_threshold;
+            }
 
 #ifdef LOG_SAMPLE_RATE
             //print distribution
@@ -192,12 +207,20 @@ void LRCache::sample(uint64_t &t) {
                 cout << 1 <<" ";
                 for (uint k = 0; k < n_past_intervals; ++k)
                     cout << past_intervals[k] << " ";
-                cout << log1p(meta._future_timestamp - t) << endl;
+                cout << log1p_known_future_interval << endl;
             }
 #endif
+            double score = 0;
+            for (j = 0; j < n_past_intervals; j++)
+                score += weights[j] * past_intervals[j];
+
+            //statistics
+            double diff = score + bias - log1p_known_future_interval;
+            mean_diff = 0.99 * mean_diff + 0.01 * abs(diff);
+
 
             //update gradient
-            auto gradient_window_idx = meta._future_timestamp / gradient_window;
+            auto gradient_window_idx = (t + known_future_interval) / gradient_window;
             if (gradient_window_idx >= pending_gradients.size())
                 pending_gradients.resize(gradient_window_idx + 1);
             auto &gradient = pending_gradients[gradient_window_idx];
@@ -335,11 +358,7 @@ bool LRCache::lookup(SimpleRequest &_req) {
         //update past timestamps
         bool & list_idx = it->second.first;
         uint32_t & pos_idx = it->second.second;
-        meta_holder[list_idx][pos_idx].append_past_timestamp(req._t);
-
-        //update future timestamp. Can look only threshold far
-        meta_holder[list_idx][pos_idx]._future_timestamp = min(req._next_t, req._t + threshold);
-
+        meta_holder[list_idx][pos_idx].update(req._t, req._next_t);
         return !list_idx;
     }
     return false;
@@ -365,11 +384,7 @@ bool LRCache::lookup_without_update(SimpleRequest &_req) {
         //update past timestamps
         bool & list_idx = it->second.first;
         uint32_t & pos_idx = it->second.second;
-        meta_holder[list_idx][pos_idx].append_past_timestamp(req._t);
-
-        //update future timestamp. Can look only threshold far
-        meta_holder[list_idx][pos_idx]._future_timestamp = min(req._next_t, req._t + threshold);
-
+        meta_holder[list_idx][pos_idx].update(req._t, req._next_t);
         return !list_idx;
     }
     return false;
@@ -388,7 +403,7 @@ void LRCache::admit(SimpleRequest &_req) {
     if (it == key_map.end()) {
         //fresh insert
         key_map.insert({req._id, {0, (uint32_t) meta_holder[0].size()}});
-        meta_holder[0].emplace_back(req._id, req._size, req._t, min(req._next_t, req._t + threshold));
+        meta_holder[0].emplace_back(req._id, req._size, req._t, req._next_t);
         _currentSize += size;
         if (_currentSize <= _cacheSize)
             return;
