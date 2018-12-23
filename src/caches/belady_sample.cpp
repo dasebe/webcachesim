@@ -118,14 +118,20 @@ void BeladySampleCacheFilter::sample(uint64_t &t, vector<Gradient> & ext_pending
 
             //statistics
             double diff = score + ext_bias - log1p_known_future_interval;
+            //biased sampling
+            double biased_weight;
+            if (bias_center > 0)
+                biased_weight = pow(1 - abs(log1p_known_future_interval - evicted_f)/log1p_threshold, alpha);
+            else
+                biased_weight = pow(abs(log1p_known_future_interval - evicted_f)/log1p_threshold, alpha);
             //update gradient
             auto gradient_window_idx = (t+known_future_interval) / ext_gradient_window;
             if (gradient_window_idx >= ext_pending_gradients.size())
                 ext_pending_gradients.resize(gradient_window_idx + 1);
             auto &gradient = ext_pending_gradients[gradient_window_idx];
             for (uint k = 0; k < n_past_intervals; ++k)
-                gradient.weights[k] += diff * past_intervals[k];
-            gradient.bias += diff;
+                gradient.weights[k] += diff * past_intervals[k] * biased_weight;
+            gradient.bias += diff *biased_weight;
             ++gradient.n_update;
         }
     }
@@ -204,14 +210,20 @@ void BeladySampleCacheFilter::sample(uint64_t &t, vector<Gradient> & ext_pending
 
                 //statistics
                 double diff = score + ext_bias - log1p_known_future_interval;
+                //biased sampling
+                double biased_weight;
+                if (bias_center > 0)
+                    biased_weight = pow(1 - abs(log1p_known_future_interval - evicted_f)/log1p_threshold, alpha);
+                else
+                    biased_weight = pow(abs(log1p_known_future_interval - evicted_f)/log1p_threshold, alpha);
                 //update gradient
                 auto gradient_window_idx = (t + known_future_interval) / ext_gradient_window;
                 if (gradient_window_idx >= ext_pending_gradients.size())
                     ext_pending_gradients.resize(gradient_window_idx + 1);
                 auto &gradient = ext_pending_gradients[gradient_window_idx];
                 for (uint k = 0; k < n_past_intervals; ++k)
-                    gradient.weights[k] += diff * past_intervals[k];
-                gradient.bias += diff;
+                    gradient.weights[k] += diff * past_intervals[k] * biased_weight;
+                gradient.bias += diff *biased_weight;
                 ++gradient.n_update;
             }
         }
@@ -355,6 +367,22 @@ void BeladySampleCache::evict(const uint64_t & t) {
     auto epair = rank(t);
     uint64_t & key = epair.first;
     uint32_t & old_pos = epair.second;
+
+    //record meta's future interval
+    {
+        LRMeta &meta = meta_holder[0][old_pos];
+
+        uint64_t known_future_interval;
+        double log1p_known_future_interval;
+        if (meta._future_timestamp - t < threshold) {
+            known_future_interval = meta._future_timestamp - t;
+            log1p_known_future_interval = log1p(known_future_interval);
+        } else {
+//            known_future_interval = threshold;
+            log1p_known_future_interval = log1p_threshold;
+        }
+        evicted_f = evicted_f * 0.99 + log1p_known_future_interval * 0.01;
+    }
 
     //bring list 0 to list 1
     uint32_t new_pos = meta_holder[1].size();

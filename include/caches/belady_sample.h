@@ -25,6 +25,7 @@ public:
     double log1p_threshold = log1p(threshold);
     // n_past_interval
     uint8_t n_past_intervals = 4;
+    double evicted_f = 0;
 
     //todo: seed and generator
     default_random_engine _generator = default_random_engine();
@@ -75,6 +76,7 @@ class BeladySampleCacheFilter : public BeladySampleCache
 {
 public:
     double alpha = 1;
+    bool bias_center = true;
     bool out_sample = false;
 
     BeladySampleCacheFilter()
@@ -88,6 +90,9 @@ public:
         for (auto& it: params) {
             if (it.first == "alpha") {
                 alpha = stod(it.second);
+                assert(alpha >= 0);
+            } else if (it.first == "bias_center") {
+                bias_center = (bool) stoul(it.second);
             } else if (it.first == "out_sample") {
                 out_sample = (bool) stoul(it.second);
             } else {

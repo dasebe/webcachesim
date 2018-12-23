@@ -88,9 +88,10 @@ LRBelady:
 #    - 0.01
   n_past_intervals: 4
   out_sample: 0
+  bias_center:
+    - 0
+#    - 1
   alpha:
-#    - -2
-#    - -1
     - 1
 #    - 2
 
