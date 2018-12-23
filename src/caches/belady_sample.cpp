@@ -60,24 +60,21 @@ void BeladySampleCache::sample(uint64_t &t) {
 
 void BeladySampleCache::sample(uint64_t &t, vector<Gradient> & ext_pending_gradients,
         double * ext_weights, double & ext_bias, uint64_t & ext_gradient_window) {
+    if (meta_holder[0].empty() || meta_holder[1].empty())
+        return;
 #ifdef LOG_SAMPLE_RATE
     bool log_flag = ((double) rand() / (RAND_MAX)) < LOG_SAMPLE_RATE;
 #endif
 
     //sample list 0
-    if (!meta_holder[0].empty()) {
+    {
         uint32_t rand_idx = _distribution(_generator) % meta_holder[0].size();
-        uint n_sample = min(sample_rate, (uint) meta_holder[0].size());
+        uint n_sample = min( (uint) ceil((double) sample_rate*meta_holder[0].size()/(meta_holder[0].size()+meta_holder[1].size())),
+                             (uint) meta_holder[0].size());
 
         for (uint32_t i = 0; i < n_sample; i++) {
             uint32_t pos = (i + rand_idx) % meta_holder[0].size();
             auto &meta = meta_holder[0][pos];
-
-//            uint8_t oldest_idx = (meta._past_timestamp_idx - (uint8_t) 1)%n_past_intervals;
-//            uint64_t & past_timestamp = meta._past_timestamps[oldest_idx];
-//            if (past_timestamp + threshold < t) {
-//                ++n_out_window;
-//            }
 
             //fill in past_interval
             uint8_t j = 0;
@@ -93,23 +90,36 @@ void BeladySampleCache::sample(uint64_t &t, vector<Gradient> & ext_pending_gradi
             for (; j < n_past_intervals; j++)
                 past_intervals[j] = log1p_threshold;
 
+
+            uint64_t known_future_interval;
+            double log1p_known_future_interval;
+            if (meta._future_timestamp - t < threshold) {
+                known_future_interval = meta._future_timestamp - t;
+                log1p_known_future_interval = log1p(known_future_interval);
+            }
+            else {
+                known_future_interval = threshold;
+                log1p_known_future_interval = log1p_threshold;
+            }
+
 #ifdef LOG_SAMPLE_RATE
             //print distribution
             if (log_flag) {
                 cout << 0 <<" ";
                 for (uint k = 0; k < n_past_intervals; ++k)
                     cout << past_intervals[k] << " ";
-                cout << log1p(meta._future_timestamp - t) << endl;
+                cout << log1p_known_future_interval << endl;
             }
 #endif
-            double future_interval = 0;
+
+            double score = 0;
             for (j = 0; j < n_past_intervals; j++)
-                future_interval += ext_weights[j] * past_intervals[j];
+                score += ext_weights[j] * past_intervals[j];
 
             //statistics
-            double diff = future_interval + ext_bias - log1p(meta._future_timestamp - t);
+            double diff = score + ext_bias - log1p_known_future_interval;
             //update gradient
-            auto gradient_window_idx = meta._future_timestamp / ext_gradient_window;
+            auto gradient_window_idx = (t+known_future_interval) / ext_gradient_window;
             if (gradient_window_idx >= ext_pending_gradients.size())
                 ext_pending_gradients.resize(gradient_window_idx + 1);
             auto &gradient = ext_pending_gradients[gradient_window_idx];
@@ -117,6 +127,76 @@ void BeladySampleCache::sample(uint64_t &t, vector<Gradient> & ext_pending_gradi
                 gradient.weights[k] += diff * past_intervals[k];
             gradient.bias += diff;
             ++gradient.n_update;
+        }
+    }
+
+    //sample list 1, but don't update
+    {
+        uint32_t rand_idx = _distribution(_generator) % meta_holder[1].size();
+        //sample less from list 1 as there are gc
+        uint n_sample = min( (uint) floor( (double) sample_rate*meta_holder[1].size()/(meta_holder[0].size()+meta_holder[1].size())),
+                             (uint) meta_holder[1].size());
+//        cout<<n_sample<<endl;
+
+        for (uint32_t i = 0; i < n_sample; i++) {
+            //garbage collection
+            while (meta_holder[1].size()) {
+                uint32_t pos = (i + rand_idx) % meta_holder[1].size();
+                auto &meta = meta_holder[1][pos];
+                uint8_t oldest_idx = (meta._past_timestamp_idx - (uint8_t) 1)%n_past_intervals;
+                uint64_t & past_timestamp = meta._past_timestamps[oldest_idx];
+                if (past_timestamp + threshold < t) {
+                    uint64_t & ekey = meta._key;
+                    key_map.erase(ekey);
+                    //evict
+                    uint32_t tail1_pos = meta_holder[1].size()-1;
+                    if (pos !=  tail1_pos) {
+                        //swap tail
+                        meta_holder[1][pos] = meta_holder[1][tail1_pos];
+                        key_map.find(meta_holder[1][tail1_pos]._key)->second.second = pos;
+                    }
+                    meta_holder[1].pop_back();
+                } else
+                    break;
+            }
+            if (!meta_holder[1].size())
+                break;
+            uint32_t pos = (i + rand_idx) % meta_holder[1].size();
+            auto &meta = meta_holder[1][pos];
+            //fill in past_interval
+            uint8_t j = 0;
+            double past_intervals[max_n_past_intervals];
+            for (j = 0; j < meta._past_timestamp_idx && j < n_past_intervals; ++j) {
+                uint8_t past_timestamp_idx = (meta._past_timestamp_idx - 1 - j) % n_past_intervals;
+                uint64_t past_interval = t - meta._past_timestamps[past_timestamp_idx];
+                if (past_interval >= threshold)
+                    past_intervals[j] = log1p_threshold;
+                else
+                    past_intervals[j] = log1p(past_interval);
+            }
+            for (; j < n_past_intervals; j++)
+                past_intervals[j] = log1p_threshold;
+
+            uint64_t known_future_interval;
+            double log1p_known_future_interval;
+            if (meta._future_timestamp - t < threshold) {
+                known_future_interval = meta._future_timestamp - t;
+                log1p_known_future_interval = log1p(known_future_interval);
+            }
+            else {
+//                known_future_interval = threshold;
+                log1p_known_future_interval = log1p_threshold;
+            }
+
+#ifdef LOG_SAMPLE_RATE
+            //print distribution
+            if (log_flag) {
+                cout << 1 <<" ";
+                for (uint k = 0; k < n_past_intervals; ++k)
+                    cout << past_intervals[k] << " ";
+                cout << log1p_known_future_interval << endl;
+            }
+#endif
         }
     }
 

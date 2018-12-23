@@ -67,9 +67,6 @@ void LRCache::sample(uint64_t &t) {
 #ifdef LOG_SAMPLE_RATE
     bool log_flag = ((double) rand() / (RAND_MAX)) < LOG_SAMPLE_RATE;
 #endif
-//    uint n_out_window = 0;
-
-
 
     //sample list 0
     {
@@ -80,12 +77,6 @@ void LRCache::sample(uint64_t &t) {
         for (uint32_t i = 0; i < n_sample; i++) {
             uint32_t pos = (i + rand_idx) % meta_holder[0].size();
             auto &meta = meta_holder[0][pos];
-
-//            uint8_t oldest_idx = (meta._past_timestamp_idx - (uint8_t) 1)%n_past_intervals;
-//            uint64_t & past_timestamp = meta._past_timestamps[oldest_idx];
-//            if (past_timestamp + threshold < t) {
-//                ++n_out_window;
-//            }
 
             //fill in past_interval
             uint8_t j = 0;
@@ -233,26 +224,24 @@ void LRCache::sample(uint64_t &t) {
 }
 
 void LRCache::sample_without_update(uint64_t &t) {
+    if (meta_holder[0].empty() || meta_holder[1].empty())
+        return;
+    /*
+     * sample the cache to get in-cache distribution
+     */
 #ifdef LOG_SAMPLE_RATE
     bool log_flag = ((double) rand() / (RAND_MAX)) < LOG_SAMPLE_RATE;
 #endif
 
     //sample list 0
-    if (!meta_holder[0].empty()) {
+    {
         uint32_t rand_idx = _distribution(_generator) % meta_holder[0].size();
-        uint n_sample = min(sample_rate*meta_holder[0].size()/(meta_holder[0].size()+meta_holder[1].size()),
-                meta_holder[0].size());
+        uint n_sample = min(sample_rate, (uint) meta_holder[0].size());
 
         for (uint32_t i = 0; i < n_sample; i++) {
             uint32_t pos = (i + rand_idx) % meta_holder[0].size();
             auto &meta = meta_holder[0][pos];
 
-//            uint8_t oldest_idx = (meta._past_timestamp_idx - (uint8_t) 1)%n_past_intervals;
-//            uint64_t & past_timestamp = meta._past_timestamps[oldest_idx];
-//            if (past_timestamp + threshold < t) {
-//                ++n_out_window;
-//            }
-
             //fill in past_interval
             uint8_t j = 0;
             double past_intervals[max_n_past_intervals];
@@ -267,63 +256,16 @@ void LRCache::sample_without_update(uint64_t &t) {
             for (; j < n_past_intervals; j++)
                 past_intervals[j] = log1p_threshold;
 
-#ifdef LOG_SAMPLE_RATE
-            //print distribution
-            if (log_flag) {
-                cout << 1 <<" ";
-                for (uint k = 0; k < n_past_intervals; ++k)
-                    cout << past_intervals[k] << " ";
-                cout << log1p(meta._future_timestamp - t) << endl;
+            uint64_t known_future_interval;
+            double log1p_known_future_interval;
+            if (meta._future_timestamp - t < threshold) {
+                known_future_interval = meta._future_timestamp - t;
+                log1p_known_future_interval = log1p(known_future_interval);
             }
-#endif
-        }
-    }
-
-    //sample list 1
-    if (meta_holder[1].size()){
-        uint32_t rand_idx = _distribution(_generator) % meta_holder[1].size();
-        uint n_sample = min(sample_rate*meta_holder[1].size()/(meta_holder[0].size()+meta_holder[1].size()),
-                            meta_holder[1].size());
-//        cout<<n_sample<<endl;
-
-        for (uint32_t i = 0; i < n_sample; i++) {
-            //garbage collection
-            while (meta_holder[1].size()) {
-                uint32_t pos = (i + rand_idx) % meta_holder[1].size();
-                auto &meta = meta_holder[1][pos];
-                uint8_t oldest_idx = (meta._past_timestamp_idx - (uint8_t) 1)%n_past_intervals;
-                uint64_t & past_timestamp = meta._past_timestamps[oldest_idx];
-                if (past_timestamp + threshold < t) {
-                    uint64_t & ekey = meta._key;
-                    key_map.erase(ekey);
-                    //evict
-                    uint32_t tail1_pos = meta_holder[1].size()-1;
-                    if (pos !=  tail1_pos) {
-                        //swap tail
-                        meta_holder[1][pos] = meta_holder[1][tail1_pos];
-                        key_map.find(meta_holder[1][tail1_pos]._key)->second.second = pos;
-                    }
-                    meta_holder[1].pop_back();
-                } else
-                    break;
+            else {
+//                known_future_interval = threshold;
+                log1p_known_future_interval = log1p_threshold;
             }
-            if (!meta_holder[1].size())
-                break;
-            uint32_t pos = (i + rand_idx) % meta_holder[1].size();
-            auto &meta = meta_holder[1][pos];
-            //fill in past_interval
-            uint8_t j = 0;
-            double past_intervals[max_n_past_intervals];
-            for (j = 0; j < meta._past_timestamp_idx && j < n_past_intervals; ++j) {
-                uint8_t past_timestamp_idx = (meta._past_timestamp_idx - 1 - j) % n_past_intervals;
-                uint64_t past_interval = t - meta._past_timestamps[past_timestamp_idx];
-                if (past_interval >= threshold)
-                    past_intervals[j] = log1p_threshold;
-                else
-                    past_intervals[j] = log1p(past_interval);
-            }
-            for (; j < n_past_intervals; j++)
-                past_intervals[j] = log1p_threshold;
 
 #ifdef LOG_SAMPLE_RATE
             //print distribution
@@ -331,7 +273,7 @@ void LRCache::sample_without_update(uint64_t &t) {
                 cout << 2 <<" ";
                 for (uint k = 0; k < n_past_intervals; ++k)
                     cout << past_intervals[k] << " ";
-                cout << log1p(meta._future_timestamp - t) << endl;
+                cout << log1p_known_future_interval << endl;
             }
 #endif
         }
