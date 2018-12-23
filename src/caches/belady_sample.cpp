@@ -58,7 +58,7 @@ void BeladySampleCache::sample(uint64_t &t) {
 
 }
 
-void BeladySampleCache::sample(uint64_t &t, vector<Gradient> & ext_pending_gradients,
+void BeladySampleCacheFilter::sample(uint64_t &t, vector<Gradient> & ext_pending_gradients,
         double * ext_weights, double & ext_bias, uint64_t & ext_gradient_window) {
     if (meta_holder[0].empty() || meta_holder[1].empty())
         return;
@@ -184,7 +184,7 @@ void BeladySampleCache::sample(uint64_t &t, vector<Gradient> & ext_pending_gradi
                 log1p_known_future_interval = log1p(known_future_interval);
             }
             else {
-//                known_future_interval = threshold;
+                known_future_interval = threshold;
                 log1p_known_future_interval = log1p_threshold;
             }
 
@@ -197,6 +197,23 @@ void BeladySampleCache::sample(uint64_t &t, vector<Gradient> & ext_pending_gradi
                 cout << log1p_known_future_interval << endl;
             }
 #endif
+            if (out_sample) {
+                double score = 0;
+                for (j = 0; j < n_past_intervals; j++)
+                    score += ext_weights[j] * past_intervals[j];
+
+                //statistics
+                double diff = score + ext_bias - log1p_known_future_interval;
+                //update gradient
+                auto gradient_window_idx = (t + known_future_interval) / ext_gradient_window;
+                if (gradient_window_idx >= ext_pending_gradients.size())
+                    ext_pending_gradients.resize(gradient_window_idx + 1);
+                auto &gradient = ext_pending_gradients[gradient_window_idx];
+                for (uint k = 0; k < n_past_intervals; ++k)
+                    gradient.weights[k] += diff * past_intervals[k];
+                gradient.bias += diff;
+                ++gradient.n_update;
+            }
         }
     }
 
@@ -223,7 +240,7 @@ bool BeladySampleCache::lookup(SimpleRequest &_req) {
     return false;
 }
 
-bool BeladySampleCache::lookup(SimpleRequest &_req, vector<Gradient> & ext_pending_gradients,
+bool BeladySampleCacheFilter::lookup(SimpleRequest &_req, vector<Gradient> & ext_pending_gradients,
         double * ext_weights, double & ext_bias, uint64_t & ext_gradient_window) {
     auto & req = dynamic_cast<AnnotatedRequest &>(_req);
 

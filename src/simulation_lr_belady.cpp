@@ -26,12 +26,12 @@ map<string, string> _simulation_lr_belady(string trace_file, string cache_type, 
     annotate(trace_file);
     // create cache
     //A runs OPT, B runs real
-    unique_ptr<Cache> _webcachea = move(Cache::create_unique("BeladySample"));
+    unique_ptr<Cache> _webcachea = move(Cache::create_unique("BeladySampleFilter"));
     if (_webcachea == nullptr) {
       cerr << "cache type not implemented" << endl;
       return {};
     }
-    auto webcachea = dynamic_cast<BeladySampleCache *>(_webcachea.get());
+    auto webcachea = dynamic_cast<BeladySampleCacheFilter *>(_webcachea.get());
 
     unique_ptr<Cache> _webcacheb = move(Cache::create_unique("LR"));
     if (_webcacheb == nullptr) {
@@ -47,17 +47,25 @@ map<string, string> _simulation_lr_belady(string trace_file, string cache_type, 
     uint64_t segment_window = 1000000;
     double shadow_size_ratio= 1.;
 
-    for (auto &kv: params) {
-        if (kv.first == "window")
-            sync_window = stoull(kv.second);
-        if (kv.first == "n_warmup")
-            n_warmup = stoull(kv.second);
-        if (kv.first == "uni_size")
-            uni_size = static_cast<bool>(stoi(kv.second));
-        if (kv.first == "segment_window")
-            segment_window = stoull(kv.second);
-        if (kv.first == "shadow_size_ratio")
-            shadow_size_ratio = stod(kv.second);
+    for (auto kv = params.cbegin(); kv != params.cend();) {
+        if (kv->first == "window") {
+            sync_window = stoull(kv->second);
+            kv = params.erase(kv);
+        } else if (kv->first == "n_warmup") {
+            n_warmup = stoull(kv->second);
+            kv = params.erase(kv);
+        } else if (kv->first == "uni_size") {
+            uni_size = static_cast<bool>(stoi(kv->second));
+            kv = params.erase(kv);
+        } else if (kv->first == "segment_window") {
+            segment_window = stoull((kv->second));
+            kv = params.erase(kv);
+        } else if (kv->first == "shadow_size_ratio") {
+            shadow_size_ratio = stod(kv->second);
+            kv = params.erase(kv);
+        } else {
+            ++kv;
+        }
     }
 
     auto size_a = (uint64_t) (cache_size * shadow_size_ratio);
@@ -69,6 +77,7 @@ map<string, string> _simulation_lr_belady(string trace_file, string cache_type, 
     //only eval after 2 window
     assert(sync_window <= n_warmup);
 
+    webcachea->init_with_params(params);
     webcacheb->init_with_params(params);
 
     ifstream infile(trace_file+".ant");

@@ -59,21 +59,50 @@ public:
     }
 
     virtual bool lookup(SimpleRequest& req);
-    bool lookup(SimpleRequest &_req, vector<Gradient> & ext_pending_gradients,
-            double * ext_weights, double & ext_bias, uint64_t & ext_gradient_window);
     virtual void admit(SimpleRequest& req);
     virtual void evict(const uint64_t & t);
     void evict(SimpleRequest & req) {};
     void evict() {};
     //sample, rank the 1st and return
     pair<uint64_t, uint32_t > rank(const uint64_t & t);
-    void try_train(uint64_t & t);
     void sample(uint64_t &t);
-    void sample(uint64_t &t, vector<Gradient> & ext_pending_gradients,
-        double * ext_weights, double & ext_bias, uint64_t & ext_gradient_window);
 };
 
 static Factory<BeladySampleCache> factoryBeladySample("BeladySample");
+
+
+class BeladySampleCacheFilter : public BeladySampleCache
+{
+public:
+    double alpha = 1;
+    bool out_sample = false;
+
+    BeladySampleCacheFilter()
+        : BeladySampleCache()
+    {
+    }
+
+    void init_with_params(map<string, string> params) override {
+        BeladySampleCache::init_with_params(params);
+        //set params
+        for (auto& it: params) {
+            if (it.first == "alpha") {
+                alpha = stod(it.second);
+            } else if (it.first == "out_sample") {
+                out_sample = (bool) stoul(it.second);
+            } else {
+                cerr << "unrecognized parameter: " << it.first << endl;
+            }
+        }
+    }
+
+    bool lookup(SimpleRequest &_req, vector<Gradient> & ext_pending_gradients,
+                double * ext_weights, double & ext_bias, uint64_t & ext_gradient_window);
+    void sample(uint64_t &t, vector<Gradient> & ext_pending_gradients,
+                double * ext_weights, double & ext_bias, uint64_t & ext_gradient_window);
+};
+
+static Factory<BeladySampleCacheFilter> factoryBeladySampleFilter("BeladySampleFilter");
 
 
 

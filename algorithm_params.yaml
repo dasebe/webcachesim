@@ -44,7 +44,7 @@ LR:
 #    - 0.001
 #    - 0.01
   n_past_intervals: 4
-  version: n_request
+  version: balance 
 LRUKSample:
   sample_rate: 32
 BeladySample:
@@ -87,3 +87,10 @@ LRBelady:
 #    - 0.001
 #    - 0.01
   n_past_intervals: 4
+  out_sample: 0
+  alpha:
+#    - -2
+#    - -1
+    - 1
+#    - 2
+
