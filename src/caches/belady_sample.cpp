@@ -364,6 +364,7 @@ pair<uint64_t, uint32_t> BeladySampleCache::rank(const uint64_t & t) {
 }
 
 void BeladySampleCache::evict(const uint64_t & t) {
+//    static uint counter = 0;
     auto epair = rank(t);
     uint64_t & key = epair.first;
     uint32_t & old_pos = epair.second;
@@ -378,10 +379,13 @@ void BeladySampleCache::evict(const uint64_t & t) {
             known_future_interval = meta._future_timestamp - t;
             log1p_known_future_interval = log1p(known_future_interval);
         } else {
-//            known_future_interval = threshold;
+            known_future_interval = threshold;
             log1p_known_future_interval = log1p_threshold;
         }
-        evicted_f = evicted_f * 0.9 + log1p_known_future_interval * 0.1;
+        evicted_f = (evicted_f * 9 + known_future_interval)/10;
+//        if (! (++counter % 100000)) {
+//            cout << "evicted_f: " << evicted_f << endl;
+//        }
     }
 
     //bring list 0 to list 1
