@@ -14,9 +14,6 @@
 #include <boost/bimap.hpp>
 #include <boost/bimap/multiset_of.hpp>
 
-const uint8_t max_n_past_intervals = 4;
-
-
 using namespace std;
 
 class RandomCache : public Cache
@@ -51,12 +48,13 @@ public:
     uint64_t _size;
     uint64_t _future_timestamp;
     uint8_t _past_timestamp_idx;
-    uint64_t _past_timestamps[max_n_past_intervals];
+    vector<uint64_t> _past_timestamps;
 
-    LRMeta(const uint64_t & key, const uint64_t & size, const uint64_t & past_timestamp, const uint64_t & future_timestamp) {
+    LRMeta(const uint64_t & key, const uint64_t & size, const uint64_t & past_timestamp,
+            const uint64_t & future_timestamp) {
         _key = key;
         _size = size;
-//        _past_timestamps = new uint64_t[_n_past_intervals];
+        _past_timestamps = vector<uint64_t >(_n_past_intervals);
         _past_timestamps[0] = past_timestamp;
         _future_timestamp = future_timestamp;
         _past_timestamp_idx = (uint8_t) 1;
@@ -81,12 +79,12 @@ public:
 
 class Gradient {
 public:
-    double weights[max_n_past_intervals];
+    static uint8_t _n_past_intervals;
+    vector<double> weights;
     double bias = 0;
     uint64_t n_update = 0;
-    Gradient() {
-        for (auto & it: weights)
-            it = 0;
+    Gradient () {
+        weights = vector<double >(_n_past_intervals);
     }
 };
 
@@ -102,6 +100,8 @@ public:
     // threshold
     uint64_t threshold = 10000000;
     double log1p_threshold = log1p(threshold);
+    uint64_t n_window_bins = 10;
+    uint64_t size_bin;
     // learning_rate
     double learning_rate = 0.0001;
     // n_past_interval
@@ -111,7 +111,7 @@ public:
     double bias = 0;
     double mean_diff=0;
 
-    vector<Gradient> pending_gradients;
+    vector<vector<Gradient>> pending_gradients;
     uint64_t gradient_window = 10000;
 
     //todo: seed and generator
@@ -141,18 +141,18 @@ public:
                 n_past_intervals = (uint8_t) stoi(it.second);
             } else if (it.first == "gradient_window") {
                 gradient_window = stoull(it.second);
+            } else if (it.first == "n_window_bins") {
+                n_window_bins = stoull(it.second);
             } else {
                 cerr << "unrecognized parameter: " << it.first << endl;
             }
         }
 
         //init
-        if (n_past_intervals > max_n_past_intervals) {
-            cerr << "error: n_past_intervals exceeds max limitation: " << max_n_past_intervals << endl;
-            assert(false);
-        }
-        weights = new double[n_past_intervals+1]();
         LRMeta::_n_past_intervals = n_past_intervals;
+        Gradient::_n_past_intervals = n_past_intervals;
+        size_bin = threshold/n_window_bins;
+        weights = new double[n_past_intervals+1]();
     }
 
     virtual bool lookup(SimpleRequest& req);

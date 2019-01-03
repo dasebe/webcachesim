@@ -8,6 +8,9 @@
 
 using namespace std;
 
+//init with a wrong value
+uint8_t LRMeta::_n_past_intervals = 0;
+uint8_t Gradient::_n_past_intervals = 0;
 
 bool RandomCache::lookup(SimpleRequest &req) {
     return key_space.exist(req._id);
@@ -39,25 +42,42 @@ void RandomCache::evict() {
     object_size.erase(key);
 }
 
-uint8_t LRMeta::_n_past_intervals = max_n_past_intervals;
 
 
 void LRCache::try_train(uint64_t &t) {
+    static uint64_t next_idx = 0;
     if (t >= gradient_window) {
         //look at previous window
         auto gradient_window_idx = t / gradient_window - 1;
+        //already update
+        if (gradient_window_idx != next_idx)
+            return;
+        //perhaps no gradient at all
         if (gradient_window_idx < pending_gradients.size()) {
-            auto & gradients = pending_gradients[gradient_window_idx];
-            if (gradients.n_update) {
-                for (uint i = 0; i < n_past_intervals; ++i) {
-                    weights[i] = weights[i] - learning_rate / gradients.n_update * gradients.weights[i];
-                    gradients.weights[i] = 0;
+            auto weights_update = vector<double >(n_past_intervals);
+            double bias_update = 0;
+            uint64_t n_update = 0;
+            for (uint j = 0; j < n_window_bins && ! pending_gradients[gradient_window_idx].empty(); ++j) {
+                auto &gradients = pending_gradients[gradient_window_idx][j];
+                if (gradients.n_update) {
+                    n_update += gradients.n_update;
+//                    gradients.n_update = 0;
+                    bias_update += gradients.bias;
+//                    gradients.bias = 0;
+                    for (uint i = 0; i < n_past_intervals; ++i) {
+                        weights_update[i] += gradients.weights[i];
+//                        gradients.weights[i] = 0;
+                    }
                 }
-                bias = bias - learning_rate / gradients.n_update * gradients.bias;
-                gradients.bias = 0;
-                gradients.n_update = 0;
+            }
+//            cout<<"n_update: "<<n_update<<endl;
+            if (n_update) {
+                bias = bias - learning_rate / n_update * bias_update;
+                for (uint i = 0; i < n_past_intervals; ++i)
+                    weights[i] = weights[i] - learning_rate / n_update * weights_update[i];
             }
         }
+        ++ next_idx;
     }
 }
 
@@ -80,7 +100,7 @@ void LRCache::sample(uint64_t &t) {
 
             //fill in past_interval
             uint8_t j = 0;
-            double past_intervals[max_n_past_intervals];
+            auto past_intervals = vector<double >(n_past_intervals);
             for (j = 0; j < meta._past_timestamp_idx && j < n_past_intervals; ++j) {
                 uint8_t past_timestamp_idx = (meta._past_timestamp_idx - 1 - j) % n_past_intervals;
                 uint64_t past_interval = t - meta._past_timestamps[past_timestamp_idx];
@@ -94,12 +114,13 @@ void LRCache::sample(uint64_t &t) {
 
             uint64_t known_future_interval;
             double log1p_known_future_interval;
+            //known_future_interval < threshold
             if (meta._future_timestamp - t < threshold) {
                 known_future_interval = meta._future_timestamp - t;
                 log1p_known_future_interval = log1p(known_future_interval);
             }
             else {
-                known_future_interval = threshold;
+                known_future_interval = threshold-1;
                 log1p_known_future_interval = log1p_threshold;
             }
 
@@ -122,9 +143,12 @@ void LRCache::sample(uint64_t &t) {
 
             //update gradient
             auto gradient_window_idx = (t + known_future_interval) / gradient_window;
+            auto bin_idx = known_future_interval / size_bin;
             if (gradient_window_idx >= pending_gradients.size())
                 pending_gradients.resize(gradient_window_idx + 1);
-            auto &gradient = pending_gradients[gradient_window_idx];
+            if (pending_gradients[gradient_window_idx].empty())
+                pending_gradients[gradient_window_idx].resize(n_window_bins);
+            auto &gradient = pending_gradients[gradient_window_idx][bin_idx];
             for (uint k = 0; k < n_past_intervals; ++k)
                 gradient.weights[k] += diff * past_intervals[k];
             gradient.bias += diff;
@@ -169,7 +193,7 @@ void LRCache::sample(uint64_t &t) {
             auto &meta = meta_holder[1][pos];
             //fill in past_interval
             uint8_t j = 0;
-            double past_intervals[max_n_past_intervals];
+            auto past_intervals = vector<double >(n_past_intervals);
             for (j = 0; j < meta._past_timestamp_idx && j < n_past_intervals; ++j) {
                 uint8_t past_timestamp_idx = (meta._past_timestamp_idx - 1 - j) % n_past_intervals;
                 uint64_t past_interval = t - meta._past_timestamps[past_timestamp_idx];
@@ -188,7 +212,7 @@ void LRCache::sample(uint64_t &t) {
                 log1p_known_future_interval = log1p(known_future_interval);
             }
             else {
-                known_future_interval = threshold;
+                known_future_interval = threshold - 1;
                 log1p_known_future_interval = log1p_threshold;
             }
 
@@ -212,9 +236,12 @@ void LRCache::sample(uint64_t &t) {
 
             //update gradient
             auto gradient_window_idx = (t + known_future_interval) / gradient_window;
+            auto bin_idx = known_future_interval / size_bin;
             if (gradient_window_idx >= pending_gradients.size())
                 pending_gradients.resize(gradient_window_idx + 1);
-            auto &gradient = pending_gradients[gradient_window_idx];
+            if (pending_gradients[gradient_window_idx].empty())
+                pending_gradients[gradient_window_idx].resize(n_window_bins);
+            auto &gradient = pending_gradients[gradient_window_idx][bin_idx];
             for (uint k = 0; k < n_past_intervals; ++k)
                 gradient.weights[k] += diff * past_intervals[k];
             gradient.bias += diff;
@@ -244,7 +271,7 @@ void LRCache::sample_without_update(uint64_t &t) {
 
             //fill in past_interval
             uint8_t j = 0;
-            double past_intervals[max_n_past_intervals];
+            auto past_intervals = vector<double >(n_past_intervals);
             for (j = 0; j < meta._past_timestamp_idx && j < n_past_intervals; ++j) {
                 uint8_t past_timestamp_idx = (meta._past_timestamp_idx - 1 - j) % n_past_intervals;
                 uint64_t past_interval = t - meta._past_timestamps[past_timestamp_idx];
@@ -263,7 +290,7 @@ void LRCache::sample_without_update(uint64_t &t) {
                 log1p_known_future_interval = log1p(known_future_interval);
             }
             else {
-//                known_future_interval = threshold;
+//                known_future_interval = threshold - 1;
                 log1p_known_future_interval = log1p_threshold;
             }
 
@@ -399,7 +426,7 @@ pair<uint64_t, uint32_t> LRCache::rank(const uint64_t & t) {
         auto & meta = meta_holder[0][pos];
         //fill in past_interval
         uint8_t j = 0;
-        double past_intervals[max_n_past_intervals];
+        auto past_intervals = vector<double >(n_past_intervals);
         for (j = 0; j < meta._past_timestamp_idx && j < n_past_intervals; ++j) {
             uint8_t past_timestamp_idx = (meta._past_timestamp_idx - 1 - j) % n_past_intervals;
             uint64_t past_interval = t - meta._past_timestamps[past_timestamp_idx];
