@@ -54,11 +54,13 @@ void LRCache::try_train(uint64_t &t) {
             return;
         //perhaps no gradient at all
         if (gradient_window_idx < pending_gradients.size()) {
+//            cout<<"gradient_window_idx: "<<gradient_window_idx<<endl;
             auto weights_update = vector<double >(n_past_intervals);
             double bias_update = 0;
             uint64_t n_update = 0;
             for (uint j = 0; j < n_window_bins && ! pending_gradients[gradient_window_idx].empty(); ++j) {
                 auto &gradients = pending_gradients[gradient_window_idx][j];
+//                cout<<"n_update for bin "<<j<<": "<<gradients.n_update<<"\tgradient_bias: "<<gradients.bias<<endl;
                 if (gradients.n_update) {
                     n_update += gradients.n_update;
 //                    gradients.n_update = 0;
