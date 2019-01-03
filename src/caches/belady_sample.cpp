@@ -120,7 +120,7 @@ void BeladySampleCacheFilter::sample(uint64_t &t, vector<Gradient> & ext_pending
             double diff = score + ext_bias - log1p_known_future_interval;
             //biased sampling
             double biased_weight;
-            if (bias_center > 0)
+            if (bias_center)
                 biased_weight = pow(1 - abs(log1p_known_future_interval - evicted_f)/log1p_threshold, alpha);
             else
                 biased_weight = pow(abs(log1p_known_future_interval - evicted_f)/log1p_threshold, alpha);
@@ -212,7 +212,7 @@ void BeladySampleCacheFilter::sample(uint64_t &t, vector<Gradient> & ext_pending
                 double diff = score + ext_bias - log1p_known_future_interval;
                 //biased sampling
                 double biased_weight;
-                if (bias_center > 0)
+                if (bias_center)
                     biased_weight = pow(1 - abs(log1p_known_future_interval - evicted_f)/log1p_threshold, alpha);
                 else
                     biased_weight = pow(abs(log1p_known_future_interval - evicted_f)/log1p_threshold, alpha);
@@ -381,7 +381,7 @@ void BeladySampleCache::evict(const uint64_t & t) {
 //            known_future_interval = threshold;
             log1p_known_future_interval = log1p_threshold;
         }
-        evicted_f = evicted_f * 0.99 + log1p_known_future_interval * 0.01;
+        evicted_f = evicted_f * 0.9 + log1p_known_future_interval * 0.1;
     }
 
     //bring list 0 to list 1
