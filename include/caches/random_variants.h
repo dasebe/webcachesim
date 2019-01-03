@@ -81,7 +81,7 @@ public:
 
 class Gradient {
 public:
-    double weights[max_n_past_intervals+1];
+    double weights[max_n_past_intervals];
     double bias = 0;
     uint64_t n_update = 0;
     Gradient() {
