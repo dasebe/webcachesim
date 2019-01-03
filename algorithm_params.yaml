@@ -90,9 +90,16 @@ LRBelady:
   out_sample:
 #    - 0
     - 1
-  bias_center:
+  rebalance:
     - 0
 #    - 1
+  bias_point:
+    # edge
+#    - 0
+    # center
+#    - 1
+    # mid
+#    - 2
   alpha:
     - 0
 #    - 0.1

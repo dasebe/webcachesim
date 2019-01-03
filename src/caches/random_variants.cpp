@@ -58,22 +58,73 @@ void LRCache::try_train(uint64_t &t) {
             auto weights_update = vector<double >(n_past_intervals);
             double bias_update = 0;
             uint64_t n_update = 0;
+            uint64_t n_valid_bin = 0;
             for (uint j = 0; j < n_window_bins && ! pending_gradients[gradient_window_idx].empty(); ++j) {
                 auto &gradients = pending_gradients[gradient_window_idx][j];
 //                cout<<"n_update for bin "<<j<<": "<<gradients.n_update<<"\tgradient_bias: "<<gradients.bias<<endl;
                 if (gradients.n_update) {
+                    ++n_valid_bin;
                     n_update += gradients.n_update;
-//                    gradients.n_update = 0;
                     bias_update += gradients.bias;
-//                    gradients.bias = 0;
                     for (uint i = 0; i < n_past_intervals; ++i) {
                         weights_update[i] += gradients.weights[i];
-//                        gradients.weights[i] = 0;
                     }
                 }
             }
 //            cout<<"n_update: "<<n_update<<endl;
             if (n_update) {
+                if (rebalance) {
+                    uint64_t mean_n_update = n_update/n_valid_bin;
+                    n_update = mean_n_update * n_valid_bin;
+                    bias_update = 0;
+                    for (uint i = 0; i < n_past_intervals; ++i)
+                        weights_update[i] = 0;
+                    for (uint j = 0; j < n_window_bins && ! pending_gradients[gradient_window_idx].empty(); ++j) {
+                        auto &gradients = pending_gradients[gradient_window_idx][j];
+                        if (gradients.n_update) {
+                            bias_update += gradients.bias / gradients.n_update * mean_n_update;
+                            for (uint i = 0; i < n_past_intervals; ++i) {
+                                weights_update[i] += gradients.weights[i] / gradients.n_update * mean_n_update;
+                            }
+                        }
+                    }
+                }
+
+                if (alpha != 0) {
+                    bias_update = 0;
+                    for (uint i = 0; i < n_past_intervals; ++i)
+                        weights_update[i] = 0;
+                    for (uint j = 0; j < n_window_bins && ! pending_gradients[gradient_window_idx].empty(); ++j) {
+                        auto &gradients = pending_gradients[gradient_window_idx][j];
+                        auto f_evicted_idx = (double) f_evicted / size_bin;
+                        double class_id;  //smaller is better
+                        double base;
+                        if (gradients.n_update) {
+                            if (bias_point == 0) {
+                                if (j <= f_evicted_idx) {
+                                    class_id = j;
+                                } else {
+                                    class_id = n_valid_bin-1-j;
+                                }
+                            } else if (bias_point == 1) {
+                                class_id = abs(f_evicted_idx - j);
+                            } else if (bias_point == 2) {
+                                if (j <= f_evicted_idx) {
+                                    class_id = abs(f_evicted_idx/2. - j);
+                                } else {
+                                    class_id = abs((f_evicted_idx+n_valid_bin)/2 - j);
+                                }
+                            }
+                            base = 1 - 0.1*class_id;
+                            double weight = pow(base, alpha);
+                            bias_update += gradients.bias * weight;
+                            for (uint i = 0; i < n_past_intervals; ++i) {
+                                weights_update[i] += gradients.weights[i] * weight;
+                            }
+                        }
+                    }
+                }
+
                 bias = bias - learning_rate / n_update * bias_update;
                 for (uint i = 0; i < n_past_intervals; ++i)
                     weights[i] = weights[i] - learning_rate / n_update * weights_update[i];
@@ -114,6 +165,7 @@ void LRCache::sample(uint64_t &t) {
             for (; j < n_past_intervals; j++)
                 past_intervals[j] = log1p_threshold;
 
+
             uint64_t known_future_interval;
             double log1p_known_future_interval;
             //known_future_interval < threshold
@@ -135,6 +187,7 @@ void LRCache::sample(uint64_t &t) {
                 cout << log1p_known_future_interval << endl;
             }
 #endif
+
             double score = 0;
             for (j = 0; j < n_past_intervals; j++)
                 score += weights[j] * past_intervals[j];

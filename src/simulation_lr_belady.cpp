@@ -132,8 +132,7 @@ map<string, string> _simulation_lr_belady(string trace_file, string cache_type, 
 
             update_metric_req(shadow_byte_req, shadow_obj_req, size);
             //train
-            if (webcachea->lookup(req, webcacheb->pending_gradients, webcacheb->weights, webcacheb->bias,
-                    webcacheb->gradient_window))
+            if (webcachea->lookup(req, webcacheb->pending_gradients, webcacheb->weights, webcacheb->bias))
                 update_metric_req(shadow_byte_hit, shadow_obj_hit, size)
             else
                 webcachea->admit(req);

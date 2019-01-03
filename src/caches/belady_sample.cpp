@@ -30,7 +30,7 @@ void BeladySampleCache::sample(uint64_t &t) {
 
             //fill in past_interval
             uint8_t j = 0;
-            double past_intervals[max_n_past_intervals];
+            auto past_intervals = vector<double >(n_past_intervals);
             for (j = 0; j < meta._past_timestamp_idx && j < n_past_intervals; ++j) {
                 uint8_t past_timestamp_idx = (meta._past_timestamp_idx - 1 - j) % n_past_intervals;
                 uint64_t past_interval = t - meta._past_timestamps[past_timestamp_idx];
@@ -58,8 +58,8 @@ void BeladySampleCache::sample(uint64_t &t) {
 
 }
 
-void BeladySampleCacheFilter::sample(uint64_t &t, vector<Gradient> & ext_pending_gradients,
-        double * ext_weights, double & ext_bias, uint64_t & ext_gradient_window) {
+void BeladySampleCacheFilter::sample(uint64_t &t, vector<vector<Gradient>> & pending_gradients,
+        double * weights, double & bias) {
     if (meta_holder[0].empty() || meta_holder[1].empty())
         return;
 #ifdef LOG_SAMPLE_RATE
@@ -78,7 +78,7 @@ void BeladySampleCacheFilter::sample(uint64_t &t, vector<Gradient> & ext_pending
 
             //fill in past_interval
             uint8_t j = 0;
-            double past_intervals[max_n_past_intervals];
+            auto past_intervals = vector<double >(n_past_intervals);
             for (j = 0; j < meta._past_timestamp_idx && j < n_past_intervals; ++j) {
                 uint8_t past_timestamp_idx = (meta._past_timestamp_idx - 1 - j) % n_past_intervals;
                 uint64_t past_interval = t - meta._past_timestamps[past_timestamp_idx];
@@ -93,12 +93,13 @@ void BeladySampleCacheFilter::sample(uint64_t &t, vector<Gradient> & ext_pending
 
             uint64_t known_future_interval;
             double log1p_known_future_interval;
+            //known_future_interval < threshold
             if (meta._future_timestamp - t < threshold) {
                 known_future_interval = meta._future_timestamp - t;
                 log1p_known_future_interval = log1p(known_future_interval);
             }
             else {
-                known_future_interval = threshold;
+                known_future_interval = threshold-1;
                 log1p_known_future_interval = log1p_threshold;
             }
 
@@ -114,24 +115,23 @@ void BeladySampleCacheFilter::sample(uint64_t &t, vector<Gradient> & ext_pending
 
             double score = 0;
             for (j = 0; j < n_past_intervals; j++)
-                score += ext_weights[j] * past_intervals[j];
+                score += weights[j] * past_intervals[j];
 
             //statistics
-            double diff = score + ext_bias - log1p_known_future_interval;
-            //biased sampling
-            double biased_weight;
-            if (bias_center)
-                biased_weight = pow(1 - abs(log1p_known_future_interval - evicted_f)/log1p_threshold, alpha);
-            else
-                biased_weight = pow(abs(log1p_known_future_interval - evicted_f)/log1p_threshold, alpha);
+            double diff = score + bias - log1p_known_future_interval;
+            mean_diff = 0.99 * mean_diff + 0.01 * abs(diff);
+
             //update gradient
-            auto gradient_window_idx = (t+known_future_interval) / ext_gradient_window;
-            if (gradient_window_idx >= ext_pending_gradients.size())
-                ext_pending_gradients.resize(gradient_window_idx + 1);
-            auto &gradient = ext_pending_gradients[gradient_window_idx];
+            auto gradient_window_idx = (t + known_future_interval) / gradient_window;
+            auto bin_idx = known_future_interval / size_bin;
+            if (gradient_window_idx >= pending_gradients.size())
+                pending_gradients.resize(gradient_window_idx + 1);
+            if (pending_gradients[gradient_window_idx].empty())
+                pending_gradients[gradient_window_idx].resize(n_window_bins);
+            auto &gradient = pending_gradients[gradient_window_idx][bin_idx];
             for (uint k = 0; k < n_past_intervals; ++k)
-                gradient.weights[k] += diff * past_intervals[k] * biased_weight;
-            gradient.bias += diff *biased_weight;
+                gradient.weights[k] += diff * past_intervals[k];
+            gradient.bias += diff;
             ++gradient.n_update;
         }
     }
@@ -171,7 +171,7 @@ void BeladySampleCacheFilter::sample(uint64_t &t, vector<Gradient> & ext_pending
             auto &meta = meta_holder[1][pos];
             //fill in past_interval
             uint8_t j = 0;
-            double past_intervals[max_n_past_intervals];
+            auto past_intervals = vector<double >(n_past_intervals);
             for (j = 0; j < meta._past_timestamp_idx && j < n_past_intervals; ++j) {
                 uint8_t past_timestamp_idx = (meta._past_timestamp_idx - 1 - j) % n_past_intervals;
                 uint64_t past_interval = t - meta._past_timestamps[past_timestamp_idx];
@@ -190,7 +190,7 @@ void BeladySampleCacheFilter::sample(uint64_t &t, vector<Gradient> & ext_pending
                 log1p_known_future_interval = log1p(known_future_interval);
             }
             else {
-                known_future_interval = threshold;
+                known_future_interval = threshold - 1;
                 log1p_known_future_interval = log1p_threshold;
             }
 
@@ -206,31 +206,28 @@ void BeladySampleCacheFilter::sample(uint64_t &t, vector<Gradient> & ext_pending
             if (out_sample) {
                 double score = 0;
                 for (j = 0; j < n_past_intervals; j++)
-                    score += ext_weights[j] * past_intervals[j];
+                    score += weights[j] * past_intervals[j];
 
                 //statistics
-                double diff = score + ext_bias - log1p_known_future_interval;
-                //biased sampling
-                double biased_weight;
-                if (bias_center)
-                    biased_weight = pow(1 - abs(log1p_known_future_interval - evicted_f)/log1p_threshold, alpha);
-                else
-                    biased_weight = pow(abs(log1p_known_future_interval - evicted_f)/log1p_threshold, alpha);
+                double diff = score + bias - log1p_known_future_interval;
+                mean_diff = 0.99 * mean_diff + 0.01 * abs(diff);
+
+
                 //update gradient
-                auto gradient_window_idx = (t + known_future_interval) / ext_gradient_window;
-                if (gradient_window_idx >= ext_pending_gradients.size())
-                    ext_pending_gradients.resize(gradient_window_idx + 1);
-                auto &gradient = ext_pending_gradients[gradient_window_idx];
+                auto gradient_window_idx = (t + known_future_interval) / gradient_window;
+                auto bin_idx = known_future_interval / size_bin;
+                if (gradient_window_idx >= pending_gradients.size())
+                    pending_gradients.resize(gradient_window_idx + 1);
+                if (pending_gradients[gradient_window_idx].empty())
+                    pending_gradients[gradient_window_idx].resize(n_window_bins);
+                auto &gradient = pending_gradients[gradient_window_idx][bin_idx];
                 for (uint k = 0; k < n_past_intervals; ++k)
-                    gradient.weights[k] += diff * past_intervals[k] * biased_weight;
-                gradient.bias += diff *biased_weight;
+                    gradient.weights[k] += diff * past_intervals[k];
+                gradient.bias += diff;
                 ++gradient.n_update;
             }
         }
     }
-
-//    cout<<n_out_window<<endl;
-
 }
 
 
@@ -252,12 +249,12 @@ bool BeladySampleCache::lookup(SimpleRequest &_req) {
     return false;
 }
 
-bool BeladySampleCacheFilter::lookup(SimpleRequest &_req, vector<Gradient> & ext_pending_gradients,
-        double * ext_weights, double & ext_bias, uint64_t & ext_gradient_window) {
+bool BeladySampleCacheFilter::lookup(SimpleRequest &_req, vector<vector<Gradient>> & pending_gradients,
+        double * weights, double & bias) {
     auto & req = dynamic_cast<AnnotatedRequest &>(_req);
 
     //todo: deal with size consistently
-    sample(req._t, ext_pending_gradients, ext_weights, ext_bias, ext_gradient_window);
+    sample(req._t, pending_gradients, weights, bias);
 
     auto it = key_map.find(req._id);
     if (it != key_map.end()) {
@@ -338,7 +335,7 @@ pair<uint64_t, uint32_t> BeladySampleCache::rank(const uint64_t & t) {
         auto & meta = meta_holder[0][pos];
         //fill in past_interval
         uint8_t j = 0;
-        double past_intervals[max_n_past_intervals];
+        auto past_intervals = vector<double >(n_past_intervals);
         for (j = 0; j < meta._past_timestamp_idx && j < n_past_intervals; ++j) {
             uint8_t past_timestamp_idx = (meta._past_timestamp_idx - 1 - j) % n_past_intervals;
             uint64_t past_interval = t - meta._past_timestamps[past_timestamp_idx];

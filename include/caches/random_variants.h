@@ -107,6 +107,11 @@ public:
     // n_past_interval
     uint8_t n_past_intervals = 4;
 
+    bool rebalance = false;
+    uint8_t bias_point = 0;
+    double alpha = 1;
+    uint64_t f_evicted = 0;
+
     double * weights;
     double bias = 0;
     double mean_diff=0;
@@ -143,6 +148,14 @@ public:
                 gradient_window = stoull(it.second);
             } else if (it.first == "n_window_bins") {
                 n_window_bins = stoull(it.second);
+            } else if (it.first == "alpha") {
+                alpha = stod(it.second);
+                assert(alpha >= 0);
+            } else if (it.first == "rebalance") {
+                rebalance = (bool) stoul(it.second);
+            } else if (it.first == "bias_point") {
+                bias_point = (uint8_t) stoul(it.second);
+                assert(bias_point <= 2);
             } else {
                 cerr << "unrecognized parameter: " << it.first << endl;
             }

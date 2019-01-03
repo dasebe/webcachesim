@@ -50,12 +50,6 @@ public:
                 cerr << "unrecognized parameter: " << it.first << endl;
             }
         }
-
-        //init
-        if (n_past_intervals > max_n_past_intervals) {
-            cerr << "error: n_past_intervals exceeds max limitation: " << max_n_past_intervals << endl;
-            assert(false);
-        }
         LRMeta::_n_past_intervals = n_past_intervals;
     }
 
@@ -75,9 +69,11 @@ static Factory<BeladySampleCache> factoryBeladySample("BeladySample");
 class BeladySampleCacheFilter : public BeladySampleCache
 {
 public:
-    double alpha = 1;
-    bool bias_center = true;
     bool out_sample = true;
+    double mean_diff=0;
+    uint64_t n_window_bins = 10;
+    uint64_t size_bin;
+    uint64_t gradient_window = 10000;
 
     BeladySampleCacheFilter()
         : BeladySampleCache()
@@ -88,23 +84,23 @@ public:
         BeladySampleCache::init_with_params(params);
         //set params
         for (auto& it: params) {
-            if (it.first == "alpha") {
-                alpha = stod(it.second);
-                assert(alpha >= 0);
-            } else if (it.first == "bias_center") {
-                bias_center = (bool) stoul(it.second);
-            } else if (it.first == "out_sample") {
+            if (it.first == "out_sample") {
                 out_sample = (bool) stoul(it.second);
+            } else if (it.first == "gradient_window") {
+                gradient_window = stoull(it.second);
+            } else if (it.first == "n_window_bins") {
+                n_window_bins = stoull(it.second);
             } else {
                 cerr << "unrecognized parameter: " << it.first << endl;
             }
         }
+        size_bin = threshold/n_window_bins;
     }
 
-    bool lookup(SimpleRequest &_req, vector<Gradient> & ext_pending_gradients,
-                double * ext_weights, double & ext_bias, uint64_t & ext_gradient_window);
-    void sample(uint64_t &t, vector<Gradient> & ext_pending_gradients,
-                double * ext_weights, double & ext_bias, uint64_t & ext_gradient_window);
+    bool lookup(SimpleRequest &_req, vector<vector<Gradient>> & ext_pending_gradients,
+                double * ext_weights, double & ext_bias);
+    void sample(uint64_t &t, vector<vector<Gradient>> & ext_pending_gradients,
+                double * ext_weights, double & ext_bias);
 };
 
 static Factory<BeladySampleCacheFilter> factoryBeladySampleFilter("BeladySampleFilter");
