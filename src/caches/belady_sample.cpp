@@ -59,7 +59,7 @@ void BeladySampleCache::sample(uint64_t &t) {
 }
 
 void BeladySampleCacheFilter::sample(uint64_t &t, vector<vector<Gradient>> & pending_gradients,
-        double * weights, double & bias) {
+        vector<double> & weights, double & bias) {
     if (meta_holder[0].empty() || meta_holder[1].empty())
         return;
 #ifdef LOG_SAMPLE_RATE
@@ -250,7 +250,7 @@ bool BeladySampleCache::lookup(SimpleRequest &_req) {
 }
 
 bool BeladySampleCacheFilter::lookup(SimpleRequest &_req, vector<vector<Gradient>> & pending_gradients,
-        double * weights, double & bias) {
+        vector<double >& weights, double & bias) {
     auto & req = dynamic_cast<AnnotatedRequest &>(_req);
 
     //todo: deal with size consistently

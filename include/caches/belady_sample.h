@@ -98,9 +98,10 @@ public:
     }
 
     bool lookup(SimpleRequest &_req, vector<vector<Gradient>> & ext_pending_gradients,
-                double * ext_weights, double & ext_bias);
+                vector<double> & ext_weights, double & ext_bias);
     void sample(uint64_t &t, vector<vector<Gradient>> & ext_pending_gradients,
-                double * ext_weights, double & ext_bias);
+                vector<double> & ext_weights, double & ext_bias);
+
 };
 
 static Factory<BeladySampleCacheFilter> factoryBeladySampleFilter("BeladySampleFilter");

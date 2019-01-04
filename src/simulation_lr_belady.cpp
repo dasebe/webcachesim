@@ -40,6 +40,8 @@ map<string, string> _simulation_lr_belady(string trace_file, string cache_type, 
     }
     auto webcacheb = dynamic_cast<LRCache *>(_webcacheb.get());
 
+    webcacheb->f_evicted = & webcachea->evicted_f;
+
 
     uint64_t n_warmup = 0;
     bool uni_size = false;

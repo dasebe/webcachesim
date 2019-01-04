@@ -46,92 +46,86 @@ void RandomCache::evict() {
 
 void LRCache::try_train(uint64_t &t) {
     static uint64_t next_idx = 0;
-    if (t >= gradient_window) {
-        //look at previous window
-        auto gradient_window_idx = t / gradient_window - 1;
-        //already update
-        if (gradient_window_idx != next_idx)
-            return;
-        //perhaps no gradient at all
-        if (gradient_window_idx < pending_gradients.size()) {
+    if (t < gradient_window)
+        return;
+    //look at previous window
+    auto gradient_window_idx = t / gradient_window - 1;
+    //already update
+    if (gradient_window_idx != next_idx)
+        return;
+    ++next_idx;
+    //perhaps no gradient at all
+    if (gradient_window_idx >= pending_gradients.size())
+        return;
 //            cout<<"gradient_window_idx: "<<gradient_window_idx<<endl;
-            auto weights_update = vector<double >(n_past_intervals);
-            double bias_update = 0;
-            uint64_t n_update = 0;
-            uint64_t n_valid_bin = 0;
-            for (uint j = 0; j < n_window_bins && ! pending_gradients[gradient_window_idx].empty(); ++j) {
-                auto &gradients = pending_gradients[gradient_window_idx][j];
-//                cout<<"n_update for bin "<<j<<": "<<gradients.n_update<<"\tgradient_bias: "<<gradients.bias<<endl;
-                if (gradients.n_update) {
-                    ++n_valid_bin;
-                    n_update += gradients.n_update;
-                    bias_update += gradients.bias;
-                    for (uint i = 0; i < n_past_intervals; ++i) {
-                        weights_update[i] += gradients.weights[i];
-                    }
-                }
-            }
-//            cout<<"n_update: "<<n_update<<endl;
-            if (n_update) {
-                if (rebalance) {
-                    uint64_t mean_n_update = n_update/n_valid_bin;
-                    n_update = mean_n_update * n_valid_bin;
-                    bias_update = 0;
-                    for (uint i = 0; i < n_past_intervals; ++i)
-                        weights_update[i] = 0;
-                    for (uint j = 0; j < n_window_bins && ! pending_gradients[gradient_window_idx].empty(); ++j) {
-                        auto &gradients = pending_gradients[gradient_window_idx][j];
-                        if (gradients.n_update) {
-                            bias_update += gradients.bias / gradients.n_update * mean_n_update;
-                            for (uint i = 0; i < n_past_intervals; ++i) {
-                                weights_update[i] += gradients.weights[i] / gradients.n_update * mean_n_update;
-                            }
-                        }
-                    }
-                }
+    auto weights_update = vector<double >(n_past_intervals);
+    double bias_update = 0;
+    uint64_t n_update = 0;
+    uint64_t n_valid_bin = 0;
 
-                if (alpha != 0) {
-                    bias_update = 0;
-                    for (uint i = 0; i < n_past_intervals; ++i)
-                        weights_update[i] = 0;
-                    for (uint j = 0; j < n_window_bins && ! pending_gradients[gradient_window_idx].empty(); ++j) {
-                        auto &gradients = pending_gradients[gradient_window_idx][j];
-                        auto f_evicted_idx = (double) f_evicted / size_bin;
-                        double class_id;  //smaller is better
-                        double base;
-                        if (gradients.n_update) {
-                            if (bias_point == 0) {
-                                if (j <= f_evicted_idx) {
-                                    class_id = j;
-                                } else {
-                                    class_id = n_valid_bin-1-j;
-                                }
-                            } else if (bias_point == 1) {
-                                class_id = abs(f_evicted_idx - j);
-                            } else if (bias_point == 2) {
-                                if (j <= f_evicted_idx) {
-                                    class_id = abs(f_evicted_idx/2. - j);
-                                } else {
-                                    class_id = abs((f_evicted_idx+n_valid_bin)/2 - j);
-                                }
-                            }
-                            base = 1 - 0.1*class_id;
-                            double weight = pow(base, alpha);
-                            bias_update += gradients.bias * weight;
-                            for (uint i = 0; i < n_past_intervals; ++i) {
-                                weights_update[i] += gradients.weights[i] * weight;
-                            }
-                        }
+    //bias weight
+    auto f_evicted_idx = ((double) (* f_evicted)) / size_bin;
+    for (uint j = 0; j < n_window_bins && ! pending_gradients[gradient_window_idx].empty(); ++j) {
+        auto &gradients = pending_gradients[gradient_window_idx][j];
+        double class_id;  //smaller is better
+        double base;
+        if (gradients.n_update) {
+            ++n_valid_bin;
+            n_update += gradients.n_update;
+            if (alpha != 0) {
+                //actually bias weight
+                if (bias_point == 0) {
+                    if (j <= f_evicted_idx) {
+                        class_id = j;
+                    } else {
+                        class_id = n_valid_bin - 1 - j;
+                    }
+                } else if (bias_point == 1) {
+                    class_id = abs(f_evicted_idx - j);
+                } else if (bias_point == 2) {
+                    if (j <= f_evicted_idx) {
+                        class_id = abs(f_evicted_idx / 2. - j);
+                    } else {
+                        class_id = abs((f_evicted_idx + n_valid_bin) / 2 - j);
                     }
                 }
-
-                bias = bias - learning_rate / n_update * bias_update;
-                for (uint i = 0; i < n_past_intervals; ++i)
-                    weights[i] = weights[i] - learning_rate / n_update * weights_update[i];
+                base = 1 - 0.1 * class_id;
+                double weight = pow(base, alpha);
+                gradients.bias *= weight;
+                for (uint i = 0; i < n_past_intervals; ++i) {
+                    gradients.weights[i] *= weight;
+                }
             }
         }
-        ++ next_idx;
     }
+
+    if (!n_update)
+        return;
+    //rebalance
+    double mean_n_update;
+    if (rebalance) {
+        mean_n_update = (double)n_update / n_valid_bin;
+    }
+    for (uint j = 0; j < n_window_bins && ! pending_gradients[gradient_window_idx].empty(); ++j) {
+        auto &gradients = pending_gradients[gradient_window_idx][j];
+        if (gradients.n_update) {
+            if (rebalance) {
+                bias_update += gradients.bias / gradients.n_update * mean_n_update;
+                for (uint i = 0; i < n_past_intervals; ++i) {
+                    weights_update[i] += gradients.weights[i] / gradients.n_update * mean_n_update;
+                }
+            } else {
+                bias_update += gradients.bias;
+                for (uint i = 0; i < n_past_intervals; ++i) {
+                    weights_update[i] += gradients.weights[i];
+                }
+            }
+        }
+    }
+
+    bias = bias - learning_rate / n_update * bias_update;
+    for (uint i = 0; i < n_past_intervals; ++i)
+        weights[i] = weights[i] - learning_rate / n_update * weights_update[i];
 }
 
 void LRCache::sample(uint64_t &t) {

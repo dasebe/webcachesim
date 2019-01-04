@@ -110,9 +110,9 @@ public:
     bool rebalance = false;
     uint8_t bias_point = 0;
     double alpha = 1;
-    uint64_t f_evicted = 0;
+    uint64_t * f_evicted = nullptr;
 
-    double * weights;
+    vector<double > weights;
     double bias = 0;
     double mean_diff=0;
 
@@ -126,10 +126,6 @@ public:
     LRCache()
         : Cache()
     {
-    }
-    virtual ~LRCache()
-    {
-        delete []weights;
     }
 
     void init_with_params(map<string, string> params) override {
@@ -165,7 +161,7 @@ public:
         LRMeta::_n_past_intervals = n_past_intervals;
         Gradient::_n_past_intervals = n_past_intervals;
         size_bin = threshold/n_window_bins;
-        weights = new double[n_past_intervals+1]();
+        weights = vector<double >(n_past_intervals);
     }
 
     virtual bool lookup(SimpleRequest& req);
