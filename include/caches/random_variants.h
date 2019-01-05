@@ -106,9 +106,8 @@ public:
     double learning_rate = 0.0001;
     // n_past_interval
     uint8_t n_past_intervals = 4;
-
-    bool rebalance = false;
-    uint8_t bias_point = 0;
+    enum BiasPointT : uint8_t {none = 0, edge = 1, center = 2, mid = 3, rebalance = 4, bin0 = 5, sides = 6};
+    uint8_t bias_point = none;
     double alpha = 1;
     uint64_t * f_evicted = nullptr;
 
@@ -146,12 +145,10 @@ public:
                 n_window_bins = stoull(it.second);
             } else if (it.first == "alpha") {
                 alpha = stod(it.second);
-                assert(alpha >= 0);
-            } else if (it.first == "rebalance") {
-                rebalance = (bool) stoul(it.second);
+                assert(alpha > 0);
             } else if (it.first == "bias_point") {
                 bias_point = (uint8_t) stoul(it.second);
-                assert(bias_point <= 2);
+                assert(bias_point <= 6);
             } else {
                 cerr << "unrecognized parameter: " << it.first << endl;
             }

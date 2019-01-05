@@ -57,75 +57,135 @@ void LRCache::try_train(uint64_t &t) {
     //perhaps no gradient at all
     if (gradient_window_idx >= pending_gradients.size())
         return;
-//            cout<<"gradient_window_idx: "<<gradient_window_idx<<endl;
-    auto weights_update = vector<double >(n_past_intervals);
-    double bias_update = 0;
-    uint64_t n_update = 0;
-    uint64_t n_valid_bin = 0;
 
-    //bias weight
-    auto f_evicted_idx = ((double) (* f_evicted)) / size_bin;
-    for (uint j = 0; j < n_window_bins && ! pending_gradients[gradient_window_idx].empty(); ++j) {
-        auto &gradients = pending_gradients[gradient_window_idx][j];
-        double class_id;  //smaller is better
-        double base;
-        if (gradients.n_update) {
-            ++n_valid_bin;
-            n_update += gradients.n_update;
-            if (alpha != 0) {
-                //actually bias weight
-                if (bias_point == 0) {
+    if (bias_point == none) {
+        uint64_t n_update = 0;
+        for (uint j = 0; j < n_window_bins && !pending_gradients[gradient_window_idx].empty(); ++j) {
+            auto &gradients = pending_gradients[gradient_window_idx][j];
+            if (gradients.n_update) {
+                n_update += gradients.n_update;
+            }
+        }
+        if (!n_update)
+            return;
+        for (uint j = 0; j < n_window_bins && !pending_gradients[gradient_window_idx].empty(); ++j) {
+            auto &gradients = pending_gradients[gradient_window_idx][j];
+            if (gradients.n_update) {
+                bias -= learning_rate / n_update * gradients.bias;
+                for (uint i = 0; i < n_past_intervals; ++i)
+                    weights[i] -= learning_rate / n_update * gradients.weights[i];
+            }
+        }
+        return;
+    }
+
+    if ( edge <= bias_point && bias_point <= mid ) {
+        //bias weight
+        double f_evicted_idx = ((double) (* f_evicted)) / size_bin;
+        auto sample_bias = vector<double >(n_window_bins);
+        double sum_sample_bias = 0;
+        for (uint j = 0; j < n_window_bins && ! pending_gradients[gradient_window_idx].empty(); ++j) {
+            auto &gradients = pending_gradients[gradient_window_idx][j];
+            double class_id;  //smaller is better
+            double base;
+            if (gradients.n_update) {
+                if (bias_point == edge) {
                     if (j <= f_evicted_idx) {
                         class_id = j;
                     } else {
-                        class_id = n_valid_bin - 1 - j;
+                        class_id = n_window_bins - 1 - j;
                     }
-                } else if (bias_point == 1) {
+                } else if (bias_point == center) {
                     class_id = abs(f_evicted_idx - j);
-                } else if (bias_point == 2) {
+                } else if (bias_point == mid) {
                     if (j <= f_evicted_idx) {
                         class_id = abs(f_evicted_idx / 2. - j);
                     } else {
-                        class_id = abs((f_evicted_idx + n_valid_bin) / 2 - j);
+                        class_id = abs((f_evicted_idx + n_window_bins) / 2 - j);
                     }
                 }
                 base = 1 - 0.1 * class_id;
                 double weight = pow(base, alpha);
-                gradients.bias *= weight;
-                for (uint i = 0; i < n_past_intervals; ++i) {
-                    gradients.weights[i] *= weight;
+                sample_bias[j] = weight * gradients.n_update;
+                sum_sample_bias += weight * gradients.n_update;
+            }
+        }
+
+        if (sum_sample_bias == 0)
+            return;
+
+        for (uint j = 0; j < n_window_bins && ! pending_gradients[gradient_window_idx].empty(); ++j) {
+            auto &gradients = pending_gradients[gradient_window_idx][j];
+            if (gradients.n_update) {
+                if (gradients.n_update) {
+                    bias -= learning_rate / gradients.n_update / sum_sample_bias * sample_bias[j] * gradients.bias ;
+                    for (uint i = 0; i < n_past_intervals; ++i)
+                        weights[i] -= learning_rate / gradients.n_update / sum_sample_bias * sample_bias[j] * gradients.weights[i];
                 }
             }
         }
-    }
-
-    if (!n_update)
         return;
-    //rebalance
-    double mean_n_update;
-    if (rebalance) {
-        mean_n_update = (double)n_update / n_valid_bin;
     }
-    for (uint j = 0; j < n_window_bins && ! pending_gradients[gradient_window_idx].empty(); ++j) {
-        auto &gradients = pending_gradients[gradient_window_idx][j];
-        if (gradients.n_update) {
-            if (rebalance) {
-                bias_update += gradients.bias / gradients.n_update * mean_n_update;
-                for (uint i = 0; i < n_past_intervals; ++i) {
-                    weights_update[i] += gradients.weights[i] / gradients.n_update * mean_n_update;
-                }
-            } else {
-                bias_update += gradients.bias;
-                for (uint i = 0; i < n_past_intervals; ++i) {
-                    weights_update[i] += gradients.weights[i];
+
+    if (bias_point == rebalance) {
+        uint64_t n_update = 0;
+        for (uint j = 0; j < n_window_bins && !pending_gradients[gradient_window_idx].empty(); ++j) {
+            auto &gradients = pending_gradients[gradient_window_idx][j];
+            if (gradients.n_update) {
+                n_update += 1;
+            }
+        }
+        if (!n_update)
+            return;
+        for (uint j = 0; j < n_window_bins && !pending_gradients[gradient_window_idx].empty(); ++j) {
+            auto &gradients = pending_gradients[gradient_window_idx][j];
+            if (gradients.n_update) {
+                bias -= learning_rate / gradients.n_update / n_update * gradients.bias;
+                for (uint i = 0; i < n_past_intervals; ++i)
+                    weights[i] -= learning_rate / gradients.n_update / n_update * gradients.weights[i];
+            }
+        }
+        return;
+    }
+
+    if (bias_point == bin0) {
+        if(!pending_gradients[gradient_window_idx].empty()) {
+            auto &gradients = pending_gradients[gradient_window_idx][0];
+            if (gradients.n_update) {
+                bias -= learning_rate / gradients.n_update * gradients.bias;
+                for (uint i = 0; i < n_past_intervals; ++i)
+                    weights[i] -= learning_rate / gradients.n_update * gradients.weights[i];
+            }
+        }
+        return;
+    }
+
+    if (bias_point == sides) {
+        uint64_t n_update = 0;
+        double f_evicted_idx = ((double) (* f_evicted)) / size_bin;
+        for (uint j = 0; j < n_window_bins && !pending_gradients[gradient_window_idx].empty(); ++j) {
+            if ((f_evicted_idx - j < 2 && f_evicted_idx - j >= 1 ) || (j > f_evicted_idx && j - f_evicted_idx <=1)) {
+                auto &gradients = pending_gradients[gradient_window_idx][j];
+                if (gradients.n_update) {
+                    n_update += gradients.n_update;
                 }
             }
         }
+        if (!n_update)
+            return;
+        for (uint j = 0; j < n_window_bins && !pending_gradients[gradient_window_idx].empty(); ++j) {
+            if ((f_evicted_idx - j < 2 && f_evicted_idx - j >= 1 ) || (j > f_evicted_idx && j - f_evicted_idx <=1)) {
+                auto &gradients = pending_gradients[gradient_window_idx][j];
+                if (gradients.n_update) {
+                    bias -= learning_rate / n_update * gradients.bias;
+                    for (uint i = 0; i < n_past_intervals; ++i)
+                        weights[i] -= learning_rate / n_update * gradients.weights[i];
+                }
+            }
+        }
+        return;
     }
 
-    bias = bias - learning_rate / n_update * bias_update;
-    for (uint i = 0; i < n_past_intervals; ++i)
-        weights[i] = weights[i] - learning_rate / n_update * weights_update[i];
 }
 
 void LRCache::sample(uint64_t &t) {

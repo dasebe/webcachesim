@@ -49,10 +49,6 @@ public:
         }
 
         //init
-        if (n_past_intervals > max_n_past_intervals) {
-            cerr << "error: n_past_intervals exceeds max limitation: " << max_n_past_intervals << endl;
-            assert(false);
-        }
         LRMeta::_n_past_intervals = n_past_intervals;
     }
 
