@@ -22,12 +22,6 @@ void BeladySampleCache::sample(uint64_t &t) {
             uint32_t pos = (i + rand_idx) % meta_holder[0].size();
             auto &meta = meta_holder[0][pos];
 
-//            uint8_t oldest_idx = (meta._past_timestamp_idx - (uint8_t) 1)%n_past_intervals;
-//            uint64_t & past_timestamp = meta._past_timestamps[oldest_idx];
-//            if (past_timestamp + threshold < t) {
-//                ++n_out_window;
-//            }
-
             //fill in past_interval
             uint8_t j = 0;
             auto past_intervals = vector<double >(n_past_intervals);
