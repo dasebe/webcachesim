@@ -18,7 +18,8 @@ set(LIB_SOURCE
         caches/belady_sample.cpp
         caches/lruk_sample.cpp
         caches/lfu_sample.cpp
-        simulation_lr_belady.cpp)
+        simulation_lr_belady.cpp
+        simulation_belady_static.cpp simulation_bins.cpp caches/bins.cpp)
 #message(123)
 
 find_package(Boost)

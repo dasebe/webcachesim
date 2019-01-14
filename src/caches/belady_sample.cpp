@@ -9,14 +9,20 @@ using namespace std;
 
 
 void BeladySampleCache::sample(uint64_t &t) {
+    if (meta_holder[0].empty() || meta_holder[1].empty())
+        return;
 #ifdef LOG_SAMPLE_RATE
     bool log_flag = ((double) rand() / (RAND_MAX)) < LOG_SAMPLE_RATE;
-#endif
+    //sample meta
+    if (log_flag) {
+        cout << -1 << " "<<t<<" "<<evicted_f<<endl;
+    }
 
     //sample list 0
-    if (!meta_holder[0].empty()) {
+    if (log_flag) {
         uint32_t rand_idx = _distribution(_generator) % meta_holder[0].size();
-        uint n_sample = min(sample_rate, (uint) meta_holder[0].size());
+        uint n_sample = min( (uint) ceil((double) sample_rate*meta_holder[0].size()/(meta_holder[0].size()+meta_holder[1].size())),
+                             (uint) meta_holder[0].size());
 
         for (uint32_t i = 0; i < n_sample; i++) {
             uint32_t pos = (i + rand_idx) % meta_holder[0].size();
@@ -24,31 +30,103 @@ void BeladySampleCache::sample(uint64_t &t) {
 
             //fill in past_interval
             uint8_t j = 0;
-            auto past_intervals = vector<double >(n_past_intervals);
+            auto past_intervals = vector<uint64_t >(n_past_intervals);
             for (j = 0; j < meta._past_timestamp_idx && j < n_past_intervals; ++j) {
                 uint8_t past_timestamp_idx = (meta._past_timestamp_idx - 1 - j) % n_past_intervals;
                 uint64_t past_interval = t - meta._past_timestamps[past_timestamp_idx];
                 if (past_interval >= threshold)
-                    past_intervals[j] = log1p_threshold;
+                    past_intervals[j] = threshold;
                 else
-                    past_intervals[j] = log1p(past_interval);
+                    past_intervals[j] = past_interval;
             }
             for (; j < n_past_intervals; j++)
-                past_intervals[j] = log1p_threshold;
+                past_intervals[j] = threshold;
 
-#ifdef LOG_SAMPLE_RATE
+
+            uint64_t known_future_interval;
+            //known_future_interval < threshold
+            if (meta._future_timestamp - t < threshold) {
+                known_future_interval = meta._future_timestamp - t;
+            }
+            else {
+                known_future_interval = threshold-1;
+            }
+
             //print distribution
+            cout << 0 <<" ";
+            for (uint k = 0; k < n_past_intervals; ++k)
+                cout << past_intervals[k] << " ";
+            cout << known_future_interval << endl;
+        }
+    }
+#endif
+
+    //sample list 1, but don't update
+    {
+        uint32_t rand_idx = _distribution(_generator) % meta_holder[1].size();
+        //sample less from list 1 as there are gc
+        uint n_sample = min( (uint) floor( (double) sample_rate*meta_holder[1].size()/(meta_holder[0].size()+meta_holder[1].size())),
+                             (uint) meta_holder[1].size());
+//        cout<<n_sample<<endl;
+
+        for (uint32_t i = 0; i < n_sample; i++) {
+            uint32_t pos;
+            //garbage collection
+            while (true) {
+                if (meta_holder[1].empty())
+                    return;
+                pos = static_cast<uint32_t >((i + rand_idx) % meta_holder[1].size());
+                auto &meta = meta_holder[1][pos];
+                uint8_t oldest_idx = (meta._past_timestamp_idx - (uint8_t) 1)%n_past_intervals;
+                uint64_t & past_timestamp = meta._past_timestamps[oldest_idx];
+                if (past_timestamp + threshold < t) {
+                    uint64_t & ekey = meta._key;
+                    key_map.erase(ekey);
+                    //evict
+                    uint32_t tail1_pos = meta_holder[1].size()-1;
+                    if (pos !=  tail1_pos) {
+                        //swap tail
+                        meta_holder[1][pos] = meta_holder[1][tail1_pos];
+                        key_map.find(meta_holder[1][tail1_pos]._key)->second.second = pos;
+                    }
+                    meta_holder[1].pop_back();
+                } else
+                    break;
+            }
+#ifdef LOG_SAMPLE_RATE
             if (log_flag) {
-                cout << 0 <<" ";
+                auto &meta = meta_holder[1][pos];
+                //fill in past_interval
+                uint8_t j = 0;
+                auto past_intervals = vector<uint64_t>(n_past_intervals);
+                for (j = 0; j < meta._past_timestamp_idx && j < n_past_intervals; ++j) {
+                    uint8_t past_timestamp_idx = (meta._past_timestamp_idx - 1 - j) % n_past_intervals;
+                    uint64_t past_interval = t - meta._past_timestamps[past_timestamp_idx];
+                    if (past_interval >= threshold)
+                        past_intervals[j] = threshold;
+                    else
+                        past_intervals[j] = past_interval;
+                }
+                for (; j < n_past_intervals; j++)
+                    past_intervals[j] = threshold;
+
+
+                uint64_t known_future_interval;
+                if (meta._future_timestamp - t < threshold) {
+                    known_future_interval = meta._future_timestamp - t;
+                } else {
+                    known_future_interval = threshold - 1;
+                }
+
+                //print distribution
+                cout << 1 << " ";
                 for (uint k = 0; k < n_past_intervals; ++k)
                     cout << past_intervals[k] << " ";
-                cout << log1p(meta._future_timestamp - t) << endl;
+                cout << known_future_interval << endl;
             }
 #endif
         }
     }
-
-//    cout<<n_out_window<<endl;
 
 }
 

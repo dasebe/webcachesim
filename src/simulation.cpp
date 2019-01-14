@@ -15,6 +15,8 @@
 #include "simulation_lfo2.h"
 #include "simulation_future.h"
 #include "simulation_lr_belady.h"
+#include "simulation_belady_static.h"
+#include "simulation_bins.h"
 #include <chrono>
 #include "utils.h"
 
@@ -122,6 +124,10 @@ map<string, string> simulation(string trace_file, string cache_type,
         return _simulation_lfo2(trace_file, cache_type, cache_size, params);
     else if (cache_type == "LRBelady")
         return _simulation_lr_belady(trace_file, cache_type, cache_size, params);
+    else if (cache_type == "BeladyStatic")
+        return _simulation_belady_static(trace_file, cache_type, cache_size, params);
+    else if (cache_type == "Bins")
+        return _simulation_bins(trace_file, cache_type, cache_size, params);
     else
         return _simulation(trace_file, cache_type, cache_size, params);
 }

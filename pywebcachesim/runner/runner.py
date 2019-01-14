@@ -28,10 +28,12 @@ def run_task(args):
     if scheduler_args.get("dburl") is not None:
         print('writing result back...')
         _res = {
-            'byte_hit_rate': float(res['byte_hit_rate']),
-            'object_hit_rate': float(res['object_hit_rate']),
             'simulation_time': elapsed,
         }
+        if "byte_hit_rate" in res:
+            _res["byte_hit_rate"] = float(res['byte_hit_rate'])
+        if "object_hit_rate" in res:
+            _res["object_hit_rate"] = float(res['object_hit_rate'])
         if "segment_byte_hit_rate" in res:
             _res["segment_byte_hit_rate"] = [float(r) for r in res['segment_byte_hit_rate'].split()]
         if "segment_object_hit_rate" in res:
