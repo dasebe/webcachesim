@@ -17,8 +17,8 @@ unordered_map<string, string> GDBT_train_params = {
         {"boosting",                   "gbdt"},
         {"objective",                  "regression"},
         {"metric",                     "l1,l2"},
-        {"num_iterations",             "10"},
-//        {"num_leaves",                  "5"}
+        {"num_iterations",             "1"},
+        {"num_leaves",                  "32"}
 };
 
 
@@ -50,8 +50,8 @@ void GDBTCache::try_train(uint64_t &t) {
             C_API_DTYPE_FLOAT64,
             training_data.indptr.size(),
             training_data.data.size(),
-            max_n_past_timestamps + 1,  //remove future t
-//            MAX_N_INTERVAL + 3,  //add future t
+            max_n_past_timestamps,  //remove future t
+//            max_n_past_timestamps + 1,  //future t
             GDBT_train_params,
             nullptr,
             &trainData);
@@ -83,8 +83,8 @@ void GDBTCache::try_train(uint64_t &t) {
                               C_API_DTYPE_FLOAT64,
                               training_data.indptr.size(),
                               training_data.data.size(),
-                              max_n_past_timestamps + 1,  //remove future t
-//            MAX_N_INTERVAL + 3,  //add future t
+                              max_n_past_timestamps,  //remove future t
+//            max_n_past_timestamps + 1,  //future t
                               C_API_PREDICT_NORMAL,
                               0,
                               GDBT_train_params,
@@ -202,10 +202,10 @@ void GDBTCache::sample(uint64_t &t) {
             if (meta._future_timestamp - t < threshold) {
                 //gdbt don't need to log
                 uint64_t p_f = (meta._future_timestamp - t);
-                training_data.indices.push_back(max_n_past_timestamps);
-                training_data.data.push_back(log1p(p_f));
                 training_data.labels.push_back(log1p(p_f));
-                ++counter;
+//                training_data.indices.push_back(max_n_past_timestamps);
+//                training_data.data.push_back(log1p(p_f));
+//                ++counter;
             } else {
                 training_data.labels.push_back(log1p_threshold);
             }
@@ -294,10 +294,10 @@ void GDBTCache::sample(uint64_t &t) {
             if (meta._future_timestamp - t < threshold) {
                 //gdbt don't need to log
                 uint64_t p_f = (meta._future_timestamp - t);
-                training_data.indices.push_back(max_n_past_timestamps);
-                training_data.data.push_back(log1p(p_f));
                 training_data.labels.push_back(log1p(p_f));
-                ++counter;
+//                training_data.indices.push_back(max_n_past_timestamps);
+//                training_data.data.push_back(log1p(p_f));
+//                ++counter;
             } else {
                 training_data.labels.push_back(log1p_threshold);
             }
@@ -423,10 +423,10 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
         if (meta._future_timestamp - t < threshold) {
             //gdbt don't need to log
             uint64_t p_f = (meta._future_timestamp - t);
-            indices.push_back(max_n_past_timestamps);
-            data.push_back(log1p(p_f));
             label.push_back(log1p(p_f));
-            ++counter;
+//            indices.push_back(max_n_past_timestamps);
+//            data.push_back(log1p(p_f));
+//            ++counter;
         } else {
             label.push_back(log1p_threshold);
         }
@@ -449,7 +449,8 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
                                   C_API_DTYPE_FLOAT64,
                                   indptr.size(),
                                   data.size(),
-                                  max_n_past_timestamps + 1,  //remove future t
+                                  max_n_past_timestamps,  //remove future t
+//                                  max_n_past_timestamps + 1,  //future t
 //            MAX_N_INTERVAL + 3,  //add future t
                                   C_API_PREDICT_NORMAL,
                                   0,
