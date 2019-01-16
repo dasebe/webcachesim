@@ -13,13 +13,7 @@ using namespace std;
 //init with a wrong value
 uint8_t GDBTMeta::_max_n_past_timestamps= 0;
 
-unordered_map<string, string> GDBT_train_params = {
-        {"boosting",                   "gbdt"},
-        {"objective",                  "regression"},
-        {"metric",                     "l1,l2"},
-        {"num_iterations",             "1"},
-        {"num_leaves",                  "32"}
-};
+
 
 
 void GDBTCache::try_train(uint64_t &t) {
@@ -131,6 +125,11 @@ void GDBTCache::try_train(uint64_t &t) {
     training_data.indptr.clear();
     training_data.indices.clear();
     training_data.data.clear();
+
+    cerr << "Training time: "
+               << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - timeBegin).count()
+               << " ms"
+               << endl;
 
 }
 

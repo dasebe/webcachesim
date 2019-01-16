@@ -172,10 +172,23 @@ Bins:
   w9:
     - 0.1
     - 0
-GBDT:
+GDBT:
   sample_rate:
     - 32
+    - 64
   threshold: 10000000
   gradient_window:
-    - 10000
-  n_past_intervals: 64
+    - 50000
+    - 100000
+    - 200000
+  max_n_past_timestamps:
+    - 4
+    - 8
+    - 16
+    - 32
+    - 64
+  num_iterations:
+    - 1
+    - 2
+    - 4
+

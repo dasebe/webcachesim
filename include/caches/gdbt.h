@@ -79,6 +79,14 @@ public:
 
     BoosterHandle booster = nullptr;
 
+    unordered_map<string, string> GDBT_train_params = {
+            {"boosting",                   "gbdt"},
+            {"objective",                  "regression"},
+            {"metric",                     "l1,l2"},
+            {"num_iterations",             "1"},
+            {"num_leaves",                  "32"},
+            {"num_threads",                "1"},
+    };
 
     double training_error = 0;
     double inference_error = 0;
@@ -103,6 +111,8 @@ public:
                 max_n_past_timestamps = (uint8_t) stoi(it.second);
             } else if (it.first == "gradient_window") {
                 gradient_window = stoull(it.second);
+            } else if (it.first == "num_iterations") {
+                GDBT_train_params["num_iterations"] = it.second;
             } else {
                 cerr << "unrecognized parameter: " << it.first << endl;
             }
