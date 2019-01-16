@@ -172,3 +172,10 @@ Bins:
   w9:
     - 0.1
     - 0
+GBDT:
+  sample_rate:
+    - 32
+  threshold: 10000000
+  gradient_window:
+    - 10000
+  n_past_intervals: 64
