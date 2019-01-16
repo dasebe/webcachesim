@@ -72,12 +72,16 @@ public:
     uint64_t threshold = 10000000;
     double log1p_threshold = log1p(threshold);
     // n_past_interval
-    uint8_t max_n_past_intervals = 64;
+    uint8_t max_n_past_timestamps = 64;
 
     vector<GDBTTrainingData> pending_training_data;
     uint64_t gradient_window = 100000;  //todo: does this large enough
 
     BoosterHandle booster = nullptr;
+
+
+    double training_error = 0;
+    double inference_error = 0;
 
     default_random_engine _generator = default_random_engine();
     uniform_int_distribution<std::size_t> _distribution = uniform_int_distribution<std::size_t>();
@@ -95,8 +99,8 @@ public:
             } else if (it.first == "threshold") {
                 threshold = stoull(it.second);
                 log1p_threshold = std::log1p(threshold);
-            } else if (it.first == "n_past_intervals") {
-                max_n_past_intervals = (uint8_t) stoi(it.second);
+            } else if (it.first == "max_n_past_timestamps") {
+                max_n_past_timestamps = (uint8_t) stoi(it.second);
             } else if (it.first == "gradient_window") {
                 gradient_window = stoull(it.second);
             } else {
@@ -105,7 +109,7 @@ public:
         }
 
         //init
-        GDBTMeta::_max_n_past_timestamps = max_n_past_intervals;
+        GDBTMeta::_max_n_past_timestamps = max_n_past_timestamps;
     }
 
     virtual bool lookup(SimpleRequest& req);

@@ -17,7 +17,8 @@ unordered_map<string, string> GDBT_train_params = {
         {"boosting",                   "gbdt"},
         {"objective",                  "regression"},
         {"metric",                     "l1,l2"},
-        {"num_iterations",             "50"},
+        {"num_iterations",             "10"},
+//        {"num_leaves",                  "5"}
 };
 
 
@@ -49,7 +50,7 @@ void GDBTCache::try_train(uint64_t &t) {
             C_API_DTYPE_FLOAT64,
             training_data.indptr.size(),
             training_data.data.size(),
-            max_n_past_intervals + 1,  //remove future t
+            max_n_past_timestamps + 1,  //remove future t
 //            MAX_N_INTERVAL + 3,  //add future t
             GDBT_train_params,
             nullptr,
@@ -82,7 +83,7 @@ void GDBTCache::try_train(uint64_t &t) {
                               C_API_DTYPE_FLOAT64,
                               training_data.indptr.size(),
                               training_data.data.size(),
-                              max_n_past_intervals + 1,  //remove future t
+                              max_n_past_timestamps + 1,  //remove future t
 //            MAX_N_INTERVAL + 3,  //add future t
                               C_API_PREDICT_NORMAL,
                               0,
@@ -94,17 +95,36 @@ void GDBTCache::try_train(uint64_t &t) {
         msr += pow((result[i] - training_data.labels[i]), 2);
     }
     msr /= result.size();
-    cerr<<"training l2: "<<msr<<endl;
+    training_error = training_error * 0.9 + msr *0.1;
+//    cerr<<"training l2: "<<msr<<endl;
 
-    vector<double > importance(max_n_past_intervals+1);
-    int succeed = LGBM_BoosterFeatureImportance(booster,
-                                                0,
-                                                1,
-                                                importance.data());
+//    vector<double > importance(max_n_past_timestamps+1);
+//    int succeed = LGBM_BoosterFeatureImportance(booster,
+//                                                0,
+//                                                1,
+//                                                importance.data());
 //    cerr<<"\nimportance:\n";
 //    for (auto & it: importance) {
 //        cerr<<it<<endl;
 //    }
+//    char *json_model = new char[10000000];
+//    int64_t out_len;
+//    LGBM_BoosterSaveModelToString(booster,
+//            0,
+//            -1,
+//            10000000,
+//            &out_len,
+//            json_model);
+//    cout<<json_model<<endl;
+//
+//    LGBM_BoosterDumpModel(booster,
+//                          0,
+//                          -1,
+//                          10000000,
+//                          &out_len,
+//                          json_model);
+//    cout<<json_model<<endl;
+
 
     LGBM_DatasetFree(trainData);
     training_data.labels.clear();
@@ -115,6 +135,10 @@ void GDBTCache::try_train(uint64_t &t) {
 }
 
 void GDBTCache::sample(uint64_t &t) {
+    //don't train at the first threshold
+    if (t < threshold) {
+        return;
+    }
     if (meta_holder[0].empty() || meta_holder[1].empty())
         return;
 #ifdef LOG_SAMPLE_RATE
@@ -126,6 +150,7 @@ void GDBTCache::sample(uint64_t &t) {
         uint32_t rand_idx = _distribution(_generator) % meta_holder[0].size();
         uint n_sample = min( (uint) ceil((double) sample_rate*meta_holder[0].size()/(meta_holder[0].size()+meta_holder[1].size())),
                              (uint) meta_holder[0].size());
+//        uint n_sample = min((uint)sample_rate, (uint) meta_holder[0].size());
 
 
         for (uint32_t i = 0; i < n_sample; i++) {
@@ -163,8 +188,8 @@ void GDBTCache::sample(uint64_t &t) {
 
             uint8_t j = 0;
             uint64_t this_past_timestamp = meta._past_timestamp;
-            for (j = 0; j < meta._past_distance_idx && j < max_n_past_intervals-1; ++j) {
-                uint8_t past_distance_idx = (meta._past_distance_idx - 1 - j) % max_n_past_intervals;
+            for (j = 0; j < meta._past_distance_idx && j < max_n_past_timestamps-1; ++j) {
+                uint8_t past_distance_idx = (meta._past_distance_idx - 1 - j) % max_n_past_timestamps;
                 uint64_t & past_distance = meta._past_distances[past_distance_idx];
                 this_past_timestamp -= past_distance;
                 if (this_past_timestamp > t - threshold) {
@@ -177,7 +202,7 @@ void GDBTCache::sample(uint64_t &t) {
             if (meta._future_timestamp - t < threshold) {
                 //gdbt don't need to log
                 uint64_t p_f = (meta._future_timestamp - t);
-                training_data.indices.push_back(max_n_past_intervals);
+                training_data.indices.push_back(max_n_past_timestamps);
                 training_data.data.push_back(log1p(p_f));
                 training_data.labels.push_back(log1p(p_f));
                 ++counter;
@@ -255,8 +280,8 @@ void GDBTCache::sample(uint64_t &t) {
 
             uint8_t j = 0;
             uint64_t this_past_timestamp = meta._past_timestamp;
-            for (j = 0; j < meta._past_distance_idx && j < max_n_past_intervals-1; ++j) {
-                uint8_t past_distance_idx = (meta._past_distance_idx - 1 - j) % max_n_past_intervals;
+            for (j = 0; j < meta._past_distance_idx && j < max_n_past_timestamps-1; ++j) {
+                uint8_t past_distance_idx = (meta._past_distance_idx - 1 - j) % max_n_past_timestamps;
                 uint64_t & past_distance = meta._past_distances[past_distance_idx];
                 this_past_timestamp -= past_distance;
                 if (this_past_timestamp > t - threshold) {
@@ -269,7 +294,7 @@ void GDBTCache::sample(uint64_t &t) {
             if (meta._future_timestamp - t < threshold) {
                 //gdbt don't need to log
                 uint64_t p_f = (meta._future_timestamp - t);
-                training_data.indices.push_back(max_n_past_intervals);
+                training_data.indices.push_back(max_n_past_timestamps);
                 training_data.data.push_back(log1p(p_f));
                 training_data.labels.push_back(log1p(p_f));
                 ++counter;
@@ -286,6 +311,10 @@ void GDBTCache::sample(uint64_t &t) {
 bool GDBTCache::lookup(SimpleRequest &_req) {
     auto & req = dynamic_cast<AnnotatedRequest &>(_req);
     static uint64_t i = 0;
+    if (!(i%50000)) {
+        cerr << "training error: " << training_error << endl;
+        cerr << "inference error: " << inference_error << endl;
+    }
     ++i;
 
     try_train(req._t);
@@ -380,8 +409,8 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
 
         uint8_t j = 0;
         uint64_t this_past_timestamp = meta._past_timestamp;
-        for (j = 0; j < meta._past_distance_idx && j < max_n_past_intervals-1; ++j) {
-            uint8_t past_distance_idx = (meta._past_distance_idx - 1 - j) % max_n_past_intervals;
+        for (j = 0; j < meta._past_distance_idx && j < max_n_past_timestamps-1; ++j) {
+            uint8_t past_distance_idx = (meta._past_distance_idx - 1 - j) % max_n_past_timestamps;
             uint64_t & past_distance = meta._past_distances[past_distance_idx];
             this_past_timestamp -= past_distance;
             if (this_past_timestamp > t - threshold) {
@@ -394,7 +423,7 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
         if (meta._future_timestamp - t < threshold) {
             //gdbt don't need to log
             uint64_t p_f = (meta._future_timestamp - t);
-            indices.push_back(max_n_past_intervals);
+            indices.push_back(max_n_past_timestamps);
             data.push_back(log1p(p_f));
             label.push_back(log1p(p_f));
             ++counter;
@@ -410,7 +439,7 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
 //        indptr.push_back(indptr[indptr.size() - 1] + j + 3);
     }
     int64_t len;
-    result.resize(indptr.size() - 1);
+    result.resize(sample_rate);
     if (booster != nullptr) {
         LGBM_BoosterPredictForCSR(booster,
                                   static_cast<void *>(indptr.data()),
@@ -420,7 +449,7 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
                                   C_API_DTYPE_FLOAT64,
                                   indptr.size(),
                                   data.size(),
-                                  max_n_past_intervals + 1,  //remove future t
+                                  max_n_past_timestamps + 1,  //remove future t
 //            MAX_N_INTERVAL + 3,  //add future t
                                   C_API_PREDICT_NORMAL,
                                   0,
@@ -432,7 +461,8 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
             msr += pow((result[i] - label[i]), 2);
         }
         msr /= result.size();
-        cerr<<"inference l2: "<<msr<<endl;
+//        cerr<<"inference l2: "<<msr<<endl;
+        inference_error = inference_error * 0.9 + msr *0.1;
     }
 
     auto max_it = max_element(result.begin(), result.end());
