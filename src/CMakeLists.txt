@@ -13,13 +13,14 @@ set(LIB_SOURCE
         simulation_lfo.cpp
         simulation_lfo2.cpp
         simulation_future.cpp
+        simulation_truncate.cpp
         caches/annotate.cpp
         caches/ucb.cpp
         caches/belady_sample.cpp
         caches/lruk_sample.cpp
         caches/lfu_sample.cpp
         simulation_lr_belady.cpp
-        simulation_belady_static.cpp simulation_bins.cpp caches/bins.cpp)
+        simulation_belady_static.cpp simulation_bins.cpp caches/bins.cpp caches/belady_truncate.cpp)
 #message(123)
 
 find_package(Boost)
