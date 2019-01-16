@@ -310,9 +310,9 @@ void GDBTCache::sample(uint64_t &t) {
 bool GDBTCache::lookup(SimpleRequest &_req) {
     auto & req = dynamic_cast<AnnotatedRequest &>(_req);
     static uint64_t i = 0;
-    if (!(i%50000)) {
-        cerr << "training error: " << training_error << endl;
-        cerr << "inference error: " << inference_error << endl;
+    if (!(i%100000)) {
+        cerr << "training error: " << training_error << " "<< "inference error: " << inference_error << endl;
+        cerr << "list 0 size: "<<meta_holder[0].size()<<" "<<"list 1 size: "<<meta_holder[1].size()<<endl;
     }
     ++i;
 
