@@ -74,7 +74,7 @@ public:
     // n_past_interval
     uint8_t max_n_past_timestamps = 64;
 
-    vector<GDBTTrainingData> pending_training_data;
+    vector<GDBTTrainingData*> pending_training_data;
     uint64_t gradient_window = 100000;  //todo: does this large enough
 
     BoosterHandle booster = nullptr;
