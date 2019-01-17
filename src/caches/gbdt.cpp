@@ -30,97 +30,109 @@ void GDBTCache::try_train(uint64_t &t) {
     if (gradient_window_idx >= pending_training_data.size())
         return;
 
+    cerr<<"processing window idx: "<<gradient_window_idx<<endl;
+    if (gradient_window_idx)
+        cerr<<"last window size: "<<pending_training_data[gradient_window_idx-1].labels.size()<<endl;
+    uint64_t pending_size = 0;
+    for (auto i: pending_training_data)
+        pending_size += i.labels.size();
+    cerr<<"pending data size: "<<pending_size<<endl;
+
     auto timeBegin = chrono::system_clock::now();
-
     auto &training_data = pending_training_data[gradient_window_idx];
-    LGBM_BoosterFree(booster);
-    // create training dataset
-    DatasetHandle trainData;
-    LGBM_DatasetCreateFromCSR(
-            static_cast<void *>(training_data.indptr.data()),
-            C_API_DTYPE_INT32,
-            training_data.indices.data(),
-            static_cast<void *>(training_data.data.data()),
-            C_API_DTYPE_FLOAT64,
-            training_data.indptr.size(),
-            training_data.data.size(),
-            max_n_past_timestamps,  //remove future t
-//            max_n_past_timestamps + 1,  //future t
-            GDBT_train_params,
-            nullptr,
-            &trainData);
 
-    LGBM_DatasetSetField(trainData,
-                         "label",
-                         static_cast<void *>(training_data.labels.data()),
-                         training_data.labels.size(),
-                         C_API_DTYPE_FLOAT32);
+    //no training data in the window
+    if (training_data.labels.empty())
+        return;
 
-    // init booster
-    LGBM_BoosterCreate(trainData, GDBT_train_params, &booster);
-    // train
-    for (int i = 0; i < stoi(GDBT_train_params["num_iterations"]); i++) {
-        int isFinished;
-        LGBM_BoosterUpdateOneIter(booster, &isFinished);
-        if (isFinished) {
-            break;
-        }
-    }
-
-    int64_t len;
-    vector<double > result(training_data.indptr.size()-1);
-    LGBM_BoosterPredictForCSR(booster,
-                              static_cast<void *>(training_data.indptr.data()),
-                              C_API_DTYPE_INT32,
-                              training_data.indices.data(),
-                              static_cast<void *>(training_data.data.data()),
-                              C_API_DTYPE_FLOAT64,
-                              training_data.indptr.size(),
-                              training_data.data.size(),
-                              max_n_past_timestamps,  //remove future t
-//            max_n_past_timestamps + 1,  //future t
-                              C_API_PREDICT_NORMAL,
-                              0,
-                              GDBT_train_params,
-                              &len,
-                              result.data());
-    double msr = 0;
-    for (int i = 0; i < result.size(); ++i) {
-        msr += pow((result[i] - training_data.labels[i]), 2);
-    }
-    msr /= result.size();
-    training_error = training_error * 0.9 + msr *0.1;
-//    cerr<<"training l2: "<<msr<<endl;
-
-//    vector<double > importance(max_n_past_timestamps+1);
-//    int succeed = LGBM_BoosterFeatureImportance(booster,
-//                                                0,
-//                                                1,
-//                                                importance.data());
-//    cerr<<"\nimportance:\n";
-//    for (auto & it: importance) {
-//        cerr<<it<<endl;
-//    }
-//    char *json_model = new char[10000000];
-//    int64_t out_len;
-//    LGBM_BoosterSaveModelToString(booster,
-//            0,
-//            -1,
-//            10000000,
-//            &out_len,
-//            json_model);
-//    cout<<json_model<<endl;
+//    int ret = LGBM_BoosterFree(booster);
+//    // create training dataset
+//    DatasetHandle trainData;
+//    LGBM_DatasetCreateFromCSR(
+//            static_cast<void *>(training_data.indptr.data()),
+//            C_API_DTYPE_INT32,
+//            training_data.indices.data(),
+//            static_cast<void *>(training_data.data.data()),
+//            C_API_DTYPE_FLOAT64,
+//            training_data.indptr.size(),
+//            training_data.data.size(),
+//            max_n_past_timestamps,  //remove future t
+////            max_n_past_timestamps + 1,  //future t
+//            GDBT_train_params,
+//            nullptr,
+//            &trainData);
 //
-//    LGBM_BoosterDumpModel(booster,
-//                          0,
-//                          -1,
-//                          10000000,
-//                          &out_len,
-//                          json_model);
-//    cout<<json_model<<endl;
-
-
-    LGBM_DatasetFree(trainData);
+//    LGBM_DatasetSetField(trainData,
+//                         "label",
+//                         static_cast<void *>(training_data.labels.data()),
+//                         training_data.labels.size(),
+//                         C_API_DTYPE_FLOAT32);
+//
+//    // init booster
+//    ret = LGBM_BoosterCreate(trainData, GDBT_train_params, &booster);
+//    // train
+//    for (int i = 0; i < stoi(GDBT_train_params["num_iterations"]); i++) {
+//        int isFinished;
+//        LGBM_BoosterUpdateOneIter(booster, &isFinished);
+//        if (isFinished) {
+//            break;
+//        }
+//    }
+//
+//    int64_t len;
+//    vector<double > result(training_data.indptr.size()-1);
+//    LGBM_BoosterPredictForCSR(booster,
+//                              static_cast<void *>(training_data.indptr.data()),
+//                              C_API_DTYPE_INT32,
+//                              training_data.indices.data(),
+//                              static_cast<void *>(training_data.data.data()),
+//                              C_API_DTYPE_FLOAT64,
+//                              training_data.indptr.size(),
+//                              training_data.data.size(),
+//                              max_n_past_timestamps,  //remove future t
+////            max_n_past_timestamps + 1,  //future t
+//                              C_API_PREDICT_NORMAL,
+//                              0,
+//                              GDBT_train_params,
+//                              &len,
+//                              result.data());
+//    double msr = 0;
+//    for (int i = 0; i < result.size(); ++i) {
+//        msr += pow((result[i] - training_data.labels[i]), 2);
+//    }
+//    msr /= result.size();
+//    training_error = training_error * 0.9 + msr *0.1;
+////    cerr<<"training l2: "<<msr<<endl;
+//
+////    vector<double > importance(max_n_past_timestamps+1);
+////    int succeed = LGBM_BoosterFeatureImportance(booster,
+////                                                0,
+////                                                1,
+////                                                importance.data());
+////    cerr<<"\nimportance:\n";
+////    for (auto & it: importance) {
+////        cerr<<it<<endl;
+////    }
+////    char *json_model = new char[10000000];
+////    int64_t out_len;
+////    LGBM_BoosterSaveModelToString(booster,
+////            0,
+////            -1,
+////            10000000,
+////            &out_len,
+////            json_model);
+////    cout<<json_model<<endl;
+////
+////    LGBM_BoosterDumpModel(booster,
+////                          0,
+////                          -1,
+////                          10000000,
+////                          &out_len,
+////                          json_model);
+////    cout<<json_model<<endl;
+//
+//
+//    LGBM_DatasetFree(trainData);
     training_data.labels.clear();
     training_data.indptr.clear();
     training_data.indices.clear();
@@ -310,7 +322,7 @@ void GDBTCache::sample(uint64_t &t) {
 bool GDBTCache::lookup(SimpleRequest &_req) {
     auto & req = dynamic_cast<AnnotatedRequest &>(_req);
     static uint64_t i = 0;
-    if (!(i%100000)) {
+    if (!(i%500000)) {
         cerr << "training error: " << training_error << " "<< "inference error: " << inference_error << endl;
         cerr << "list 0 size: "<<meta_holder[0].size()<<" "<<"list 1 size: "<<meta_holder[1].size()<<endl;
     }
