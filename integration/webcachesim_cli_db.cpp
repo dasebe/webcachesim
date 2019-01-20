@@ -60,16 +60,22 @@ int main (int argc, char* argv[])
       return -1;
   }
 
+  map<string, string> simulation_params;
+  for (auto &k: params) {
+      if (k.first == "dbcollection" || k.first == "dburl")
+        continue;
+      else
+        simulation_params[k.first] = k.second;
+    }
+
   auto timeBegin = chrono::system_clock::now();
-  auto res = simulation(string(webcachesim_trace_dir) + '/' + argv[1], argv[2], std::stoull(argv[3]), params);
+  auto res = simulation(string(webcachesim_trace_dir) + '/' + argv[1], argv[2], std::stoull(argv[3]), simulation_params);
   auto simulation_time = chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - timeBegin).count();
-  //todo: split to determined params and nondetermined params
-  //todo: write to database. flat determined and non determined
 
   mongocxx::instance inst;
 
   try {
-    mongocxx::client client = mongocxx::client{mongocxx::uri(params["_dburl"])};
+    mongocxx::client client = mongocxx::client{mongocxx::uri(params["dburl"])};
     mongocxx::database db = client["webcachesim"];
     bsoncxx::builder::basic::document key_builder{};
     bsoncxx::builder::basic::document value_builder{};
@@ -81,22 +87,20 @@ int main (int argc, char* argv[])
     value_builder.append(kvp("cache_size", argv[3]));
     value_builder.append(kvp("simulation_time", simulation_time));
 
-    for (auto &k: params) {
-      if ('_' != k.first[0]) {
-        key_builder.append(kvp(k.first, k.second));
-      }
+    for (auto &k: simulation_params) {
+      key_builder.append(kvp(k.first, k.second));
       value_builder.append(kvp(k.first, k.second));
     }
 
     for (auto &k: res) {
       value_builder.append(kvp(k.first, k.second));
     }
-    // We choose to move in our document here, which transfers ownership to insert_one()
+
     mongocxx::options::replace option;
-    auto res = db[params["_dbcollection"]].replace_one(key_builder.extract(), value_builder.extract(), option.upsert(true));
+    db[params["dbcollection"]].replace_one(key_builder.extract(), value_builder.extract(), option.upsert(true));
     return EXIT_SUCCESS;
   } catch (const std::exception& xcp) {
-    std::cout << "error: db connection failed: " << xcp.what() << std::endl;
+    cerr << "error: db connection failed: " << xcp.what() << std::endl;
     return EXIT_FAILURE;
   }
 }

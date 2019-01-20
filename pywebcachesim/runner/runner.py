@@ -17,7 +17,7 @@ def to_task_str(scheduler_args: dict, task: dict, worker_extra_args: dict):
             params[k] = str(v)
     for k, v in scheduler_args.items():
         if k not in ['debug', 'config_file', 'algorithm_param_file'] and v is not None:
-            params['_'+k] = str(v)
+            params[k] = str(v)
     params = [f'{k}={v}'for k, v in params.items()]
     params = ' '.join(params)
     res = f'webcachesim_cli_db {task["trace_file"]} {task["cache_type"]} {task["cache_size"]} {params}'
@@ -35,7 +35,6 @@ def runner_run(scheduler_args: dict, tasks: list, worker_extra_args: dict):
         for task in tasks:
             task_str = to_task_str(scheduler_args, task, worker_extra_args)
             f.write(task_str+'\n')
-    # todo: parallel
     p = subprocess.Popen(
         [f'parallel < /tmp/{ts}.job'],
         stdout=subprocess.PIPE,
