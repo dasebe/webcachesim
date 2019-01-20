@@ -34,9 +34,10 @@ def runner_run(scheduler_args: dict, tasks: list, worker_extra_args: dict):
     with open(f'/tmp/{ts}.job', 'w') as f:
         for task in tasks:
             task_str = to_task_str(scheduler_args, task, worker_extra_args)
-            f.write(task_str+f' &> /tmp/{ts}.log\n')
+            # f.write(task_str+f' &> /tmp/{ts}.log\n')
+            f.write(f'bash --login -c "{task_str}" &> /tmp/{ts}.log\n')
     p = subprocess.Popen(
-        ['/bin/bash', '-i', '-c', f'parallel < /tmp/{ts}.job'],
+        ['bash', '-ic', f'parallel -v -S fat < /tmp/{ts}.job'],
     )
     out, err = p.communicate()
 

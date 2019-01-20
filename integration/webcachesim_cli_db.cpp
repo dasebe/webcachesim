@@ -70,7 +70,7 @@ int main (int argc, char* argv[])
 
   auto timeBegin = chrono::system_clock::now();
   auto res = simulation(string(webcachesim_trace_dir) + '/' + argv[1], argv[2], std::stoull(argv[3]), simulation_params);
-  auto simulation_time = chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - timeBegin).count();
+  auto simulation_time = chrono::duration_cast<chrono::seconds>(chrono::system_clock::now() - timeBegin).count();
 
   mongocxx::instance inst;
 
@@ -85,7 +85,7 @@ int main (int argc, char* argv[])
     value_builder.append(kvp("trace_file", argv[1]));
     value_builder.append(kvp("cache_type", argv[2]));
     value_builder.append(kvp("cache_size", argv[3]));
-    value_builder.append(kvp("simulation_time", simulation_time));
+    value_builder.append(kvp("simulation_time", to_string(simulation_time)));
 
     for (auto &k: simulation_params) {
       key_builder.append(kvp(k.first, k.second));

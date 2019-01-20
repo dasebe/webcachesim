@@ -8,6 +8,7 @@
 #include <fstream>
 #include "request.h"
 #include "annotate.h"
+#include "belady.h"
 #include "utils.h"
 
 
