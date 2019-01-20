@@ -34,12 +34,9 @@ def runner_run(scheduler_args: dict, tasks: list, worker_extra_args: dict):
     with open(f'/tmp/{ts}.job', 'w') as f:
         for task in tasks:
             task_str = to_task_str(scheduler_args, task, worker_extra_args)
-            f.write(task_str+'\n')
+            f.write(task_str+f' &> /tmp/{ts}.log\n')
     p = subprocess.Popen(
-        [f'parallel < /tmp/{ts}.job'],
-        stdout=subprocess.PIPE,
-        stdin=subprocess.PIPE,
-        shell=True,
+        ['/bin/bash', '-i', '-c', f'parallel < /tmp/{ts}.job'],
     )
     out, err = p.communicate()
 
