@@ -15,17 +15,11 @@ def parse_cmd_args():
                                   type=bool,
                                   choices=[True, False])
     scheduler_parser.add_argument('--config_file', type=str, nargs='?', help='runner configuration file')
-    scheduler_parser.add_argument('--trace_dir',
-                                  type=str,
-                                  nargs='?',
-                                  help='whether the trace is placed')
-    scheduler_parser.add_argument('--dburl', type=str)
-    scheduler_parser.add_argument('--dbport', type=int)
-    scheduler_parser.add_argument('--dbname', type=str)
-    scheduler_parser.add_argument('--dbuser', type=str)
-    scheduler_parser.add_argument('--dbpassword', type=str)
-    scheduler_parser.add_argument('--dbcollection', type=str)
-
+    # read from PATH, WEBCACHESIM_TRACE_DIR
+    # scheduler_parser.add_argument('--trace_dir',
+    #                               type=str,
+    #                               nargs='?',
+    #                               help='whether the trace is placed')
     scheduler_parser.add_argument('--algorithm_param_file', type=str, help='algorithm parameter config file')
     scheduler_args, unknown_args = scheduler_parser.parse_known_args()
 
@@ -41,6 +35,7 @@ def parse_cmd_args():
     # args that don't affects the result
     worker_extra_parser = argparse.ArgumentParser()
     worker_extra_parser.add_argument('--segment_window', type=int, help='interval to record segment hit rate')
+    scheduler_parser.add_argument('--dburl', type=str)
     worker_extra_args = worker_extra_parser.parse_args(unknown_args)
 
     # parser.add_argument('--n_early_stop',

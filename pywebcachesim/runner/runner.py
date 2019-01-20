@@ -1,15 +1,13 @@
-import multiprocessing
-import tqdm
-from pywebcachesim.simulation import simulation
 from pywebcachesim.runner import parser
-import timeit
-from pymongo import MongoClient
-from collections import OrderedDict
+import time
+import subprocess
 
 
-def run_task(args):
-    scheduler_args, task, worker_extra_args = args
-    start_time = timeit.default_timer()
+def to_task_str(scheduler_args: dict, task: dict, worker_extra_args: dict):
+    """
+    split deterministic args and nodeterminstics args. Add _ prefix to later
+    """
+
     params = {}
     for k, v in task.items():
         if k not in ['trace_file', 'cache_type', 'cache_size']:
@@ -17,59 +15,34 @@ def run_task(args):
     for k, v in worker_extra_args.items():
         if v is not None:
             params[k] = str(v)
-    res = simulation(f'{scheduler_args["trace_dir"]}/{task["trace_file"]}',
-                     task['cache_type'],
-                     task['cache_size'],
-                     params)
-    elapsed = timeit.default_timer() - start_time
-    print(f'time for trace_file {task["trace_file"]}, icache_type {task["cache_type"]}, '
-          f'cache_size {task["cache_size"]}: {elapsed} second')
-    # print(res)
-    if scheduler_args.get("dburl") is not None:
-        print('writing result back...')
-        _res = {
-            'simulation_time': elapsed,
-        }
-        if "byte_hit_rate" in res:
-            _res["byte_hit_rate"] = float(res['byte_hit_rate'])
-        if "object_hit_rate" in res:
-            _res["object_hit_rate"] = float(res['object_hit_rate'])
-        if "segment_byte_hit_rate" in res:
-            _res["segment_byte_hit_rate"] = [float(r) for r in res['segment_byte_hit_rate'].split()]
-        if "segment_object_hit_rate" in res:
-            _res["segment_object_hit_rate"] = [float(r) for r in res['segment_object_hit_rate'].split()]
-        record = {
-            "res": _res,
-            "scheduler_args": scheduler_args,
-            "worker_extra_args": worker_extra_args,
-            "task": task,
-        }
-        # sort second level keys
-        for k in record:
-            record[k] = dict(OrderedDict(sorted(record[k].items())))
-        uri = (f'mongodb://{scheduler_args["dbuser"]}:{scheduler_args["dbpassword"]}@{scheduler_args["dburl"]}:'
-               f'{scheduler_args["dbport"]}/{scheduler_args["dbname"]}')
-        client = MongoClient(uri)
-        db = client.get_database()
-        collection = db[scheduler_args["dbcollection"]]
-        collection.replace_one({'task': record["task"]}, record, upsert=True)
-
+    for k, v in scheduler_args.items():
+        if k not in ['debug', 'config_file', 'algorithm_param_file'] and v is not None:
+            params['_'+k] = str(v)
+    params = [f'{k}={v}'for k, v in params.items()]
+    params = ' '.join(params)
+    res = f'webcachesim_cli_db {task["trace_file"]} {task["cache_type"]} {task["cache_size"]} {params}'
     return res
 
 
 def runner_run(scheduler_args: dict, tasks: list, worker_extra_args: dict):
-    # seq the task
-    for i, task in enumerate(tasks):
-        tasks[i] = (scheduler_args, task, {'task_id': i, **worker_extra_args})
-    # debug mode, disable parallel
+    # debug mode, only 1 task
     if scheduler_args["debug"]:
-        return [run_task(tasks[0])]
-    else:
-        # normal mode
-        # use less CPU, otherwise some task may stuck in the middle,  causing the job not return
-        with multiprocessing.Pool(multiprocessing.cpu_count() - 4) as pool:
-            for _ in tqdm.tqdm(pool.imap_unordered(run_task, tasks), total=len(tasks)):
-                pass
+        tasks = tasks[:1]
+
+    ts = int(time.time())
+    print(f'generating job file to /tmp/{ts}.job')
+    with open(f'/tmp/{ts}.job', 'w') as f:
+        for task in tasks:
+            task_str = to_task_str(scheduler_args, task, worker_extra_args)
+            f.write(task_str+'\n')
+    # todo: parallel
+    p = subprocess.Popen(
+        [f'parallel < /tmp/{ts}.job'],
+        stdout=subprocess.PIPE,
+        stdin=subprocess.PIPE,
+        shell=True,
+    )
+    out, err = p.communicate()
 
 
 def main():
