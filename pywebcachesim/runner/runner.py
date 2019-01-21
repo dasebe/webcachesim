@@ -38,7 +38,7 @@ def runner_run(scheduler_args: dict, tasks: list, worker_extra_args: dict):
             ts_task = int(time.time()*1000000)
             f.write(f'bash --login -c "{task_str}" &> /tmp/{ts_task}.log\n')
     p = subprocess.Popen(
-        ['bash', '-ic', f'parallel -v -S fat --sshdelay 0.1 < /tmp/{ts}.job'],
+        ['bash', '-ic', f'parallel -v --sshloginfile nodefile --sshdelay 0.1 < /tmp/{ts}.job'],
     )
     out, err = p.communicate()
 
