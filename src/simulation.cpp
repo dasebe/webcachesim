@@ -31,7 +31,7 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     unique_ptr<Cache> webcache = move(Cache::create_unique(cache_type));
     if(webcache == nullptr) {
         cerr<<"cache type not implemented"<<endl;
-        return {};
+        exit(-2);
     }
 
     // configure cache size
@@ -54,7 +54,7 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     infile.open(trace_file);
     if (!infile) {
         cerr << "Exception opening/reading file"<<endl;
-        return {};
+        exit(-1);
     }
 
     uint64_t byte_req = 0, byte_hit = 0, obj_req = 0, obj_hit = 0;
