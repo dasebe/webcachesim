@@ -26,7 +26,7 @@ set(LIB_SOURCE
 find_package(Boost)
 INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
 
-add_library(webcachesim STATIC ${LIB_SOURCE})
+add_library(webcachesim SHARED ${LIB_SOURCE})
 
 target_include_directories(webcachesim PUBLIC include)
 target_include_directories(webcachesim PUBLIC ../lib/LightGBM/include)

@@ -58,7 +58,7 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     }
 
     uint64_t byte_req = 0, byte_hit = 0, obj_req = 0, obj_hit = 0;
-    uint64_t t, id, size;
+    uint64_t tmp, id, size;
     uint64_t seg_byte_req = 0, seg_byte_hit = 0, seg_obj_req = 0, seg_obj_hit = 0;
     string seg_bhr;
     string seg_ohr;
@@ -67,7 +67,8 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     SimpleRequest req(0, 0);
     uint64_t seq = 0;
     auto t_now = system_clock::now();
-    while (infile >> t >> id >> size) {
+    while (infile >> tmp >> id >> size) {
+        //todo: currently real timestamp t is not used. Only relative seq is used
         if (uni_size)
             size = 1;
 

@@ -77,15 +77,22 @@ public:
     vector<GDBTTrainingData*> pending_training_data;
     uint64_t gradient_window = 100000;  //todo: does this large enough
 
+    uint64_t n_feature;
+
     BoosterHandle booster = nullptr;
 
     unordered_map<string, string> GDBT_train_params = {
             {"boosting",                   "gbdt"},
             {"objective",                  "regression"},
-            {"metric",                     "l1,l2"},
             {"num_iterations",             "1"},
             {"num_leaves",                  "32"},
             {"num_threads",                "1"},
+//            feature_fraction = 0.8,
+//            max_bin = 255
+//            num_threads = 40
+//            feature_fraction = 0.8
+//            bagging_freq = 5
+//            bagging_fraction = 0.8
     };
 
     double training_error = 0;
@@ -120,6 +127,8 @@ public:
 
         //init
         GDBTMeta::_max_n_past_timestamps = max_n_past_timestamps;
+        //interval, distances, size
+        n_feature = max_n_past_timestamps + 1;
     }
 
     virtual bool lookup(SimpleRequest& req);

@@ -174,25 +174,26 @@ Bins:
     - 0
 GDBT:
   sample_rate:
-    - 16
+#    - 16
     - 32
-    - 64
+#    - 64
   threshold: 10000000
   gradient_window:
 #    - 50000
     - 100000
 #    - 200000
   max_n_past_timestamps:
-#    - 4
-#    - 8
-#    - 16
-    - 32
-#    - 64
-  num_iterations:
-#    - 1
-#    - 2
     - 4
     - 8
     - 16
     - 32
+#    - 64
+  num_iterations:
+    - 1
+    - 2
+    - 4
+    - 8
+    - 16
+#    - 32
+  version: size
 

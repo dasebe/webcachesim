@@ -57,8 +57,7 @@ void GDBTCache::try_train(uint64_t &t) {
             C_API_DTYPE_FLOAT64,
             training_data->indptr.size(),
             training_data->data.size(),
-            max_n_past_timestamps,  //remove future t
-//            max_n_past_timestamps + 1,  //future t
+            n_feature,  //remove future t
             GDBT_train_params,
             nullptr,
             &trainData);
@@ -90,8 +89,7 @@ void GDBTCache::try_train(uint64_t &t) {
                               C_API_DTYPE_FLOAT64,
                               training_data->indptr.size(),
                               training_data->data.size(),
-                              max_n_past_timestamps,  //remove future t
-//            max_n_past_timestamps + 1,  //future t
+                              n_feature,  //remove future t
                               C_API_PREDICT_NORMAL,
                               0,
                               GDBT_train_params,
@@ -209,6 +207,10 @@ void GDBTCache::sample(uint64_t &t) {
                 }
             }
 
+            training_data->indices.push_back(max_n_past_timestamps);
+            training_data->data.push_back(meta._size);
+            ++counter;
+
             if (meta._future_timestamp - t < threshold) {
                 //gdbt don't need to log
                 uint64_t p_f = (meta._future_timestamp - t);
@@ -302,6 +304,10 @@ void GDBTCache::sample(uint64_t &t) {
                     ++counter;
                 }
             }
+
+            training_data->indices.push_back(max_n_past_timestamps);
+            training_data->data.push_back(meta._size);
+            ++counter;
 
             if (meta._future_timestamp - t < threshold) {
                 //gdbt don't need to log
@@ -431,6 +437,10 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
             }
         }
 
+        indices.push_back(max_n_past_timestamps);
+        data.push_back(meta._size);
+        ++counter;
+
         if (meta._future_timestamp - t < threshold) {
             //gdbt don't need to log
             uint64_t p_f = (meta._future_timestamp - t);
@@ -441,6 +451,7 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
         } else {
             label.push_back(log1p_threshold);
         }
+
         //remove future t
         indptr.push_back(counter);
 
@@ -461,9 +472,7 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
                                   C_API_DTYPE_FLOAT64,
                                   indptr.size(),
                                   data.size(),
-                                  max_n_past_timestamps,  //remove future t
-//                                  max_n_past_timestamps + 1,  //future t
-//            MAX_N_INTERVAL + 3,  //add future t
+                                  n_feature,  //remove future t
                                   C_API_PREDICT_NORMAL,
                                   0,
                                   GDBT_train_params,
