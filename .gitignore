@@ -62,3 +62,6 @@ trace
 
 # job dir
 job
+
+# gnu parallel
+nodefile
