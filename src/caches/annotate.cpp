@@ -19,7 +19,7 @@ void annotate(string &trace_file, uint n_extra_fields) {
     ifstream cachefile(expect_file);
     if (cachefile.good()) {
         cerr<<"file has been annotated, so skip annotation"<<endl;
-        exit(-1);
+        return;
     }
 
 
