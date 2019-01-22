@@ -44,7 +44,7 @@ void annotate(string &trace_file, uint n_extra_fields) {
         for (int j = 0; j < n_extra_fields; ++j)
             infile>>tmp1;
         if (!(++i%1000000))
-            cerr<<i<<endl;
+            cerr<<"reading origin trace: "<<i<<endl;
         //default with infinite future interval
         trace.emplace_back(seq, id, size, numeric_limits<uint64_t >::max()-1);
         ++seq;
@@ -59,7 +59,7 @@ void annotate(string &trace_file, uint n_extra_fields) {
     map<pair<uint64_t, uint64_t>, uint64_t > lastSeen;
     for (auto it = trace.rbegin(); it != trace.rend(); ++it) {
         if (!(++i%1000000))
-            cerr<<i<<endl;
+            cerr<<"computing next t: "<<i<<endl;
         auto lit = lastSeen.find(make_pair(get<1>(*it), get<2>(*it)));
         if (lit != lastSeen.end())
             get<3>(*it) = lit->second;
@@ -77,9 +77,10 @@ void annotate(string &trace_file, uint n_extra_fields) {
     outfile.open(tmp_file);
     if (!outfile) {
         cerr << "Exception opening/reading tmp file"<<endl;
-        return;
+        exit(-1);
     }
 
+    //no need to write seq, which is implicit
     for (auto & it: trace) {
         outfile << get<0>(it) << " " << get<1>(it) << " " << get<2>(it) << " " << get<3>(it) <<endl;
     }

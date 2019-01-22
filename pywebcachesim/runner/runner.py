@@ -18,7 +18,7 @@ def to_task_str(scheduler_args: dict, task: dict, worker_extra_args: dict):
     for k, v in scheduler_args.items():
         if k not in ['debug', 'config_file', 'algorithm_param_file'] and v is not None:
             params[k] = str(v)
-    params = [f'{k}={v}'for k, v in params.items()]
+    params = [f'{k} {v}'for k, v in params.items()]
     params = ' '.join(params)
     res = f'webcachesim_cli_db {task["trace_file"]} {task["cache_type"]} {task["cache_size"]} {params}'
     return res
