@@ -37,28 +37,9 @@ int main (int argc, char* argv[])
 
   map<string, string> params;
 
-  regex opexp ("(.*)=(.*)");
-  cmatch opmatch;
-  string paramSummary;
-  try {
-      for (int i = 4; i < argc; i++) {
-          if (paramSummary.length() > 0) {
-              paramSummary += "-";
-          }
-          regex_match(argv[i], opmatch, opexp);
-          if (opmatch.size() != 3) {
-              cerr << "each cacheParam needs to be in form name=value" << endl;
-              return 1;
-          }
-          cerr << opmatch[1] << endl << opmatch[2] << endl;
-          params[opmatch[1]] = opmatch[2];
-          paramSummary += opmatch[2];
-      }
-  } catch (const std::regex_error& e) {
-      cerr << "regex_error caught: " << e.what() << '\n';
-      if (e.code() == std::regex_constants::error_brack) {
-          cerr << "The code was error_brack\n";
-      }
+  for (int i = 4; i < argc; i+=2) {
+      cerr <<argv[i]<<": "<<argv[i+1]<<endl;
+      params[argv[i]] = argv[i+1];
   }
 
   auto webcachesim_trace_dir = getenv("WEBCACHESIM_TRACE_DIR");
