@@ -12,33 +12,42 @@
 
 using namespace std;
 
-void annotate(string &trace_file) {
+void annotate(string &trace_file, uint n_extra_fields) {
     //todo: there is a risk that multiple process write a same file
 
     auto expect_file = trace_file+".ant";
     ifstream cachefile(expect_file);
     if (cachefile.good()) {
         cerr<<"file has been annotated, so skip annotation"<<endl;
-        return;
+        exit(-1);
     }
 
 
     // parse trace file
     vector<tuple<uint64_t, uint64_t , uint64_t, uint64_t >> trace;
-    uint64_t t, id, size;
+    uint64_t tmp, id, size;
     uint64_t i = 0;
 
     ifstream infile;
     infile.open(trace_file);
     if (!infile) {
         cerr << "Exception opening/reading annotate original file"<<endl;
-        return;
+        exit(-1);
     }
-    while(infile>> t >> id >> size) {
+
+    //todo: read extra fields
+    uint tmp1;
+
+    //todo: don't use real timestamp, instead use relative timestamp
+    uint64_t seq = 1;
+    while(infile>> tmp >> id >> size) {
+        for (int j = 0; j < n_extra_fields; ++j)
+            infile>>tmp1;
         if (!(++i%1000000))
             cerr<<i<<endl;
         //default with infinite future interval
-        trace.emplace_back(t, id, size, numeric_limits<uint64_t >::max()-1);
+        trace.emplace_back(seq, id, size, numeric_limits<uint64_t >::max()-1);
+        ++seq;
     }
 
 

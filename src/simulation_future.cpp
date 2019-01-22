@@ -22,7 +22,7 @@ map<string, string> _simulation_future(string trace_file, string cache_type, uin
                                     map<string, string> params){
     //annotate a file
     //not necessary to annotate, but it's easier
-    annotate(trace_file);
+    annotate(trace_file, stoul(params["n_extra_fields"]));
 
     // create cache
     unique_ptr<Cache> webcache = move(Cache::create_unique(cache_type));

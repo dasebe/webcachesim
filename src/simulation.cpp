@@ -40,6 +40,7 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     uint64_t n_warmup = 0;
     bool uni_size = false;
     uint64_t window = 1000000;
+    uint n_extra_fields = 0;
     for (auto& kv: params) {
         webcache->setPar(kv.first, kv.second);
         if (kv.first == "n_warmup")
@@ -48,6 +49,8 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
             uni_size = static_cast<bool>(stoi(kv.second));
         if (kv.first == "segment_window")
             window = stoull(kv.second);
+        if (kv.first == "n_extra_fields")
+            n_extra_fields = stoull(kv.second);
     }
 
     ifstream infile;
@@ -63,11 +66,15 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     string seg_bhr;
     string seg_ohr;
 
+    //todo: read extra fields
+    uint tmp1;
 
     SimpleRequest req(0, 0);
     uint64_t seq = 0;
     auto t_now = system_clock::now();
     while (infile >> tmp >> id >> size) {
+        for (int i = 0; i < n_extra_fields; ++i)
+            infile>>tmp1;
         //todo: currently real timestamp t is not used. Only relative seq is used
         if (uni_size)
             size = 1;
@@ -124,14 +131,14 @@ map<string, string> simulation(string trace_file, string cache_type,
 //        return LFO::_simulation_lfo(trace_file, cache_type, cache_size, params);
 //    else if (cache_type == "LFO2")
 //        return _simulation_lfo2(trace_file, cache_type, cache_size, params);
-    else if (cache_type == "LRBelady")
-        return _simulation_lr_belady(trace_file, cache_type, cache_size, params);
-    else if (cache_type == "BeladyStatic")
-        return _simulation_belady_static(trace_file, cache_type, cache_size, params);
-    else if (cache_type == "Bins")
-        return _simulation_bins(trace_file, cache_type, cache_size, params);
-    else if (cache_type == "BeladyTruncate")
-        return _simulation_truncate(trace_file, cache_type, cache_size, params);
+//    else if (cache_type == "LRBelady")
+//        return _simulation_lr_belady(trace_file, cache_type, cache_size, params);
+//    else if (cache_type == "BeladyStatic")
+//        return _simulation_belady_static(trace_file, cache_type, cache_size, params);
+//    else if (cache_type == "Bins")
+//        return _simulation_bins(trace_file, cache_type, cache_size, params);
+//    else if (cache_type == "BeladyTruncate")
+//        return _simulation_truncate(trace_file, cache_type, cache_size, params);
     else
         return _simulation(trace_file, cache_type, cache_size, params);
 }
