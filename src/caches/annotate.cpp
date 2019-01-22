@@ -7,10 +7,33 @@
 #include <fstream>
 #include <vector>
 #include <limits>
-#include <map>
+#include <unordered_map>
 #include <chrono>
+#include <cstdint>
 
+//max to 10 billion
+const uint64_t max_next_seq = 10000000000;
 using namespace std;
+
+class AnnotatedRequest_
+{
+public:
+    uint64_t _next_seq;
+    uint64_t _t;
+    uint64_t _id; // request object id
+    uint64_t _size; // request size in bytes
+    vector<uint64_t > _extra_features;
+
+    // Create request
+    AnnotatedRequest_(uint64_t id, uint64_t size, uint64_t t, uint64_t next_seq,
+            vector<uint64_t >* extra_features = nullptr)
+            : _id(id), _size(size), _t(t), _next_seq(next_seq) {
+        if (extra_features) {
+            _extra_features = *extra_features;
+        }
+    }
+};
+
 
 void annotate(string &trace_file, uint n_extra_fields) {
     //todo: there is a risk that multiple process write a same file
@@ -24,8 +47,8 @@ void annotate(string &trace_file, uint n_extra_fields) {
 
 
     // parse trace file
-    vector<tuple<uint64_t, uint64_t , uint64_t, uint64_t >> trace;
-    uint64_t tmp, id, size;
+    vector<AnnotatedRequest_> trace;
+    uint64_t t, id, size;
     uint64_t i = 0;
 
     ifstream infile;
@@ -36,34 +59,39 @@ void annotate(string &trace_file, uint n_extra_fields) {
     }
 
     //todo: read extra fields
-    uint tmp1;
+    vector<uint64_t > extra_features(n_extra_fields, 0);
 
-    //todo: don't use real timestamp, instead use relative timestamp
-    uint64_t seq = 1;
-    while(infile>> tmp >> id >> size) {
+    while(infile>> t >> id >> size) {
         for (int j = 0; j < n_extra_fields; ++j)
-            infile>>tmp1;
+            infile>>extra_features[j];
         if (!(++i%1000000))
             cerr<<"reading origin trace: "<<i<<endl;
-        //default with infinite future interval
-        trace.emplace_back(seq, id, size, numeric_limits<uint64_t >::max()-1);
-        ++seq;
+        if (n_extra_fields) {
+            //default with infinite future interval
+            trace.emplace_back(id, size, t, max_next_seq, &extra_features);
+        } else {
+            trace.emplace_back(id, size, t, max_next_seq);
+        }
     }
-
 
     uint64_t totalReqc = trace.size();
     std::cerr << "scanned trace n=" << totalReqc << std::endl;
+    if (totalReqc > max_next_seq) {
+        cerr<<"Error: don't support more trace length than "<<max_next_seq<<endl;
+        exit(-1);
+    }
 
     // get nextSeen indices
+    // assume id has same size
     i = 0;
-    map<pair<uint64_t, uint64_t>, uint64_t > lastSeen;
+    unordered_map<uint64_t, uint64_t > lastSeen;
     for (auto it = trace.rbegin(); it != trace.rend(); ++it) {
+        auto lit = lastSeen.find(it->_id);
+        if (lit != lastSeen.end())
+            it->_next_seq = lit->second;
+        lastSeen[it->_id] = totalReqc - i;
         if (!(++i%1000000))
             cerr<<"computing next t: "<<i<<endl;
-        auto lit = lastSeen.find(make_pair(get<1>(*it), get<2>(*it)));
-        if (lit != lastSeen.end())
-            get<3>(*it) = lit->second;
-        lastSeen[make_pair(get<1>(*it), get<2>(*it))] = get<0>(*it);
     }
 
     // get current time
@@ -81,8 +109,14 @@ void annotate(string &trace_file, uint n_extra_fields) {
     }
 
     //no need to write seq, which is implicit
+    i = 0;
     for (auto & it: trace) {
-        outfile << get<0>(it) << " " << get<1>(it) << " " << get<2>(it) << " " << get<3>(it) <<endl;
+        outfile << it._next_seq << " " << it._t << " " << it._id << " " << it._size;
+        for (int j = 0; j < n_extra_fields; ++j)
+            outfile << " " << it._extra_features[j];
+        outfile <<endl;
+        if (!(++i%1000000))
+            cerr<<"writing: "<<i<<endl;
     }
 
     outfile.close();
