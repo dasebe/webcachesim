@@ -39,8 +39,9 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
 
     uint64_t n_warmup = 0;
     bool uni_size = false;
-    uint64_t window = 1000000;
+    uint64_t segment_window = 1000000;
     uint n_extra_fields = 0;
+
     for (auto& kv: params) {
         webcache->setPar(kv.first, kv.second);
         if (kv.first == "n_warmup")
@@ -48,7 +49,7 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
         if (kv.first == "uni_size")
             uni_size = static_cast<bool>(stoi(kv.second));
         if (kv.first == "segment_window")
-            window = stoull(kv.second);
+            segment_window = stoull(kv.second);
         if (kv.first == "n_extra_fields")
             n_extra_fields = stoull(kv.second);
     }
@@ -96,7 +97,7 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
 
         ++seq;
 
-        if (!(seq%window)) {
+        if (!(seq%segment_window)) {
             auto _t_now = chrono::system_clock::now();
             cerr<<"delta t: "<<chrono::duration_cast<std::chrono::milliseconds>(_t_now - t_now).count()/1000.<<endl;
             cerr<<"seq: " << seq << endl;
