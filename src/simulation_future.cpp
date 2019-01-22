@@ -51,6 +51,7 @@ map<string, string> _simulation_future(string trace_file, string cache_type, uin
             it = params.erase(it);
         } else if (it->first == "n_extra_fields") {
             n_extra_fields = stoull(it->second);
+            ++it;
         } else {
             ++it;
         }
