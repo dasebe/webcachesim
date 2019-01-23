@@ -173,6 +173,13 @@ Bins:
     - 0.1
     - 0
 GDBT:
+  training_sample_interval:
+    - 2
+    - 5
+    - 10
+    - 20
+    - 50
+    - 100
   sample_rate:
 #    - 16
     - 32
@@ -190,10 +197,10 @@ GDBT:
 #    - 64
   num_iterations:
     - 1
-    - 2
+#    - 2
 #    - 4
 #    - 8
 #    - 16
 #    - 32
-  version: size
+  version: training_sample_interval
 

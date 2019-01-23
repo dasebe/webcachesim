@@ -336,7 +336,8 @@ bool GDBTCache::lookup(SimpleRequest &_req) {
     ++i;
 
     try_train(req._t);
-    sample(req._t);
+    if (!(i % training_sample_interval))
+        sample(req._t);
 
     auto it = key_map.find(req._id);
     if (it != key_map.end()) {

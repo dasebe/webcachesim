@@ -78,6 +78,7 @@ public:
     uint64_t gradient_window = 100000;  //todo: does this large enough
 
     uint64_t n_feature;
+    uint64_t training_sample_interval = 1;
 
     BoosterHandle booster = nullptr;
 
@@ -120,6 +121,8 @@ public:
                 gradient_window = stoull(it.second);
             } else if (it.first == "num_iterations") {
                 GDBT_train_params["num_iterations"] = it.second;
+            } else if (it.first == "training_sample_interval") {
+                training_sample_interval = stoull(it.second);
             } else {
                 cerr << "unrecognized parameter: " << it.first << endl;
             }
