@@ -32,11 +32,14 @@ def runner_run(scheduler_args: dict, tasks: list, worker_extra_args: dict):
     ts = int(time.time())
     print(f'generating job file to /tmp/{ts}.job')
     with open(f'/tmp/{ts}.job', 'w') as f:
-        for task in tasks:
+        for i, task in enumerate(tasks):
             task_str = to_task_str(scheduler_args, task, worker_extra_args)
             # f.write(task_str+f' &> /tmp/{ts}.log\n')
             ts_task = int(time.time()*1000000)
-            f.write(f'bash --login -c "{task_str}" &> /tmp/{ts_task}.log\n')
+            task_str = f'bash --login -c "{task_str}" &> /tmp/{ts_task}.log\n'
+            if i == 0:
+                print(f'first task: {task_str}')
+            f.write(task_str)
     p = subprocess.Popen(
         ['bash', '-ic', f'parallel -v --sshloginfile nodefile --sshdelay 0.1 < /tmp/{ts}.job'],
     )

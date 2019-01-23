@@ -307,7 +307,8 @@ bool BeladySampleCache::lookup(SimpleRequest &_req) {
     auto & req = dynamic_cast<AnnotatedRequest &>(_req);
 
     //todo: deal with size consistently
-    sample(req._t);
+    // belady don't need sample, only filter need
+//    sample(req._t);
 
     auto it = key_map.find(req._id);
     if (it != key_map.end()) {
@@ -392,6 +393,7 @@ void BeladySampleCache::admit(SimpleRequest &_req) {
 
 pair<uint64_t, uint32_t> BeladySampleCache::rank(const uint64_t & t) {
     uint64_t max_future_timestamp;
+    uint64_t min_past_timetamp;
     uint64_t max_key;
     uint32_t max_pos;
 
@@ -406,23 +408,14 @@ pair<uint64_t, uint32_t> BeladySampleCache::rank(const uint64_t & t) {
         uint32_t pos = (i+rand_idx)%meta_holder[0].size();
         auto & meta = meta_holder[0][pos];
         //fill in past_interval
-        uint8_t j = 0;
-        auto past_intervals = vector<double >(n_past_intervals);
-        for (j = 0; j < meta._past_timestamp_idx && j < n_past_intervals; ++j) {
-            uint8_t past_timestamp_idx = (meta._past_timestamp_idx - 1 - j) % n_past_intervals;
-            uint64_t past_interval = t - meta._past_timestamps[past_timestamp_idx];
-            if (past_interval >= threshold)
-                past_intervals[j] = log1p_threshold;
-            else
-                past_intervals[j] = log1p(past_interval);
-        }
-        for (; j < n_past_intervals; j++)
-            past_intervals[j] = log1p_threshold;
+        uint64_t past_timestamp = meta._past_timestamps[(meta._past_timestamp_idx - 1)%n_past_intervals];
 
         auto & future_timestamp = meta._future_timestamp;
 
-        if (!i || future_timestamp > max_future_timestamp) {
+        if (!i || future_timestamp > max_future_timestamp ||
+            ((future_timestamp == max_future_timestamp) && (past_timestamp < min_past_timetamp))) {
             max_future_timestamp = future_timestamp;
+            min_past_timetamp = past_timestamp;
             max_key = meta._key;
             max_pos = pos;
         }
