@@ -9,6 +9,8 @@
 typedef std::list<CacheObject>::iterator ListIteratorType;
 typedef std::unordered_map<CacheObject, ListIteratorType> lruCacheMapType;
 
+
+using namespace std;
 /*
   LRU: Least Recently Used eviction
 */
@@ -39,6 +41,29 @@ public:
 };
 
 static Factory<LRUCache> factoryLRU("LRU");
+
+class InfCache : public Cache
+{
+protected:
+    // map to find objects in list
+    unordered_map<uint64_t, uint64_t> _cacheMap;
+
+public:
+    InfCache()
+            : Cache()
+    {
+    }
+    virtual ~InfCache()
+    {
+    }
+
+    virtual bool lookup(SimpleRequest& req);
+    virtual void admit(SimpleRequest& req);
+    virtual void evict(SimpleRequest& req){};
+    virtual void evict(){};
+};
+
+static Factory<InfCache> factoryInf("Inf");
 
 
 /*

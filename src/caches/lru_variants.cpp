@@ -41,6 +41,22 @@ void LRUCache::admit(SimpleRequest& req)
     LOG("a", _currentSize, obj.id, obj.size);
 }
 
+bool InfCache::lookup(SimpleRequest& req)
+{
+    auto it = _cacheMap.find(req._id);
+    if (it != _cacheMap.end()) {
+        // log hit
+        return true;
+    }
+    return false;
+}
+
+void InfCache::admit(SimpleRequest& req)
+{
+    // admit new object
+    _cacheMap[req._id] = 1;
+}
+
 void LRUCache::evict(SimpleRequest& req)
 {
     CacheObject obj(req);
