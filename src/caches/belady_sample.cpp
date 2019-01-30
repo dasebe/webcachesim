@@ -392,7 +392,7 @@ void BeladySampleCache::admit(SimpleRequest &_req) {
 
 
 pair<uint64_t, uint32_t> BeladySampleCache::rank(const uint64_t & t) {
-    uint64_t max_future_timestamp;
+    uint64_t max_future_interval;
     uint64_t min_past_timetamp;
     uint64_t max_key;
     uint32_t max_pos;
@@ -410,11 +410,14 @@ pair<uint64_t, uint32_t> BeladySampleCache::rank(const uint64_t & t) {
         //fill in past_interval
         uint64_t past_timestamp = meta._past_timestamps[(meta._past_timestamp_idx - 1)%n_past_intervals];
 
-        auto & future_timestamp = meta._future_timestamp;
+        auto future_interval = meta._future_timestamp - t;
+        if (future_interval > threshold) {
+            future_interval = threshold;
+        }
 
-        if (!i || future_timestamp > max_future_timestamp ||
-            ((future_timestamp == max_future_timestamp) && (past_timestamp < min_past_timetamp))) {
-            max_future_timestamp = future_timestamp;
+        if (!i || future_interval > max_future_interval ||
+            ((future_interval == max_future_interval) && (past_timestamp < min_past_timetamp))) {
+            max_future_interval = future_interval;
             min_past_timetamp = past_timestamp;
             max_key = meta._key;
             max_pos = pos;
