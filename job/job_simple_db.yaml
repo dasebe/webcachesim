@@ -1,0 +1,12 @@
+scheduler_args:
+  debug: true
+  dburl: mongodb://zhenyus:szy123456@ds135724.mlab.com:35724/webcachesim
+  dbcollection: test
+
+worker_args:
+  cache_types:
+    - LRU
+  trace_files:
+    'test.tr':
+    #cache_sizes
+      - 500

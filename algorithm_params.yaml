@@ -49,11 +49,14 @@ LRUKSample:
   sample_rate: 32
 BeladySample:
   sample_rate:
-    - 32
+#    - 32
 #    - 64
 #    - 128
+    - 256
+    - 512
+    - 1024
   threshold:
-#    - 10000000
+    - 10000000
     - 20000000
     - 40000000
     - 80000000

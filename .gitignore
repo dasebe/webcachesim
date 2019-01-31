@@ -51,7 +51,6 @@ build
 tmp
 tmp.*
 log
-job
 
 # python cache
 __pycache__
@@ -59,9 +58,6 @@ __pycache__
 
 # trace dir
 trace
-
-# job dir
-job
 
 # gnu parallel
 nodefile
