@@ -8,15 +8,15 @@ cache_type:
 #    - Inf
 #    - LRU
 #    - Belady
-#    - GDBT
+    - GDBT
 #    - GDSF
 #    - Random
 #    - S4LRU
 #    - UCB
 #    - LRUK
 #    - LFUDA
-#    - LR
-  - BeladySample
+    - LR
+#  - BeladySample
 #    - LRUKSample
 #    - LFUSample
 #    - LFO
@@ -35,6 +35,10 @@ cache_size:
 #        - 480000000000
 #        - 960000000000
 BeladySample:
+  threshold: 40000000
+GDBT:
+  threshold: 40000000
+LR:
   threshold: 40000000
 
 

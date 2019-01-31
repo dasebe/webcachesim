@@ -10,6 +10,7 @@ LFO2:
 LR:
   sample_rate:
     - 64
+  training_sample_interval: 64
   threshold: 10000000
   gradient_window:
 #    - 1
@@ -51,7 +52,7 @@ BeladySample:
   sample_rate:
     - 64
   threshold:
-    - 20000000
+    - 40000000
 LRBelady:
   sample_rate:
     - 32
@@ -180,7 +181,7 @@ GDBT:
 #    - 5
 #    - 10
 #    - 20
-    - 32
+    - 64
 #    - 50
 #    - 100
 #    - 1000

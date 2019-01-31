@@ -429,7 +429,8 @@ bool LRCache::lookup(SimpleRequest &_req) {
 
     //todo: deal with size consistently
     try_train(req._t);
-    sample(req._t);
+    if (!(i % training_sample_interval))
+        sample(req._t);
 
     auto it = key_map.find(req._id);
     if (it != key_map.end()) {

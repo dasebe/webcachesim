@@ -97,6 +97,7 @@ public:
 
     // sample_size
     uint sample_rate = 32;
+    uint64_t training_sample_interval = 1;
     // threshold
     uint64_t threshold = 10000000;
     double log1p_threshold = log1p(threshold);
@@ -132,6 +133,8 @@ public:
         for (auto& it: params) {
             if (it.first == "sample_rate") {
                 sample_rate = stoul(it.second);
+            } else if (it.first == "training_sample_interval") {
+                training_sample_interval = stoull(it.second);
             } else if (it.first == "threshold") {
                 threshold = stoull(it.second);
                 log1p_threshold = std::log1p(threshold);

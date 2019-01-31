@@ -12,11 +12,11 @@ cache_type:
 #    - Random
 #    - S4LRU
 #    - UCB
-#    - GDBT
+    - GDBT
 #    - LRUK
 #    - LFUDA
-  - BeladySample
-#    - LR
+#  - BeladySample
+    - LR
 #    - LFO
 #  n_warmup: 100
 n_extra_fields: 1
@@ -50,6 +50,10 @@ cache_size:
 #      - 50000000
 #      - 100000000
 BeladySample:
+  threshold: 10000000
+GDBT:
+  threshold: 10000000
+LR:
   threshold: 10000000
 
 
