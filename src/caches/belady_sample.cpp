@@ -435,23 +435,23 @@ void BeladySampleCache::evict(const uint64_t & t) {
     uint32_t & old_pos = epair.second;
 
     //record meta's future interval
-    {
-        LRMeta &meta = meta_holder[0][old_pos];
-
-        uint64_t known_future_interval;
-        double log1p_known_future_interval;
-        if (meta._future_timestamp - t < threshold) {
-            known_future_interval = meta._future_timestamp - t;
-            log1p_known_future_interval = log1p(known_future_interval);
-        } else {
-            known_future_interval = threshold;
-            log1p_known_future_interval = log1p_threshold;
-        }
-        evicted_f = (evicted_f * 9 + known_future_interval)/10;
+//    {
+//        LRMeta &meta = meta_holder[0][old_pos];
+//
+//        uint64_t known_future_interval;
+//        double log1p_known_future_interval;
+//        if (meta._future_timestamp - t < threshold) {
+//            known_future_interval = meta._future_timestamp - t;
+//            log1p_known_future_interval = log1p(known_future_interval);
+//        } else {
+//            known_future_interval = threshold;
+//            log1p_known_future_interval = log1p_threshold;
+//        }
+//        evicted_f = (evicted_f * 9 + known_future_interval)/10;
 //        if (! (++counter % 100000)) {
 //            cout << "evicted_f: " << evicted_f << endl;
 //        }
-    }
+//    }
 
     //bring list 0 to list 1
     uint32_t new_pos = meta_holder[1].size();
