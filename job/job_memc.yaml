@@ -1,10 +1,10 @@
-scheduler_args:
-  debug: false
-  dburl: mongodb://zhenyus:szy123456@ds135724.mlab.com:35724/webcachesim
-  dbcollection: c
+debug: false
+dburl: mongodb://zhenyus:szy123456@ds135724.mlab.com:35724/webcachesim
+dbcollection: c
 
-worker_args:
-  cache_types:
+
+trace_file: memc_200m.tr
+cache_type:
 #    - Inf
 #    - LRU
 #    - Belady
@@ -15,21 +15,20 @@ worker_args:
 #    - GDBT
 #    - LRUK
 #    - LFUDA
-    - BeladySample
+  - BeladySample
 #    - LR
 #    - LFO
 #  n_warmup: 100
-  n_extra_fields: 1
-  n_warmup: 20000000
+n_extra_fields: 1
+n_warmup: 20000000
 #  uni_size: 1
-  uni_size: 0
-  trace_files:
-    memc_200m.tr:
+uni_size: 0
+cache_size:
     # vari size
       #      - 100000000
       #      - 200000000
       #      - 500000000
-      - 1000000000
+  - 1000000000
     #      - 2000000000
     #      - 5000000000
     #      - 10000000000
@@ -50,5 +49,7 @@ worker_args:
 #      - 20000000
 #      - 50000000
 #      - 100000000
+BeladySample:
+  threshold: 10000000
 
 

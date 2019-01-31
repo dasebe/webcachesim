@@ -9,7 +9,7 @@ LFO2:
   window: 10000000
 LR:
   sample_rate:
-    - 32
+    - 64
   threshold: 10000000
   gradient_window:
 #    - 1
@@ -49,17 +49,9 @@ LRUKSample:
   sample_rate: 32
 BeladySample:
   sample_rate:
-#    - 32
-#    - 64
-#    - 128
-    - 256
-    - 512
-    - 1024
+    - 64
   threshold:
-    - 10000000
     - 20000000
-    - 40000000
-    - 80000000
 LRBelady:
   sample_rate:
     - 32
@@ -195,8 +187,7 @@ GDBT:
 #    - 10000
   sample_rate:
 #    - 16
-    - 32
-#    - 64
+    - 64
   threshold: 10000000
   gradient_window:
 #    - 50000

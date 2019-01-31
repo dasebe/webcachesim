@@ -1,10 +1,10 @@
-scheduler_args:
-  debug: false
-  dburl: mongodb://zhenyus:szy123456@ds135724.mlab.com:35724/webcachesim
-  dbcollection: c
+debug: false
+dburl: mongodb://zhenyus:szy123456@ds135724.mlab.com:35724/webcachesim
+dbcollection: c
 
-worker_args:
-  cache_types:
+
+trace_file: wc200m.tr
+cache_type:
 #    - Inf
 #    - LRU
 #    - Belady
@@ -16,7 +16,7 @@ worker_args:
 #    - LRUK
 #    - LFUDA
 #    - LR
-    - BeladySample
+  - BeladySample
 #    - LRUKSample
 #    - LFUSample
 #    - LFO
@@ -24,32 +24,17 @@ worker_args:
 #    - LRBelady
 #    - BeladyStatic
 #    - GDBT
-  n_extra_fields: 1
-  n_warmup: 20000000
+n_extra_fields: 1
+n_warmup: 20000000
 #  window: 100
 #  uni_size: 1
-  uni_size: 0
-  trace_files:
-    wc200m.tr:
-      # actually size
-        - 96000000000
+uni_size: 0
+cache_size:
+    - 96000000000
 #        - 192000000000
 #        - 480000000000
 #        - 960000000000
-#    wc200m_without_column.tr:
-      # actually size
-#      - 96000000000
-#    w10m.tr:
-#    - 96000000000
-#    w1m.tr:
-      # this is uni size
-#      - 96
-#    - 96000000000
-#    w1k.tr:
-#      - 96
-
-#worker_extra_args:
-#  segment_window: 1000000
-
+BeladySample:
+  threshold: 40000000
 
 
