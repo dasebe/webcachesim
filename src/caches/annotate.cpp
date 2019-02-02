@@ -28,9 +28,8 @@ public:
     AnnotatedRequest_(uint64_t id, uint64_t size, uint64_t t, uint64_t next_seq,
             vector<uint64_t >* extra_features = nullptr)
             : _id(id), _size(size), _t(t), _next_seq(next_seq) {
-        if (extra_features) {
+        if (extra_features)
             _extra_features = *extra_features;
-        }
     }
 };
 
