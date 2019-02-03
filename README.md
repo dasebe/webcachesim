@@ -1,5 +1,19 @@
 # webcachesim:
 
+```bash
+cd mongo-c-driver-1.13.1
+mkdir cmake-build
+cd cmake-build/
+cmake -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON -DCMAKE_INSTALL_PREFIX=/home/zhenyus/mongo-c-driver ..
+make && make install
+
+mkdir build
+cd build
+cmake -DCMAKE_PREFIX_PATH=/home/zhenyus/mongo-cxx-driver  ..
+
+```
+
+
 ## Steps For pywebcachsim:
 * `WEBCACHESIM_ROOT` is the dir of your github repo
 
