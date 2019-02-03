@@ -2,7 +2,7 @@ set(SOURCE_FILES webcachesim_cli.cpp ../include/simulation.h)
 add_executable(webcachesim_cli ${SOURCE_FILES})
 target_link_libraries(webcachesim_cli webcachesim)
 
-find_package(libmongocxx REQUIRED)
+find_package(libmongocxx-static REQUIRED)
 set(SOURCE_FILES webcachesim_cli_db.cpp ../include/simulation.h)
 add_executable(webcachesim_cli_db ${SOURCE_FILES})
 

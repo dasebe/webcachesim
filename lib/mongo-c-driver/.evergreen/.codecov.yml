@@ -1,3 +1,0 @@
-ignore:
-  - "src/zlib-1.2.11"
-  - "src/libmongoc/tests/mock_server"
