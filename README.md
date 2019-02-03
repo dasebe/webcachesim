@@ -1,15 +1,17 @@
 # webcachesim:
 
 ```bash
-cd mongo-c-driver-1.13.1
-mkdir cmake-build
-cd cmake-build/
+cd mongo-c-driver-1.13.1/cmake-build/
 cmake -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON -DCMAKE_INSTALL_PREFIX=/home/zhenyus/mongo-c-driver ..
 make && make install
 
-mkdir build
-cd build
-cmake -DCMAKE_PREFIX_PATH=/home/zhenyus/mongo-cxx-driver  ..
+cd mongo-cxx-driver-r3.4.0/build
+cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=/home/zhenyus/mongo-cxx-driver -DCMAKE_PREFIX_PATH=/home/zhenyus/mongo-c-driver  ..
+make && make install
+
+cd webcachesim/build
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="/home/zhenyus/mongo-cxx-driver;/home/zhenyus/mongo-c-driver" ..
+
 
 ```
 

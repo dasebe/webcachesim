@@ -437,7 +437,7 @@ bool LRCache::lookup(SimpleRequest &_req) {
         //update past timestamps
         bool & list_idx = it->second.first;
         uint32_t & pos_idx = it->second.second;
-        meta_holder[list_idx][pos_idx].update(req._t, req._next_t);
+        meta_holder[list_idx][pos_idx].update(req._t, req._next_seq);
         return !list_idx;
     }
     return false;
@@ -463,7 +463,7 @@ bool LRCache::lookup_without_update(SimpleRequest &_req) {
         //update past timestamps
         bool & list_idx = it->second.first;
         uint32_t & pos_idx = it->second.second;
-        meta_holder[list_idx][pos_idx].update(req._t, req._next_t);
+        meta_holder[list_idx][pos_idx].update(req._t, req._next_seq);
         return !list_idx;
     }
     return false;
@@ -482,7 +482,7 @@ void LRCache::admit(SimpleRequest &_req) {
     if (it == key_map.end()) {
         //fresh insert
         key_map.insert({req._id, {0, (uint32_t) meta_holder[0].size()}});
-        meta_holder[0].emplace_back(req._id, req._size, req._t, req._next_t);
+        meta_holder[0].emplace_back(req._id, req._size, req._t, req._next_seq);
         _currentSize += size;
         if (_currentSize <= _cacheSize)
             return;

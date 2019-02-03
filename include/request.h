@@ -3,6 +3,9 @@
 
 #include <cstdint>
 #include <iostream>
+#include <vector>
+
+using namespace std;
 
 typedef uint64_t IdType;
 
@@ -63,7 +66,7 @@ public:
             vector<uint64_t >* extra_features = nullptr)
             : SimpleRequest(id, size),
               _t(t),
-              _next_t(next_seq) {
+              _next_seq(next_seq) {
         if (extra_features)
             _extra_features = *extra_features;
     }
@@ -72,7 +75,7 @@ public:
                        vector<uint64_t >* extra_features = nullptr) {
         SimpleRequest::reinit(id, size);
         _t = t;
-        _next_t = next_seq;
+        _next_seq = next_seq;
         if (extra_features)
             _extra_features = *extra_features;
     }

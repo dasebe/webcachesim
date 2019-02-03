@@ -39,7 +39,7 @@ bool LFOACache::lookup(SimpleRequest& _req) {
 
     uint64_t & key = _req._id;
     uint64_t & t = req._t;
-    uint64_t & next_t = req._next_t;
+    uint64_t & next_t = req._next_seq;
     //record timestamp and intervals
     {
         auto it_past_timestamp = past_timestamp.find(key);
@@ -84,7 +84,7 @@ void LFOACache::admit(SimpleRequest& _req) {
     }
 
     // admit new object
-    _cacheMap.insert({req._id, req._next_t});
+    _cacheMap.insert({req._id, req._next_seq});
     auto it = object_size.find(req._id);
     if (it == object_size.end())
         object_size.insert({req._id, req._size});
@@ -249,7 +249,7 @@ bool LFOBCache::lookup(SimpleRequest& _req) {
     auto & req = static_cast<AnnotatedRequest &>(_req);
     auto & key = _req._id;
     auto & t = req._t;
-    auto & next_t = req._next_t;
+    auto & next_t = req._next_seq;
 
 
     auto it = key_map.find(key);
@@ -277,7 +277,7 @@ void LFOBCache::admit(SimpleRequest& _req) {
     if (it == key_map.end()) {
         //fresh insert
         key_map.insert({req._id, {0, (uint32_t) meta_holder[0].size()}});
-        meta_holder[0].emplace_back(req._id, req._size, req._t, req._next_t);
+        meta_holder[0].emplace_back(req._id, req._size, req._t, req._next_seq);
         _currentSize += size;
         if (_currentSize <= _cacheSize)
             return;

@@ -6,7 +6,7 @@
 
 
 uint64_t BeladyTruncateCache::lookup_truncate(AnnotatedRequest &req){
-    _valueMap.emplace(req._next_t, req._id);
+    _valueMap.emplace(req._next_seq, req._id);
     auto it = _cacheMap.find(req._id);
     if (it == _cacheMap.end()) {
         //bring in

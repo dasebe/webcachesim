@@ -7,7 +7,7 @@
 
 bool BeladyCache::lookup(SimpleRequest& _req) {
     auto & req = dynamic_cast<AnnotatedRequest&>(_req);
-    _valueMap.emplace(req._next_t, req._id);
+    _valueMap.emplace(req._next_seq, req._id);
     auto if_hit = _cacheMap.find(req._id) !=_cacheMap.end();
     return if_hit;
 }
