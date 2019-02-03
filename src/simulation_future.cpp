@@ -22,6 +22,10 @@ map<string, string> _simulation_future(string trace_file, string cache_type, uin
                                     map<string, string> params){
     //annotate a file
     //not necessary to annotate, but it's easier
+    if (params.find("n_extra_fields") == params.end()) {
+        cerr<<"error: field n_extra_fields is required"<<endl;
+        exit(-1);
+    }
     annotate(trace_file, stoul(params["n_extra_fields"]));
 
     // create cache
@@ -72,15 +76,15 @@ map<string, string> _simulation_future(string trace_file, string cache_type, uin
     string seg_ohr;
 
     //todo: read extra fields
-    uint tmp1;
+    vector<uint64_t > extra_features(n_extra_fields, 0);
 
     cerr<<"simulating"<<endl;
     AnnotatedRequest req(0, 0, 0, 0);
     uint64_t seq = 0;
     auto t_now = system_clock::now();
     while (infile >> next_seq >> tmp >> id >> size) {
-        for (int i = 0; i < n_extra_fields; ++i)
-            infile>>tmp1;
+        for (int j = 0; j < n_extra_fields; ++j)
+            infile>>extra_features[j];
         //todo: currently real timestamp t is not used. Only relative seq is used
         if (uni_size)
             size = 1;
@@ -91,7 +95,7 @@ map<string, string> _simulation_future(string trace_file, string cache_type, uin
             update_metric_req(byte_req, obj_req, size);
         update_metric_req(seg_byte_req, seg_obj_req, size);
 
-        req.reinit(id, size, seq+1, next_seq);
+        req.reinit(id, size, seq+1, next_seq, &extra_features);
         if (webcache->lookup(req)) {
             if (seq >= n_warmup)
                 update_metric_req(byte_hit, obj_hit, size);

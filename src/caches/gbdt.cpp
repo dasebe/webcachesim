@@ -211,6 +211,12 @@ void GDBTCache::sample(uint64_t &t) {
             training_data->data.push_back(meta._size);
             ++counter;
 
+            for (uint k = 0; k < n_extra_fields; ++k) {
+                training_data->indices.push_back(max_n_past_timestamps + k + 1);
+                training_data->data.push_back(meta._extra_features[k]);
+                ++counter;
+            }
+
             if (meta._future_timestamp - t < threshold) {
                 //gdbt don't need to log
                 uint64_t p_f = (meta._future_timestamp - t);
@@ -309,6 +315,12 @@ void GDBTCache::sample(uint64_t &t) {
             training_data->data.push_back(meta._size);
             ++counter;
 
+            for (uint k = 0; k < n_extra_fields; ++k) {
+                training_data->indices.push_back(max_n_past_timestamps + k + 1);
+                training_data->data.push_back(meta._extra_features[k]);
+                ++counter;
+            }
+
             if (meta._future_timestamp - t < threshold) {
                 //gdbt don't need to log
                 uint64_t p_f = (meta._future_timestamp - t);
@@ -363,7 +375,7 @@ void GDBTCache::admit(SimpleRequest &_req) {
     if (it == key_map.end()) {
         //fresh insert
         key_map.insert({req._id, {0, (uint32_t) meta_holder[0].size()}});
-        meta_holder[0].emplace_back(req._id, req._size, req._t, req._next_seq);
+        meta_holder[0].emplace_back(req._id, req._size, req._t, req._next_seq, req._extra_features);
         _currentSize += size;
         if (_currentSize <= _cacheSize)
             return;
@@ -441,6 +453,13 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
         indices.push_back(max_n_past_timestamps);
         data.push_back(meta._size);
         ++counter;
+
+
+        for (uint k = 0; k < n_extra_fields; ++k) {
+            indices.push_back(max_n_past_timestamps + k + 1);
+            data.push_back(meta._extra_features[k]);
+            ++counter;
+        }
 
         if (meta._future_timestamp - t < threshold) {
             //gdbt don't need to log

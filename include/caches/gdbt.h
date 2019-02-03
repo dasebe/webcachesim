@@ -25,15 +25,17 @@ public:
     uint64_t _past_timestamp;
     vector<uint64_t> _past_distances;
     uint64_t _future_timestamp;
+    vector<uint64_t> _extra_features;
 
     GDBTMeta(const uint64_t & key, const uint64_t & size, const uint64_t & past_timestamp,
-            const uint64_t & future_timestamp) {
+            const uint64_t & future_timestamp, const vector<uint64_t> & extra_features) {
         _key = key;
         _size = size;
         _past_timestamp = past_timestamp;
         _past_distances = vector<uint64_t >(_max_n_past_timestamps);
         _past_distance_idx = (uint8_t) 0;
         _future_timestamp = future_timestamp;
+        _extra_features = extra_features;
     }
 
     inline void update(const uint64_t &past_timestamp, const uint64_t &future_timestamp) {
@@ -77,6 +79,7 @@ public:
     vector<GDBTTrainingData*> pending_training_data;
     uint64_t gradient_window = 100000;  //todo: does this large enough
 
+    uint64_t n_extra_fields = 0;
     uint64_t n_feature;
     uint64_t training_sample_interval = 1;
 
@@ -119,6 +122,8 @@ public:
                 max_n_past_timestamps = (uint8_t) stoi(it.second);
             } else if (it.first == "gradient_window") {
                 gradient_window = stoull(it.second);
+            } else if (it.first == "n_extra_fields") {
+                n_extra_fields = stoull(it.second);
             } else if (it.first == "num_iterations") {
                 GDBT_train_params["num_iterations"] = it.second;
             } else if (it.first == "training_sample_interval") {
@@ -130,8 +135,8 @@ public:
 
         //init
         GDBTMeta::_max_n_past_timestamps = max_n_past_timestamps;
-        //interval, distances, size
-        n_feature = max_n_past_timestamps + 1;
+        //interval, distances, size, extra_features
+        n_feature = max_n_past_timestamps + 1 + n_extra_fields;
     }
 
     virtual bool lookup(SimpleRequest& req);

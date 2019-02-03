@@ -207,5 +207,5 @@ GDBT:
 #    - 8
 #    - 16
 #    - 32
-  version: training_sample_interval
+  version: uint_extra
 
