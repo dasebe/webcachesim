@@ -16,7 +16,7 @@ cache_type:
 #    - LRUK
 #    - LFUDA
 #  - BeladySample
-    - LR
+#    - LR
 #    - LFO
 #  n_warmup: 100
 n_extra_fields: 1

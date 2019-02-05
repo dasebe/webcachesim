@@ -15,7 +15,7 @@ cache_type:
     - GDBT
 #    - LRUK
 #    - LFUDA
-    - LR
+#    - LR
 #  - BeladySample
 #    - LFO
 #  n_warmup: 100

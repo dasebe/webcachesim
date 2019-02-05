@@ -15,7 +15,7 @@ cache_type:
 #    - UCB
 #    - LRUK
 #    - LFUDA
-    - LR
+#    - LR
 #  - BeladySample
 #    - LRUKSample
 #    - LFUSample
