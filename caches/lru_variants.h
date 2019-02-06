@@ -154,13 +154,11 @@ private:
 		std::uniform_real_distribution<double>(0.0, 1.0); 
 
 	struct ObjInfo {
-		uint64_t requestCount; // requestRate in adaptsize_stub.h
+		double requestCount; // requestRate in adaptsize_stub.h
 		uint64_t objSize;
 
-		ObjInfo() : requestCount(0), objSize(0) { }
+		ObjInfo() : requestCount(0.0), objSize(0) { }
 	};
-	std::unordered_map<CacheObject, ObjInfo> lruCacheMapType;
-
 	std::unordered_map<CacheObject, ObjInfo> ewmaInfo;
 	std::unordered_map<CacheObject, ObjInfo> intervalInfo;
 

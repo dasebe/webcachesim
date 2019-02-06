@@ -261,7 +261,7 @@ bool AdaptSizeCache::lookup(SimpleRequest* req)
 
 	// record stats
 	auto& info = intervalInfo[tmpCacheObject0]; 
-	info.requestCount += 1;
+	info.requestCount += 1.0;
 	info.objSize = tmpCacheObject0.size;
 
 	return LRUCache::lookup(req);
