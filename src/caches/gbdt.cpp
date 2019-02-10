@@ -33,7 +33,8 @@ void GDBTCache::try_train(uint64_t &t) {
     cerr<<"processing window idx: "<<gradient_window_idx<<endl;
     uint64_t pending_size = 0;
     for (auto i = gradient_window_idx; i < pending_training_data.size(); ++i)
-        pending_size += pending_training_data[i]->labels.size();
+        if (pending_training_data[i])
+            pending_size += pending_training_data[i]->labels.size();
     cerr<<"pending data size: "<<pending_size<<endl;
 
     auto timeBegin = chrono::system_clock::now();
