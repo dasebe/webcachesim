@@ -5,18 +5,18 @@ dbcollection: c
 
 trace_file: wc200m.tr
 cache_type:
-    - Inf
-    - LRU
-    - Belady
+#    - Inf
+#    - LRU
+#    - Belady
     - GDBT
+#    - LRUK
+#    - LFUDA
+#    - LR
+#    - BeladySample
 #    - GDSF
 #    - Random
 #    - S4LRU
 #    - UCB
-    - LRUK
-    - LFUDA
-    - LR
-    - BeladySample
 #    - LRUKSample
 #    - LFUSample
 #    - LFO

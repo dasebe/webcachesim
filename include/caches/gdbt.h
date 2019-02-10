@@ -82,6 +82,7 @@
         uint64_t n_extra_fields = 0;
         uint64_t n_feature;
         uint64_t training_sample_interval = 1;
+        uint64_t num_threads = 1;
     
         BoosterHandle booster = nullptr;
     
@@ -90,10 +91,10 @@
                 {"objective",                  "regression"},
                 {"num_iterations",             "1"},
                 {"num_leaves",                  "32"},
-                {"num_threads",                "16"},
-                {"feature_fraction",           "0.8"},
-                {"bagging_freq",               "5"},
-                {"bagging_fraction",           "0.8"},
+                {"num_threads",                "1"},
+//                {"feature_fraction",           "0.8"},
+//                {"bagging_freq",               "5"},
+//                {"bagging_fraction",           "0.8"},
         };
     
         double training_error = 0;
@@ -123,6 +124,8 @@
                     n_extra_fields = stoull(it.second);
                 } else if (it.first == "num_iterations") {
                     GDBT_train_params["num_iterations"] = it.second;
+                } else if (it.first == "num_threads") {
+                    GDBT_train_params["num_threads"] = it.second;
                 } else if (it.first == "training_sample_interval") {
                     training_sample_interval = stoull(it.second);
                 } else {

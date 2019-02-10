@@ -191,7 +191,7 @@ void GDBTCache::sample(uint64_t &t) {
                 //gdbt don't need to log
                 uint64_t p_i = (t - meta._past_timestamp);
                 training_data->indices.push_back(0);
-                training_data->data.push_back(log1p(p_i));
+                training_data->data.push_back(p_i);
                 ++counter;
             }
 
@@ -203,7 +203,7 @@ void GDBTCache::sample(uint64_t &t) {
                 this_past_timestamp -= past_distance;
                 if (this_past_timestamp > t - threshold) {
                     training_data->indices.push_back(j+1);
-                    training_data->data.push_back(log1p(past_distance));
+                    training_data->data.push_back(past_distance);
                     ++counter;
                 }
             }
@@ -218,17 +218,7 @@ void GDBTCache::sample(uint64_t &t) {
                 ++counter;
             }
 
-            if (meta._future_timestamp - t < threshold) {
-                //gdbt don't need to log
-                uint64_t p_f = (meta._future_timestamp - t);
-                training_data->labels.push_back(log1p(p_f));
-//                training_data.indices.push_back(max_n_past_timestamps);
-//                training_data.data.push_back(log1p(p_f));
-//                ++counter;
-            } else {
-                training_data->labels.push_back(log1p_threshold);
-            }
-            //remove future t
+            training_data->labels.push_back(log1p_known_future_interval);
             training_data->indptr.push_back(counter);
         }
     }
@@ -295,7 +285,7 @@ void GDBTCache::sample(uint64_t &t) {
                 //gdbt don't need to log
                 uint64_t p_i = (t - meta._past_timestamp);
                 training_data->indices.push_back(0);
-                training_data->data.push_back(log1p(p_i));
+                training_data->data.push_back(p_i);
                 ++counter;
             }
 
@@ -307,7 +297,7 @@ void GDBTCache::sample(uint64_t &t) {
                 this_past_timestamp -= past_distance;
                 if (this_past_timestamp > t - threshold) {
                     training_data->indices.push_back(j+1);
-                    training_data->data.push_back(log1p(past_distance));
+                    training_data->data.push_back(past_distance);
                     ++counter;
                 }
             }
@@ -322,17 +312,7 @@ void GDBTCache::sample(uint64_t &t) {
                 ++counter;
             }
 
-            if (meta._future_timestamp - t < threshold) {
-                //gdbt don't need to log
-                uint64_t p_f = (meta._future_timestamp - t);
-                training_data->labels.push_back(log1p(p_f));
-//                training_data.indices.push_back(max_n_past_timestamps);
-//                training_data.data.push_back(log1p(p_f));
-//                ++counter;
-            } else {
-                training_data->labels.push_back(log1p_threshold);
-            }
-            //remove future t
+            training_data->labels.push_back(log1p_known_future_interval);
             training_data->indptr.push_back(counter);
         }
     }
@@ -434,7 +414,7 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
             //gdbt don't need to log
             uint64_t p_i = (t - meta._past_timestamp);
             indices.push_back(0);
-            data.push_back(log1p(p_i));
+            data.push_back(p_i);
             ++counter;
         }
 
@@ -446,7 +426,7 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
             this_past_timestamp -= past_distance;
             if (this_past_timestamp > t - threshold) {
                 indices.push_back(j+1);
-                data.push_back(log1p(past_distance));
+                data.push_back(past_distance);
                 ++counter;
             }
         }
@@ -466,9 +446,6 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
             //gdbt don't need to log
             uint64_t p_f = (meta._future_timestamp - t);
             label.push_back(log1p(p_f));
-//            indices.push_back(max_n_past_timestamps);
-//            data.push_back(log1p(p_f));
-//            ++counter;
         } else {
             label.push_back(log1p_threshold);
         }
