@@ -195,17 +195,17 @@ GDBT:
     - 100000
 #    - 200000
   max_n_past_timestamps:
-    - 4
+#    - 4
 #    - 8
 #    - 16
-#    - 32
+    - 32
 #    - 64
   num_iterations:
-    - 1
+#    - 1
 #    - 2
 #    - 4
 #    - 8
 #    - 16
-#    - 32
-  version: category_feature
+    - 32
+  version: forest
 

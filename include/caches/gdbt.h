@@ -90,13 +90,10 @@
                 {"objective",                  "regression"},
                 {"num_iterations",             "1"},
                 {"num_leaves",                  "32"},
-                {"num_threads",                "1"},
-    //            feature_fraction = 0.8,
-    //            max_bin = 255
-    //            num_threads = 40
-    //            feature_fraction = 0.8
-    //            bagging_freq = 5
-    //            bagging_fraction = 0.8
+                {"num_threads",                "16"},
+                {"feature_fraction",           "0.8"},
+                {"bagging_freq",               "5"},
+                {"bagging_fraction",           "0.8"},
         };
     
         double training_error = 0;
