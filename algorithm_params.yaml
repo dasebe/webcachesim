@@ -188,7 +188,12 @@ GDBT:
 #    - 10000
   sample_rate:
 #    - 16
-    - 64
+#    - 64
+    - 128
+    - 256
+    - 512
+    - 1024
+    - 2048
   threshold: 10000000
   gradient_window:
 #    - 50000
@@ -208,5 +213,5 @@ GDBT:
 #    - 16
 #    - 32
   num_threads: 1
-  version: forest
+  version: input_no_log1p
 

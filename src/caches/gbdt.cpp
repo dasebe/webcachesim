@@ -155,9 +155,8 @@ void GDBTCache::sample(uint64_t &t) {
     //sample list 0
     {
         uint32_t rand_idx = _distribution(_generator) % meta_holder[0].size();
-        uint n_sample = min( (uint) ceil((double) sample_rate*meta_holder[0].size()/(meta_holder[0].size()+meta_holder[1].size())),
+        uint n_sample = min( (uint) ceil((double) training_sample_interval*meta_holder[0].size()/(meta_holder[0].size()+meta_holder[1].size())),
                              (uint) meta_holder[0].size());
-//        uint n_sample = min((uint)sample_rate, (uint) meta_holder[0].size());
 
 
         for (uint32_t i = 0; i < n_sample; i++) {
@@ -229,7 +228,7 @@ void GDBTCache::sample(uint64_t &t) {
     if (meta_holder[1].size()){
         uint32_t rand_idx = _distribution(_generator) % meta_holder[1].size();
         //sample less from list 1 as there are gc
-        uint n_sample = min( (uint) floor( (double) sample_rate*meta_holder[1].size()/(meta_holder[0].size()+meta_holder[1].size())),
+        uint n_sample = min( (uint) floor( (double) training_sample_interval*meta_holder[1].size()/(meta_holder[0].size()+meta_holder[1].size())),
                              (uint) meta_holder[1].size());
 //        cout<<n_sample<<endl;
 
