@@ -92,9 +92,10 @@
                 {"num_iterations",             "1"},
                 {"num_leaves",                  "32"},
                 {"num_threads",                "1"},
-//                {"feature_fraction",           "0.8"},
-//                {"bagging_freq",               "5"},
-//                {"bagging_fraction",           "0.8"},
+                {"shrinkage_rate",           "0.1"},
+                {"feature_fraction",           "0.8"},
+                {"bagging_freq",               "5"},
+                {"bagging_fraction",           "0.8"},
         };
     
         double training_error = 0;
