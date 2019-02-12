@@ -19,7 +19,10 @@ set(LIB_SOURCE
 #        simulation_lr_belady.cpp
 #        simulation_belady_static.cpp
 #        simulation_bins.cpp
-        caches/bins.cpp caches/belady_truncate.cpp caches/gbdt.cpp)
+        caches/bins.cpp
+        caches/belady_truncate.cpp
+        caches/gbdt.cpp
+        caches/hyperbolic.cpp)
 #message(123)
 
 find_package(Boost)

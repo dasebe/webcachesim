@@ -188,12 +188,12 @@ GDBT:
 #    - 10000
   sample_rate:
 #    - 16
-#    - 64
-    - 128
-    - 256
-    - 512
-    - 1024
-    - 2048
+    - 64
+#    - 128
+#    - 256
+#    - 512
+#    - 1024
+#    - 2048
   threshold: 10000000
   gradient_window:
 #    - 50000
@@ -201,17 +201,19 @@ GDBT:
 #    - 200000
   max_n_past_timestamps:
     - 4
-#    - 8
-#    - 16
-#    - 32
-#    - 64
+    - 8
+    - 16
+    - 32
+    - 64
   num_iterations:
     - 1
-#    - 2
-#    - 4
-#    - 8
-#    - 16
+    - 2
+    - 4
+    - 8
+    - 16
 #    - 32
   num_threads: 1
-  version: input_no_log1p
+  version: grid_forest
+Hyperbolic:
+  sample_rate: 64
 

@@ -8,19 +8,30 @@ cache_type:
 #    - Inf
 #    - LRU
 #    - Belady
-#    - GDSF
-#    - Random
-#    - S4LRU
-#    - UCB
-    - GDBT
+#    - GDBT
 #    - LRUK
 #    - LFUDA
 #    - LR
-#  - BeladySample
+#    - BeladySample
+
+    - S4LRU
+    - UCB
+
+  # object hit rate
+#    - GDSF
+
+  # only for debugging
+#    - LRUKSample
+#    - LFUSample
+#    - Random
+
+  # legacy
 #    - LFO
-#  n_warmup: 100
+#    - LFO2
+#    - LRBelady
+#    - BeladyStatic
 n_extra_fields: 2
-n_warmup: 20000000
+n_warmup: 100000000
 #  uni_size: 1
 uni_size: 0
 cache_size:

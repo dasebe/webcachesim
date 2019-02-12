@@ -36,7 +36,7 @@ def runner_run(args: dict, tasks: list):
                 print(f'first task: {task_str}')
             f.write(task_str)
     p = subprocess.Popen(
-        ['bash', '-ic', f'parallel -v --sshloginfile nodefile --sshdelay 5 < /tmp/{ts}.job'],
+        ['bash', '-ic', f'parallel -v --sshloginfile nodefile --sshdelay 1 < /tmp/{ts}.job'],
     )
     out, err = p.communicate()
 
