@@ -70,6 +70,7 @@ map<string, string> _simulation_future(string trace_file, string cache_type, uin
     }
     //suppose already annotated
     uint64_t byte_req = 0, byte_hit = 0, obj_req = 0, obj_hit = 0;
+    //don't use real timestamp, use relative seq starting from 1
     uint64_t tmp, id, size, next_seq;
     uint64_t seg_byte_req = 0, seg_byte_hit = 0, seg_obj_req = 0, seg_obj_hit = 0;
     string seg_bhr;
