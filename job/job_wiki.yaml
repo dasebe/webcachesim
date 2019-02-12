@@ -14,8 +14,9 @@ cache_type:
 #    - LR
 #    - BeladySample
 
-    - S4LRU
-    - UCB
+#    - S4LRU
+#    - UCB
+    - Hyperbolic
 
   # object hit rate
 #    - GDSF

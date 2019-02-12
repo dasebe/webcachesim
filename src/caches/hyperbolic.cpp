@@ -91,7 +91,10 @@ void HyperbolicCache::evict(const uint64_t & t) {
 
     //remove timestamp. Forget
     auto & meta = meta_holder[old_pos];
+
+    //update state before deletion
     _currentSize -= meta._size;
+    key_map.erase(key);
 
     uint32_t activate_tail_idx = meta_holder.size()-1;
     if (old_pos !=  activate_tail_idx) {
