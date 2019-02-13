@@ -10,7 +10,7 @@ def to_task_str(task: dict):
 
     params = {}
     for k, v in task.items():
-        if k not in ['debug', 'config_file', 'algorithm_param_file', 'trace_file', 'cache_type', 'cache_size'] and v is not None:
+        if k not in ['debug', 'trace_file', 'cache_type', 'cache_size'] and v is not None:
             params[k] = str(v)
     params = [f'{k} {v}'for k, v in params.items()]
     params = ' '.join(params)

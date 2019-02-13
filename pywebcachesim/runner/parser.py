@@ -15,43 +15,13 @@ def parse_cmd_args():
                         choices=[True, False])
     parser.add_argument('--config_file', type=str, nargs='?', help='runner configuration file')
     parser.add_argument('--algorithm_param_file', type=str, help='algorithm parameter config file')
-    # parser.add_argument('--trace_file', type=str, nargs='+', help='path to trace file')
-    # parser.add_argument('--cache_type', type=str, nargs='+', help='cache algorithms')
-    # parser.add_argument('--cache_size', type=int, nargs='+', help='cache size in terms of byte')
+    parser.add_argument('--trace_param_file', type=str, help='trace parameter config file')
     args = parser.parse_args()
-    # worker_parser.add_argument('--n_warmup', type=int, help='number of requests to warmup the cache')
-    # worker_parser.add_argument('--uni_size', type=int, help='whether assume each object has same size of 1')
-    # read from PATH, WEBCACHESIM_TRACE_DIR
-    # scheduler_parser.add_argument('--trace_dir',
-    #                               type=str,
-    #                               nargs='?',
-    #                               help='whether the trace is placed')
-    # scheduler_args, unknown_args = scheduler_parser.parse_known_args()
-
-    # args that affects the result
-    # worker_parser = argparse.ArgumentParser()
-    # worker_args, unknown_args = worker_parser.parse_known_args(unknown_args)
-
-    # args that don't affects the result
-    # worker_extra_parser = argparse.ArgumentParser()
-    # worker_extra_parser.add_argument('--segment_window', type=int, help='interval to record segment hit rate')
-    # scheduler_parser.add_argument('--dburl', type=str)
-    # worker_extra_args = worker_extra_parser.parse_args(unknown_args)
-
-    # parser.add_argument('--n_early_stop',
-    #                     type=int,
-    #                     default=-1,
-    #                     help='number of requests in total to exec; -1 means no early stop'
-    #                     )
-    # parser.add_argument('--tensorboard',
-    #                     default=False,
-    #                     action='store_true',
-    #                     help='whether write tensorboard summary')
 
     return vars(args)
 
 
-def extend_params(param: dict):
+def cartesian_product(param: dict):
     worklist = [param]
     res = []
 
@@ -91,31 +61,42 @@ def job_to_tasks(args):
     # load algorithm parameters
     assert args.get('algorithm_param_file') is not None
     with open(args['algorithm_param_file']) as f:
-        algorithm_params = yaml.load(f)
-    for alg in algorithm_params:
-        if alg in args:
-            args[alg] = {**algorithm_params[alg], **args[alg]}
-        else:
-            args[alg] = algorithm_params[alg]
-        args[alg] = extend_params(args[alg])
+        default_algorithm_params = yaml.load(f)
+
+    assert args.get('trace_param_file') is not None
+    with open(args['trace_param_file']) as f:
+        trace_params = yaml.load(f)
 
     tasks = []
-    for cache_type in args['cache_type']:
-        for cache_size in args['cache_size']:
-            parameters_list = [{}] if args.get(cache_type) is None else \
-                args[cache_type]
-            for parameters in parameters_list:
-                task = {
-                    'trace_file': args['trace_file'],
-                    'cache_type': cache_type,
-                    'cache_size': cache_size,
-                    **parameters,
-                }
-                for k, v in args.items():
-                    if k not in ['cache_size', 'cache_type', 'trace_file'] and k not in algorithm_params and \
-                            v is not None:
-                        task[k] = v
-                tasks.append(task)
+    for trace_file in args['trace_files']:
+        for cache_type in args['cache_types']:
+            for cache_size in trace_params[trace_file]['cache_sizes']:
+                parameters = {}
+                if cache_type in default_algorithm_params:
+                    parameters = {**parameters, **default_algorithm_params[cache_type]}
+                if cache_type in trace_params[trace_file]:
+                    parameters = {**parameters, **trace_params[trace_file][cache_type]}
+                parameters_list = cartesian_product(parameters)
+                for parameters in parameters_list:
+                    task = {
+                        'trace_file': trace_file,
+                        'cache_type': cache_type,
+                        'cache_size': cache_size,
+                        **parameters,
+                    }
+                    for k, v in args.items():
+                        if k not in [
+                            'cache_types',
+                            'trace_files',
+                            'algorithm_param_file',
+                            'trace_param_file',
+                            'config_file'
+                        ] and v is not None:
+                            task[k] = v
+                    for k, v in trace_params[trace_file].items():
+                        if k not in ['cache_sizes'] and k not in default_algorithm_params and v is not None:
+                            task[k] = v
+                    tasks.append(task)
     return tasks
 
 
