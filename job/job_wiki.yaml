@@ -8,7 +8,7 @@ cache_type:
 #    - Inf
 #    - LRU
 #    - Belady
-#    - GDBT
+    - GDBT
 #    - LRUK
 #    - LFUDA
 #    - LR
@@ -16,7 +16,7 @@ cache_type:
 
 #    - S4LRU
 #    - UCB
-    - Hyperbolic
+#    - Hyperbolic
 
   # object hit rate
 #    - GDSF
