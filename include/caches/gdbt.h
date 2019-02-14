@@ -100,6 +100,9 @@
     
         double training_error = 0;
         double inference_error = 0;
+
+        enum ObjectiveT: uint8_t {byte_hit_rate=0, object_hit_rate=1};
+        ObjectiveT objective = byte_hit_rate;
     
         default_random_engine _generator = default_random_engine();
         uniform_int_distribution<std::size_t> _distribution = uniform_int_distribution<std::size_t>();
@@ -129,6 +132,15 @@
                     GDBT_train_params["num_threads"] = it.second;
                 } else if (it.first == "training_sample_interval") {
                     training_sample_interval = stoull(it.second);
+                } else if (it.first == "objective") {
+                    if (it.second == "byte_hit_rate")
+                        objective = byte_hit_rate;
+                    else if (it.second == "object_hit_rate")
+                        objective = object_hit_rate;
+                    else {
+                        cerr<<"error: unknown objective"<<endl;
+                        exit(-1);
+                    }
                 } else {
                     cerr << "unrecognized parameter: " << it.first << endl;
                 }

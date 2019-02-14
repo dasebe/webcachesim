@@ -65,3 +65,29 @@ msr_big_200m.tr:
     threshold: 80000000
   LR:
     threshold: 80000000
+
+anonymous_200m.tr:
+  cache_sizes:
+#     - 1000000000
+#     - 2000000000
+     - 4000000000
+#    - 8000000000
+#    - 16000000000
+#    - 32000000000
+#    - 64000000000
+  n_extra_fields: 1
+  n_warmup: 20000000
+  #  window: 100
+  #  uni_size: 1
+  uni_size: 0
+  BeladySample:
+    threshold:
+      - 10000000
+#      - 20000000
+#      - 40000000
+#      - 80000000
+#      - 100000000
+  GDBT:
+    threshold: 10000000
+  LR:
+    threshold: 10000000

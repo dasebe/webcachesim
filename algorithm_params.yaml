@@ -215,7 +215,10 @@ GDBT:
   num_threads:
 #    - 1
     - 16
-  version: shrinkage
+  objective:
+#    - byte_hit_rate
+    - object_hit_rate
+  version: objective
 Hyperbolic:
   sample_rate: 64
 

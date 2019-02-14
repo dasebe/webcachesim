@@ -165,15 +165,21 @@ void GDBTCache::sample(uint64_t &t) {
             auto &meta = meta_holder[0][pos];
 
             uint64_t known_future_interval;
-            double log1p_known_future_interval;
+            double obj;
             //known_future_interval < threshold
             if (meta._future_timestamp - t < threshold) {
                 known_future_interval = meta._future_timestamp - t;
-                log1p_known_future_interval = log1p(known_future_interval);
+                if (objective == byte_hit_rate)
+                    obj = log1p(known_future_interval);
+                else if (objective == object_hit_rate)
+                    obj = log1p(known_future_interval*meta._size);
             }
             else {
                 known_future_interval = threshold-1;
-                log1p_known_future_interval = log1p_threshold;
+                if (objective == byte_hit_rate)
+                    obj = log1p_threshold;
+                else if (objective == object_hit_rate)
+                    obj = log1p_threshold+log1p(meta._size);
             }
 
              //update gradient
@@ -217,7 +223,7 @@ void GDBTCache::sample(uint64_t &t) {
                 ++counter;
             }
 
-            training_data->labels.push_back(log1p_known_future_interval);
+            training_data->labels.push_back(obj);
             training_data->indptr.push_back(counter);
         }
     }
@@ -259,15 +265,21 @@ void GDBTCache::sample(uint64_t &t) {
             auto &meta = meta_holder[1][pos];
 
             uint64_t known_future_interval;
-            double log1p_known_future_interval;
+            double obj;
             //known_future_interval < threshold
             if (meta._future_timestamp - t < threshold) {
                 known_future_interval = meta._future_timestamp - t;
-                log1p_known_future_interval = log1p(known_future_interval);
+                if (objective == byte_hit_rate)
+                    obj = log1p(known_future_interval);
+                else if (objective == object_hit_rate)
+                    obj = log1p(known_future_interval*meta._size);
             }
             else {
                 known_future_interval = threshold-1;
-                log1p_known_future_interval = log1p_threshold;
+                if (objective == byte_hit_rate)
+                    obj = log1p_threshold;
+                else if (objective == object_hit_rate)
+                    obj = log1p_threshold+log1p(meta._size);
             }
 
              //update gradient
@@ -311,7 +323,7 @@ void GDBTCache::sample(uint64_t &t) {
                 ++counter;
             }
 
-            training_data->labels.push_back(log1p_known_future_interval);
+            training_data->labels.push_back(obj);
             training_data->indptr.push_back(counter);
         }
     }
@@ -444,9 +456,18 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
         if (meta._future_timestamp - t < threshold) {
             //gdbt don't need to log
             uint64_t p_f = (meta._future_timestamp - t);
-            label.push_back(log1p(p_f));
+            double obj;
+            //known_future_interval < threshold
+            if (objective == byte_hit_rate)
+                label.push_back(log1p(p_f));
+            else if (objective == object_hit_rate)
+                label.push_back(log1p(p_f*meta._size));
         } else {
             label.push_back(log1p_threshold);
+            if (objective == byte_hit_rate)
+                label.push_back(log1p_threshold);
+            else if (objective == object_hit_rate)
+                label.push_back(log1p_threshold+log1p(meta._size));
         }
 
         //remove future t
