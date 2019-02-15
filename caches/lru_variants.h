@@ -130,39 +130,39 @@ static Factory<ExpLRUCache> factoryExpLRU("ExpLRU");
 class AdaptSizeCache : public LRUCache
 {
 public: 
-	AdaptSizeCache();
-	virtual ~AdaptSizeCache()
-	{
-	}
+    AdaptSizeCache();
+    virtual ~AdaptSizeCache()
+    {
+    }
 
-	virtual bool lookup(SimpleRequest*);
-	virtual void admit(SimpleRequest*);
+    virtual bool lookup(SimpleRequest*);
+    virtual void admit(SimpleRequest*);
 
 private: 
-	uint64_t nextReconfiguration;
-	double c;
-	uint64_t statSize;
-	double v; // declared as global variable in adaptsize_stub.cpp 
-	// for random number generation 
-	std::uniform_real_distribution<double> uniform_real_distribution0 = 
-		std::uniform_real_distribution<double>(0.0, 1.0); 
+    uint64_t nextReconfiguration;
+    double c; //
+    uint64_t statSize;
+    double v; // declared as global variable in adaptsize_stub.cpp 
+    // for random number generation 
+    std::uniform_real_distribution<double> uniform_real_distribution0 = 
+        std::uniform_real_distribution<double>(0.0, 1.0); 
 
-	struct ObjInfo {
-		double requestCount; // requestRate in adaptsize_stub.h
-		uint64_t objSize;
+    struct ObjInfo {
+        double requestCount; // requestRate in adaptsize_stub.h
+        uint64_t objSize;
 
-		ObjInfo() : requestCount(0.0), objSize(0) { }
-	};
-	std::unordered_map<CacheObject, ObjInfo> ewmaInfo;
-	std::unordered_map<CacheObject, ObjInfo> intervalInfo;
+        ObjInfo() : requestCount(0.0), objSize(0) { }
+    };
+    std::unordered_map<CacheObject, ObjInfo> ewmaInfo;
+    std::unordered_map<CacheObject, ObjInfo> intervalInfo;
 
-	void reconfigure();
-	double modelHitRate(double c);
+    void reconfigure();
+    double modelHitRate(double c);
 
-	// align data for vectorization
-	std::vector<double> alignedReqCount;
-	std::vector<double> alignedObjSize;
-	std::vector<double> alignedAdmProb;
+    // align data for vectorization
+    std::vector<double> alignedReqCount;
+    std::vector<double> alignedObjSize;
+    std::vector<double> alignedAdmProb;
 };
 
 static Factory<AdaptSizeCache> factoryAdaptSize("AdaptSize");
