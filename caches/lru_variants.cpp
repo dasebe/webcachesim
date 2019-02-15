@@ -221,12 +221,6 @@ AdaptSizeCache::AdaptSizeCache()
 	, c(1 << 15)
 	, statSize(0)
 {
-	/** 
-	randGenerator = new std::mt19937_64(SEED); 
-	uniform_int_distribution0 = 
-		new std::uniform_int_distribution<unsigned long long>(0, 
-		std::numeric_limits<unsigned long long>::max()); 
-	*/ 
 	v=1.0-r;
 }
 
@@ -269,12 +263,11 @@ bool AdaptSizeCache::lookup(SimpleRequest* req)
 
 void AdaptSizeCache::admit(SimpleRequest* req)
 {
-	double roll = uniform_real_distribution0(randGenerator0);
+	double roll = uniform_real_distribution0(globalGenerator);
 	double admitProb = std::exp(-1.0 * double(req->getSize())/c); 
 
 	if(roll < admitProb) 
 		LRUCache::admit(req); 
-
 }
 
 void AdaptSizeCache::reconfigure() {

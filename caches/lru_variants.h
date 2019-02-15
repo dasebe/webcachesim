@@ -141,14 +141,8 @@ public:
 private: 
 	uint64_t nextReconfiguration;
 	double c;
-	// cacheSize abolished. To be replaced by what webcachesim provides 
-	// (i.e., the command line input) 
-	// double cacheSize;
 	uint64_t statSize;
 	double v; // declared as global variable in adaptsize_stub.cpp 
-	// for random number generation 
-	const unsigned int SEED = 1534262824; // const seed for repeated results
-	std::mt19937_64 randGenerator0 = std::mt19937_64(SEED);
 	// for random number generation 
 	std::uniform_real_distribution<double> uniform_real_distribution0 = 
 		std::uniform_real_distribution<double>(0.0, 1.0); 
