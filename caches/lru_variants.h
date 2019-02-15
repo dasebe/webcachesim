@@ -3,8 +3,12 @@
 
 #include <unordered_map>
 #include <list>
+#include <random> // AdaptSize random number generation 
+#include <ctime> // AdaptSize random number generation; Seed the generator 
 #include "cache.h"
 #include "cache_object.h"
+#include "adaptsize_const.h" /** AdaptSize implementation */
+
 
 typedef std::list<CacheObject>::iterator ListIteratorType;
 typedef std::unordered_map<CacheObject, ListIteratorType> lruCacheMapType;
@@ -16,6 +20,7 @@ class LRUCache : public Cache
 {
 protected:
     // list for recency order
+    // std::list is a container, usually, implemented as a doubly-linked list 
     std::list<CacheObject> _cacheList;
     // map to find objects in list
     lruCacheMapType _cacheMap;
@@ -122,6 +127,51 @@ public:
 
 static Factory<ExpLRUCache> factoryExpLRU("ExpLRU");
 
+class AdaptSizeCache : public LRUCache
+{
+public: 
+	AdaptSizeCache();
+	virtual ~AdaptSizeCache()
+	{
+	}
+
+	virtual bool lookup(SimpleRequest*);
+	virtual void admit(SimpleRequest*);
+
+private: 
+	uint64_t nextReconfiguration;
+	double c;
+	// cacheSize abolished. To be replaced by what webcachesim provides 
+	// (i.e., the command line input) 
+	// double cacheSize;
+	uint64_t statSize;
+	double v; // declared as global variable in adaptsize_stub.cpp 
+	// for random number generation 
+	const unsigned int SEED = 1534262824; // const seed for repeated results
+	std::mt19937_64 randGenerator0 = std::mt19937_64(SEED);
+	// for random number generation 
+	std::uniform_real_distribution<double> uniform_real_distribution0 = 
+		std::uniform_real_distribution<double>(0.0, 1.0); 
+
+	struct ObjInfo {
+		double requestCount; // requestRate in adaptsize_stub.h
+		uint64_t objSize;
+
+		ObjInfo() : requestCount(0.0), objSize(0) { }
+	};
+	std::unordered_map<CacheObject, ObjInfo> ewmaInfo;
+	std::unordered_map<CacheObject, ObjInfo> intervalInfo;
+
+	void reconfigure();
+	double modelHitRate(double c);
+
+	// align data for vectorization
+	std::vector<double> alignedReqCount;
+	std::vector<double> alignedObjSize;
+	std::vector<double> alignedAdmProb;
+};
+
+static Factory<AdaptSizeCache> factoryAdaptSize("AdaptSize");
 
 /*
   S4LRU
