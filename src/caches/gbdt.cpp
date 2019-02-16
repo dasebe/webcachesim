@@ -169,17 +169,11 @@ void GDBTCache::sample(uint64_t &t) {
             //known_future_interval < threshold
             if (meta._future_timestamp - t < threshold) {
                 known_future_interval = meta._future_timestamp - t;
-                if (objective == byte_hit_rate)
-                    obj = log1p(known_future_interval);
-                else if (objective == object_hit_rate)
-                    obj = log1p(known_future_interval*meta._size);
+                obj = log1p(known_future_interval);
             }
             else {
                 known_future_interval = threshold-1;
-                if (objective == byte_hit_rate)
-                    obj = log1p_threshold;
-                else if (objective == object_hit_rate)
-                    obj = log1p_threshold+log1p(meta._size);
+                obj = log1p_threshold;
             }
 
              //update gradient
@@ -269,17 +263,11 @@ void GDBTCache::sample(uint64_t &t) {
             //known_future_interval < threshold
             if (meta._future_timestamp - t < threshold) {
                 known_future_interval = meta._future_timestamp - t;
-                if (objective == byte_hit_rate)
-                    obj = log1p(known_future_interval);
-                else if (objective == object_hit_rate)
-                    obj = log1p(known_future_interval*meta._size);
+                obj = log1p(known_future_interval);
             }
             else {
                 known_future_interval = threshold-1;
-                if (objective == byte_hit_rate)
-                    obj = log1p_threshold;
-                else if (objective == object_hit_rate)
-                    obj = log1p_threshold+log1p(meta._size);
+                obj = log1p_threshold;
             }
 
              //update gradient
@@ -415,6 +403,7 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
     vector<int32_t> indptr = {0};
     vector<int32_t> indices;
     vector<double> data;
+    vector<double> sizes;
 
     uint64_t counter = 0;
     for (uint32_t i = 0; i < n_sample; i++) {
@@ -444,6 +433,7 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
 
         indices.push_back(max_n_past_timestamps);
         data.push_back(meta._size);
+        sizes.push_back(meta._size);
         ++counter;
 
 
@@ -456,18 +446,10 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
         if (meta._future_timestamp - t < threshold) {
             //gdbt don't need to log
             uint64_t p_f = (meta._future_timestamp - t);
-            double obj;
             //known_future_interval < threshold
-            if (objective == byte_hit_rate)
-                label.push_back(log1p(p_f));
-            else if (objective == object_hit_rate)
-                label.push_back(log1p(p_f*meta._size));
+            label.push_back(log1p(p_f));
         } else {
             label.push_back(log1p_threshold);
-            if (objective == byte_hit_rate)
-                label.push_back(log1p_threshold);
-            else if (objective == object_hit_rate)
-                label.push_back(log1p_threshold+log1p(meta._size));
         }
 
         //remove future t
@@ -503,6 +485,9 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
         msr /= result.size();
 //        cerr<<"inference l2: "<<msr<<endl;
         inference_error = inference_error * 0.9 + msr *0.1;
+        if (objective == object_hit_rate)
+            for (uint32_t i = 0; i < n_sample; ++i)
+                result[i] += log1p(sizes[i]);
         auto max_it = max_element(result.begin(), result.end());
         sample_pos = (uint32_t) distance(result.begin(), max_it);
     } else {

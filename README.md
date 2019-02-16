@@ -1,6 +1,9 @@
 # webcachesim:
 
 ```bash
+
+
+
 cd mongo-c-driver-1.13.1/cmake-build/
 cmake -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON -DCMAKE_INSTALL_PREFIX=~/mongo-c-driver ..
 make && make install
@@ -11,7 +14,12 @@ make && make install
 
 cd webcachesim/build
 cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="~/mongo-cxx-driver;~/mongo-c-driver" ..
+make
 
+# add binary and trace dir to path
+# append to .bash_profile
+export PATH=$PATH:/data/zhenyus/webcachesim/build/bin
+export WEBCACHESIM_TRACE_DIR=/data/zhenyus/webcachesim/trace
 
 ```
 
