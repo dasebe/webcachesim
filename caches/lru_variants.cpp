@@ -215,11 +215,27 @@ void ExpLRUCache::admit(SimpleRequest* req)
 
 AdaptSizeCache::AdaptSizeCache()
     : LRUCache()
-    , nextReconfiguration(RECONFIGURATION_INTERVAL)
     , _cParam(1 << 15)
     , statSize(0)
+    , _maxIterations(15)
+    , _reconfiguration_interval(500000)
+    , nextReconfiguration(_reconfiguration_interval)
 {
     _gss_v=1.0-gss_r; // golden section search book parameters
+}
+
+void AdaptSizeCache::setPar(std::string parName, std::string parValue) {
+    if(parName.compare("t") == 0) {
+        const uint64_t t = stoull(parValue);
+        assert(t>1);
+        _reconfiguration_interval = t;
+    } else if(parName.compare("i") == 0) {
+        const uint64_t i = stoull(parValue);
+        assert(i>1);
+        _maxIterations = i;
+    } else {
+        std::cerr << "unrecognized parameter: " << parName << std::endl;
+    }
 }
 
 bool AdaptSizeCache::lookup(SimpleRequest* req)
@@ -277,7 +293,7 @@ void AdaptSizeCache::reconfigure() {
         nextReconfiguration+=10000;
         return; 
     } else {
-        nextReconfiguration = RECONFIGURATION_INTERVAL;
+        nextReconfiguration = _reconfiguration_interval;
     }
 
     // smooth stats for objects 
@@ -371,9 +387,9 @@ void AdaptSizeCache::reconfigure() {
     }
     assert(x1<x2); 
 
-    int curIterations=0; 
+    uint64_t curIterations=0; 
     // use termination condition from [Numerical recipes in C]
-    while(curIterations++<maxIterations 
+    while(curIterations++<_maxIterations 
           && fabs(x3-x0)>tol*(fabs(x1)+fabs(x2))) {
         //NAN check 
         if((h1!=h1) || (h2!=h2)) 

@@ -137,13 +137,16 @@ public:
     {
     }
 
+    virtual void setPar(std::string parName, std::string parValue);
     virtual bool lookup(SimpleRequest*);
     virtual void admit(SimpleRequest*);
 
 private: 
-    uint64_t nextReconfiguration;
     double _cParam; //
     uint64_t statSize;
+    uint64_t _maxIterations;
+    uint64_t _reconfiguration_interval;
+    uint64_t nextReconfiguration;
     double _gss_v;  // golden section search book parameters
     // for random number generation 
     std::uniform_real_distribution<double> uniform_real_distribution0 = 
