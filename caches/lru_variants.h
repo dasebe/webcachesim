@@ -146,10 +146,10 @@ private:
     uint64_t statSize;
     uint64_t _maxIterations;
     uint64_t _reconfiguration_interval;
-    uint64_t nextReconfiguration;
+    uint64_t _nextReconfiguration;
     double _gss_v;  // golden section search book parameters
     // for random number generation 
-    std::uniform_real_distribution<double> uniform_real_distribution0 = 
+    std::uniform_real_distribution<double> _uniform_real_distribution = 
         std::uniform_real_distribution<double>(0.0, 1.0); 
 
     struct ObjInfo {
@@ -158,16 +158,16 @@ private:
 
         ObjInfo() : requestCount(0.0), objSize(0) { }
     };
-    std::unordered_map<CacheObject, ObjInfo> ewmaInfo;
-    std::unordered_map<CacheObject, ObjInfo> intervalInfo;
+    std::unordered_map<CacheObject, ObjInfo> _longTermMetadata;
+    std::unordered_map<CacheObject, ObjInfo> _intervalMetadata;
 
     void reconfigure();
     double modelHitRate(double c);
 
     // align data for vectorization
-    std::vector<double> alignedReqCount;
-    std::vector<double> alignedObjSize;
-    std::vector<double> alignedAdmProb;
+    std::vector<double> _alignedReqCount;
+    std::vector<double> _alignedObjSize;
+    std::vector<double> _alignedAdmProb;
 };
 
 static Factory<AdaptSizeCache> factoryAdaptSize("AdaptSize");

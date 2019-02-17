@@ -219,7 +219,7 @@ AdaptSizeCache::AdaptSizeCache()
     , statSize(0)
     , _maxIterations(15)
     , _reconfiguration_interval(500000)
-    , nextReconfiguration(_reconfiguration_interval)
+    , _nextReconfiguration(_reconfiguration_interval)
 {
     _gss_v=1.0-gss_r; // golden section search book parameters
 }
@@ -243,8 +243,8 @@ bool AdaptSizeCache::lookup(SimpleRequest* req)
     reconfigure(); 
 
     CacheObject tmpCacheObject0(req); 
-    if(intervalInfo.count(tmpCacheObject0)==0 
-       && ewmaInfo.count(tmpCacheObject0)==0) { 
+    if(_intervalMetadata.count(tmpCacheObject0)==0 
+       && _longTermMetadata.count(tmpCacheObject0)==0) { 
         // new object 
         statSize += tmpCacheObject0.size;
     }
@@ -253,22 +253,22 @@ bool AdaptSizeCache::lookup(SimpleRequest* req)
     /** 
 	} else {
         // keep track of changing object sizes
-        if(intervalInfo.count(id)>0 
-        && intervalInfo[id].size != req.size()) {
-        // outdated size info in intervalInfo
-        statSize -= intervalInfo[id].size;
+        if(_intervalMetadata.count(id)>0 
+        && _intervalMetadata[id].size != req.size()) {
+        // outdated size info in _intervalMetadata
+        statSize -= _intervalMetadata[id].size;
         statSize += req.size();
         }
-        if(ewmaInfo.count(id)>0 && ewmaInfo[id].size != req.size()) {
+        if(_longTermMetadata.count(id)>0 && _longTermMetadata[id].size != req.size()) {
         // outdated size info in ewma
-        statSize -= ewmaInfo[id].size;
+        statSize -= _longTermMetadata[id].size;
         statSize += req.size();
         }
 	}
     */
 
     // record stats
-    auto& info = intervalInfo[tmpCacheObject0]; 
+    auto& info = _intervalMetadata[tmpCacheObject0]; 
     info.requestCount += 1.0;
     info.objSize = tmpCacheObject0.size;
 
@@ -277,7 +277,7 @@ bool AdaptSizeCache::lookup(SimpleRequest* req)
 
 void AdaptSizeCache::admit(SimpleRequest* req)
 {
-    double roll = uniform_real_distribution0(globalGenerator);
+    double roll = _uniform_real_distribution(globalGenerator);
     double admitProb = std::exp(-1.0 * double(req->getSize())/_cParam); 
 
     if(roll < admitProb) 
@@ -285,62 +285,62 @@ void AdaptSizeCache::admit(SimpleRequest* req)
 }
 
 void AdaptSizeCache::reconfigure() {
-    --nextReconfiguration;
-    if (nextReconfiguration > 0) {
+    --_nextReconfiguration;
+    if (_nextReconfiguration > 0) {
         return;
     } else if(statSize <= getSize()*3) {
         // not enough data has been gathered
-        nextReconfiguration+=10000;
+        _nextReconfiguration+=10000;
         return; 
     } else {
-        nextReconfiguration = _reconfiguration_interval;
+        _nextReconfiguration = _reconfiguration_interval;
     }
 
     // smooth stats for objects 
-    for(auto it = ewmaInfo.begin(); 
-        it != ewmaInfo.end(); 
+    for(auto it = _longTermMetadata.begin(); 
+        it != _longTermMetadata.end(); 
         it++) {
         it->second.requestCount *= EWMA_DECAY; 
     } 
 
-    // persist intervalinfo in ewmaInfo 
-    for (auto it = intervalInfo.begin(); 
-         it != intervalInfo.end();
+    // persist intervalinfo in _longTermMetadata 
+    for (auto it = _intervalMetadata.begin(); 
+         it != _intervalMetadata.end();
          it++) {
-        auto ewmaIt = ewmaInfo.find(it->first); 
-        if(ewmaIt != ewmaInfo.end()) {
+        auto ewmaIt = _longTermMetadata.find(it->first); 
+        if(ewmaIt != _longTermMetadata.end()) {
             ewmaIt->second.requestCount += (1. - EWMA_DECAY) 
                 * it->second.requestCount;
             ewmaIt->second.objSize = it->second.objSize; 
         } else {
-            ewmaInfo.insert(*it);
+            _longTermMetadata.insert(*it);
         }
     }
-    intervalInfo.clear(); 
+    _intervalMetadata.clear(); 
 
     // copy stats into vector for better alignment 
     // and delete small values 
-    alignedReqCount.clear(); 
-    alignedObjSize.clear();
+    _alignedReqCount.clear(); 
+    _alignedObjSize.clear();
     double totalReqCount = 0.0; 
     uint64_t totalObjSize = 0.0; 
-    for(auto it = ewmaInfo.begin(); 
-        it != ewmaInfo.end(); 
+    for(auto it = _longTermMetadata.begin(); 
+        it != _longTermMetadata.end(); 
         /*none*/) {
         if(it->second.requestCount < 0.1) {
             // delete from stats 
             statSize -= it->second.objSize; 
-            it = ewmaInfo.erase(it); 
+            it = _longTermMetadata.erase(it); 
         } else {
-            alignedReqCount.push_back(it->second.requestCount); 
+            _alignedReqCount.push_back(it->second.requestCount); 
             totalReqCount += it->second.requestCount; 
-            alignedObjSize.push_back(it->second.objSize); 
+            _alignedObjSize.push_back(it->second.objSize); 
             totalObjSize += it->second.objSize; 
             ++it;
         }
     }
 
-    std::cerr << "Reconfiguring over " << ewmaInfo.size() 
+    std::cerr << "Reconfiguring over " << _longTermMetadata.size() 
               << " objects - log2 total size " << std::log2(totalObjSize) 
               << " log2 statsize " << std::log2(statSize) << std::endl; 
 
@@ -432,17 +432,17 @@ double AdaptSizeCache::modelHitRate(double log2c) {
     double sum_val = 0.;
     double thparam = log2c;
 
-    for(size_t i=0; i<alignedReqCount.size(); i++) {
-        sum_val += alignedReqCount[i] * (exp(-alignedObjSize[i]/ pow(2,thparam))) * alignedObjSize[i];
+    for(size_t i=0; i<_alignedReqCount.size(); i++) {
+        sum_val += _alignedReqCount[i] * (exp(-_alignedObjSize[i]/ pow(2,thparam))) * _alignedObjSize[i];
     }
     if(sum_val <= 0) {
         return(0);
     }
     the_T = getSize() / sum_val;
     // prepare admission probabilities
-    alignedAdmProb.clear();
-    for(size_t i=0; i<alignedReqCount.size(); i++) {
-        alignedAdmProb.push_back(exp(-alignedObjSize[i]/ pow(2.0,thparam)));
+    _alignedAdmProb.clear();
+    for(size_t i=0; i<_alignedReqCount.size(); i++) {
+        _alignedAdmProb.push_back(exp(-_alignedObjSize[i]/ pow(2.0,thparam)));
     }
     // 20 iterations to calculate TTL
   
@@ -451,16 +451,16 @@ double AdaptSizeCache::modelHitRate(double log2c) {
         if(the_T > 1e70) {
             break;
         }
-        for(size_t i=0; i<alignedReqCount.size(); i++) {
-            const double reqTProd = alignedReqCount[i]*the_T;
+        for(size_t i=0; i<_alignedReqCount.size(); i++) {
+            const double reqTProd = _alignedReqCount[i]*the_T;
             if(reqTProd>150) {
                 // cache hit probability = 1, but numerically inaccurate to calculate
-                the_C += alignedObjSize[i];
+                the_C += _alignedObjSize[i];
             } else {
                 const double expTerm = exp(reqTProd) - 1;
-                const double expAdmProd = alignedAdmProb[i] * expTerm;
+                const double expAdmProd = _alignedAdmProb[i] * expTerm;
                 const double tmp = expAdmProd / (1 + expAdmProd);
-                the_C += alignedObjSize[i] * tmp;
+                the_C += _alignedObjSize[i] * tmp;
             }
         }
         old_T = the_T;
@@ -469,9 +469,9 @@ double AdaptSizeCache::modelHitRate(double log2c) {
 
     // calculate object hit ratio
     double weighted_hitratio_sum = 0;
-    for(size_t i=0; i<alignedReqCount.size(); i++) {
-        const double tmp01= oP1(the_T,alignedReqCount[i],alignedAdmProb[i]);
-        const double tmp02= oP2(the_T,alignedReqCount[i],alignedAdmProb[i]);
+    for(size_t i=0; i<_alignedReqCount.size(); i++) {
+        const double tmp01= oP1(the_T,_alignedReqCount[i],_alignedAdmProb[i]);
+        const double tmp02= oP2(the_T,_alignedReqCount[i],_alignedAdmProb[i]);
         double tmp;
         if(tmp01!=0 && tmp02==0)
             tmp = 0.0;
@@ -480,7 +480,7 @@ double AdaptSizeCache::modelHitRate(double log2c) {
             tmp = 0.0;
         else if (tmp>1.0)
             tmp = 1.0;
-        weighted_hitratio_sum += alignedReqCount[i] * tmp;
+        weighted_hitratio_sum += _alignedReqCount[i] * tmp;
     }
     return (weighted_hitratio_sum);
 }
