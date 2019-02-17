@@ -3,11 +3,10 @@
 
 #include <unordered_map>
 #include <list>
-#include <random> // AdaptSize random number generation 
-#include <ctime> // AdaptSize random number generation; Seed the generator 
+#include <random>
 #include "cache.h"
 #include "cache_object.h"
-#include "adaptsize_const.h" /** AdaptSize implementation */
+#include "adaptsize_const.h" /* AdaptSize constants */
 
 
 typedef std::list<CacheObject>::iterator ListIteratorType;
@@ -127,6 +126,9 @@ public:
 
 static Factory<ExpLRUCache> factoryExpLRU("ExpLRU");
 
+/*
+  AdaptSize: ExpLRU with automatic adaption of the _cParam
+*/
 class AdaptSizeCache : public LRUCache
 {
 public: 
@@ -140,9 +142,9 @@ public:
 
 private: 
     uint64_t nextReconfiguration;
-    double c; //
+    double _cParam; //
     uint64_t statSize;
-    double v; // declared as global variable in adaptsize_stub.cpp 
+    double _gss_v;  // golden section search book parameters
     // for random number generation 
     std::uniform_real_distribution<double> uniform_real_distribution0 = 
         std::uniform_real_distribution<double>(0.0, 1.0); 

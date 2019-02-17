@@ -1,9 +1,7 @@
 #include <unordered_map>
 #include <limits>
-#include <random>
 #include <cmath>
 #include <cassert>
-#include <random>
 #include <cmath>
 #include <cassert>
 #include "lru_variants.h"
@@ -218,10 +216,10 @@ void ExpLRUCache::admit(SimpleRequest* req)
 AdaptSizeCache::AdaptSizeCache()
     : LRUCache()
     , nextReconfiguration(RECONFIGURATION_INTERVAL)
-    , c(1 << 15)
+    , _cParam(1 << 15)
     , statSize(0)
 {
-    v=1.0-r;
+    _gss_v=1.0-gss_r; // golden section search book parameters
 }
 
 bool AdaptSizeCache::lookup(SimpleRequest* req)
@@ -264,7 +262,7 @@ bool AdaptSizeCache::lookup(SimpleRequest* req)
 void AdaptSizeCache::admit(SimpleRequest* req)
 {
     double roll = uniform_real_distribution0(globalGenerator);
-    double admitProb = std::exp(-1.0 * double(req->getSize())/c); 
+    double admitProb = std::exp(-1.0 * double(req->getSize())/_cParam); 
 
     if(roll < admitProb) 
         LRUCache::admit(req); 
@@ -362,13 +360,13 @@ void AdaptSizeCache::reconfigure() {
     //prepare golden section search into larger segment 
     if(x3-x1 > x1-x0) {
         // above x1 is larger segment 
-        x2 = x1+v*(x3-x1); 
+        x2 = x1+_gss_v*(x3-x1); 
         h2 = modelHitRate(x2);
     } else {
         // below x1 is larger segment 
         x2 = x1; 
         h2 = h1; 
-        x1 = x0+v*(x1-x0); 
+        x1 = x0+_gss_v*(x1-x0); 
         h1 = modelHitRate(x1); 
     }
     assert(x1<x2); 
@@ -385,10 +383,10 @@ void AdaptSizeCache::reconfigure() {
         // 	h2/totalReqRate);
 
         if(h2>h1) {
-            SHFT3(x0,x1,x2,r*x1+v*x3); 
+            SHFT3(x0,x1,x2,gss_r*x1+_gss_v*x3); 
             SHFT2(h1,h2,modelHitRate(x2));
         } else {
-            SHFT3(x3,x2,x1,r*x2+v*x0);
+            SHFT3(x3,x2,x1,gss_r*x2+_gss_v*x0);
             SHFT2(h2,h1,modelHitRate(x1));
         }
     }
@@ -401,12 +399,12 @@ void AdaptSizeCache::reconfigure() {
         // nop
     } else if (h1 > h2) {
         // x1 should is final parameter
-        c = pow(2, x1);
-        std::cerr << "Choosing c of " << c << " (log2: " << x1 << ")" 
+        _cParam = pow(2, x1);
+        std::cerr << "Choosing c of " << _cParam << " (log2: " << x1 << ")" 
                   << std::endl;
     } else {
-        c = pow(2, x2);
-        std::cerr << "Choosing c of " << c << " (log2: " << x2 << ")" 
+        _cParam = pow(2, x2);
+        std::cerr << "Choosing c of " << _cParam << " (log2: " << x2 << ")" 
                   << std::endl;
     }
 }
