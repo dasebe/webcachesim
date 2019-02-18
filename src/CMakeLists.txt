@@ -3,8 +3,8 @@ set(LIB_SOURCE
         caches/gd_variants.cpp
         caches/random_variants.cpp
         caches/belady.cpp
-        caches/lfo.cpp
-        caches/lfo2.cpp
+#        caches/lfo.cpp
+#        caches/lfo2.cpp
         random_helper.cpp
         simulation.cpp
 #        simulation_lfo.cpp
@@ -22,7 +22,7 @@ set(LIB_SOURCE
         caches/bins.cpp
         caches/belady_truncate.cpp
         caches/gbdt.cpp
-        caches/hyperbolic.cpp)
+        caches/hyperbolic.cpp caches/lecar.cpp)
 #message(123)
 
 find_package(Boost)

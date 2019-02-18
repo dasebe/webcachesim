@@ -164,15 +164,7 @@ LRUKCache::LRUKCache()
 {
 }
 
-void LRUKCache::setPar(std::string parName, std::string parValue) {
-    if(parName.compare("k") == 0) {
-        const int k = stoi(parValue);
-        assert(k>0);
-        _tk = k;
-    } else {
-        std::cerr << "unrecognized parameter: " << parName << std::endl;
-    }
-}
+
 
 
 bool LRUKCache::lookup(SimpleRequest& req)

@@ -43,17 +43,26 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     uint64_t segment_window = 1000000;
     uint n_extra_fields = 0;
 
-    for (auto& kv: params) {
-        webcache->setPar(kv.first, kv.second);
-        if (kv.first == "n_warmup")
-            n_warmup = stoull(kv.second);
-        if (kv.first == "uni_size")
-            uni_size = static_cast<bool>(stoi(kv.second));
-        if (kv.first == "segment_window")
-            segment_window = stoull(kv.second);
-        if (kv.first == "n_extra_fields")
-            n_extra_fields = stoull(kv.second);
+    for (auto it = params.cbegin(); it != params.cend();) {
+        if (it->first == "n_warmup") {
+            n_warmup = stoull(it->second);
+            it = params.erase(it);
+        } else if (it->first == "uni_size") {
+            uni_size = static_cast<bool>(stoi(it->second));
+            it = params.erase(it);
+        } else if (it->first == "segment_window") {
+            segment_window = stoull((it->second));
+            it = params.erase(it);
+        } else if (it->first == "n_extra_fields") {
+            n_extra_fields = stoull(it->second);
+            ++it;
+        } else {
+            ++it;
+        }
     }
+
+    webcache->init_with_params(params);
+
 
     ifstream infile;
     infile.open(trace_file);

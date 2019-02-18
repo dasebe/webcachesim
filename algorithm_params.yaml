@@ -216,9 +216,11 @@ GDBT:
 #    - 1
     - 16
   objective:
-    # - byte_hit_rate
-    - object_hit_rate
+    - byte_hit_rate
+#    - object_hit_rate
   version: known_size
 Hyperbolic:
   sample_rate: 64
+LeCaR:
+  learning_rate: 0.45
 

@@ -28,9 +28,6 @@ wc200m.tr:
   GDBT:
     threshold: 40000000
     sample_rate: 256
-    objective:
-#      - byte_hit_rate
-      - object_hit_rate
   LR:
     threshold: 40000000
     sample_rate: 256
@@ -38,19 +35,13 @@ wc200m.tr:
 
 memc_200m.tr:
   cache_sizes:
-    #      - 100000000
-    #      - 200000000
-    #      - 500000000
     - 250000000
     - 500000000
     - 750000000
     - 1000000000
     - 2000000000
     - 3000000000
-    - 1000000000
-      #      - 2000000000
-      #      - 5000000000
-    #      - 10000000000
+#    - 4000000000
   n_extra_fields: 1
   n_warmup: 20000000
   #  uni_size: 1
@@ -120,9 +111,26 @@ anonymous_200m.tr:
 
 caida_cache_200m.tr:
   cache_sizes:
-     - 2000000
+    - 500000
+    - 1000000
+    - 1500000
+#    - 2000000
+    - 4000000
+    - 6000000
+    - 8000000
   n_extra_fields: 4
   n_warmup: 20000000
   #  window: 100
   #  uni_size: 1
   uni_size: 0
+  BeladySample:
+    sample_rate:
+      - 128
+    threshold:
+      - 10000000
+  GDBT:
+    sample_rate: 128
+    threshold: 10000000
+  LR:
+    sample_rate: 128
+    threshold: 10000000
