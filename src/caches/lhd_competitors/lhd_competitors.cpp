@@ -2,7 +2,7 @@
 #include <random>
 #include <cmath>
 #include <cassert>
-#include "lhd_variants.h"
+#include "lhd_competitors.h"
 #include "cache.hpp"
 #include "repl.hpp"
 #include "parser.hpp"
@@ -10,7 +10,6 @@
 #include "gds.hpp"
 #include "ranked_lru.hpp"
 #include "gdwheel.hpp"
-#include "lhd.hpp"
 #include "constants.hpp"
 
 /*

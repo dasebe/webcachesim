@@ -3,13 +3,8 @@ set(LIB_SOURCE
         caches/gd_variants.cpp
         caches/random_variants.cpp
         caches/belady.cpp
-        caches/lhd/lhd_variants.cpp
-        caches/lhd/hitdensity.cpp
-        caches/lhd/hitdensity_class.cpp
-        caches/lhd/hitdensity_lookahead.cpp
-#       caches/lhd/lhd.cpp
+        caches/lhd_competitors/lhd_competitors.cpp
         caches/lhd2/lhd_variants.cpp
-#        caches/lhd2/repl.cpp
         caches/lhd2/lhd.cpp
         random_helper.cpp
         simulation.cpp
