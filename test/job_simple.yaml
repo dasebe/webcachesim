@@ -1,0 +1,10 @@
+scheduler_args:
+  debug: true
+
+worker_args:
+  cache_types:
+    - LRU
+  trace_files:
+    'test.tr':
+    #cache_sizes
+      - 500

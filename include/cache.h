@@ -26,7 +26,7 @@ public:
           _currentSize(0)
     {
     }
-    virtual ~Cache(){};
+    virtual ~Cache() = default;
 
     // main cache management functions (to be defined by a policy)
     virtual bool lookup(SimpleRequest& req) = 0;
@@ -41,7 +41,8 @@ public:
             evict();
         }
     }
-    virtual void setPar(std::string parName, std::string parValue) {}
+    virtual void init_with_params(std::map<std::string, std::string> params) {}
+
 
     uint64_t getCurrentSize() const {
         return(_currentSize);
@@ -64,7 +65,6 @@ public:
         return Cache_instance;
     }
 
-protected:
     // basic cache properties
     uint64_t _cacheSize; // size of cache in bytes
     uint64_t _currentSize; // total size of objects in cache in bytes

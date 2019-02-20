@@ -113,7 +113,17 @@ public:
     {
     }
 
-    virtual void setPar(std::string parName, std::string parValue);
+    void init_with_params(map<string, string> params) override {
+        //set params
+        for (auto& it: params) {
+            if (it.first == "k") {
+                _tk = stoul(it.second);
+            } else {
+                cerr << "unrecognized parameter: " << it.first << endl;
+            }
+        }
+    }
+
     virtual bool lookup(SimpleRequest& req);
     virtual void evict(SimpleRequest& req);
     virtual void evict();

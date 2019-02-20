@@ -1,24 +1,32 @@
-cmake_minimum_required(VERSION 3.5.1)
-
-
 set(LIB_SOURCE
         caches/lru_variants.cpp
         caches/gd_variants.cpp
         caches/random_variants.cpp
         caches/belady.cpp
-        caches/lfo.cpp
         caches/lhd/lhd_variants.cpp
-        caches/lhd/adaptsize.cpp
+#        caches/lhd/adaptsize.cpp
         caches/lhd/hitdensity.cpp
         caches/lhd/hitdensity_class.cpp
         caches/lhd/hitdensity_lookahead.cpp
         caches/lhd/lhd.cpp
         random_helper.cpp
         simulation.cpp
-        simulation_lfo.cpp
-        simulation_belady.cpp
-        simulation_lr.cpp
-        caches/annotate.cpp caches/ucb.cpp)
+#        simulation_lfo.cpp
+#        simulation_lfo2.cpp
+        simulation_future.cpp
+#        simulation_truncate.cpp
+        caches/annotate.cpp
+        caches/ucb.cpp
+        caches/belady_sample.cpp
+        caches/lruk_sample.cpp
+        caches/lfu_sample.cpp
+#        simulation_lr_belady.cpp
+#        simulation_belady_static.cpp
+#        simulation_bins.cpp
+        caches/bins.cpp
+        caches/belady_truncate.cpp
+        caches/gbdt.cpp
+        caches/hyperbolic.cpp caches/lecar.cpp)
 #message(123)
 
 find_package(Boost)
@@ -27,6 +35,6 @@ INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
 add_library(webcachesim SHARED ${LIB_SOURCE})
 
 target_include_directories(webcachesim PUBLIC include)
-target_include_directories(webcachesim PUBLIC LightGBM)
+target_include_directories(webcachesim PUBLIC ../lib/LightGBM/include)
 
-target_link_libraries(webcachesim LINK_PUBLIC ${Boost_LIBRARIES} _lightgbm)
+TARGET_LINK_LIBRARIES(webcachesim LINK_PUBLIC ${Boost_LIBRARIES} _lightgbm)

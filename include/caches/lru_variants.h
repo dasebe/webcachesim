@@ -3,12 +3,16 @@
 
 #include <unordered_map>
 #include <list>
+#include <random>
 #include "cache.h"
 #include "cache_object.h"
+#include "adaptsize_const.h" /* AdaptSize constants */
 
 typedef std::list<CacheObject>::iterator ListIteratorType;
 typedef std::unordered_map<CacheObject, ListIteratorType> lruCacheMapType;
 
+
+using namespace std;
 /*
   LRU: Least Recently Used eviction
 */
@@ -39,6 +43,29 @@ public:
 };
 
 static Factory<LRUCache> factoryLRU("LRU");
+
+class InfCache : public Cache
+{
+protected:
+    // map to find objects in list
+    unordered_map<uint64_t, uint64_t> _cacheMap;
+
+public:
+    InfCache()
+            : Cache()
+    {
+    }
+    virtual ~InfCache()
+    {
+    }
+
+    virtual bool lookup(SimpleRequest& req);
+    virtual void admit(SimpleRequest& req);
+    virtual void evict(SimpleRequest& req){};
+    virtual void evict(){};
+};
+
+static Factory<InfCache> factoryInf("Inf");
 
 
 /*
@@ -82,6 +109,53 @@ static Factory<FIFOCache> factoryFIFO("FIFO");
 //};
 //
 //static Factory<FilterCache> factoryFilter("Filter");
+
+/*
+  AdaptSize: ExpLRU with automatic adaption of the _cParam
+*/
+class AdaptSizeCache : public LRUCache
+{
+public:
+    AdaptSizeCache();
+    virtual ~AdaptSizeCache()
+    {
+    }
+
+    virtual void setPar(std::string parName, std::string parValue);
+    virtual bool lookup(SimpleRequest&);
+    virtual void admit(SimpleRequest&);
+
+private:
+    double _cParam; //
+    uint64_t statSize;
+    uint64_t _maxIterations;
+    uint64_t _reconfiguration_interval;
+    uint64_t _nextReconfiguration;
+    double _gss_v;  // golden section search book parameters
+    // for random number generation
+    std::uniform_real_distribution<double> _uniform_real_distribution =
+            std::uniform_real_distribution<double>(0.0, 1.0);
+
+    struct ObjInfo {
+        double requestCount; // requestRate in adaptsize_stub.h
+        uint64_t objSize;
+
+        ObjInfo() : requestCount(0.0), objSize(0) { }
+    };
+    std::unordered_map<CacheObject, ObjInfo> _longTermMetadata;
+    std::unordered_map<CacheObject, ObjInfo> _intervalMetadata;
+
+    void reconfigure();
+    double modelHitRate(double c);
+
+    // align data for vectorization
+    std::vector<double> _alignedReqCount;
+    std::vector<double> _alignedObjSize;
+    std::vector<double> _alignedAdmProb;
+};
+
+static Factory<AdaptSizeCache> factoryAdaptSize("AdaptSize");
+
 
 /*
   S4LRU

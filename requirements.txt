@@ -1,4 +1,4 @@
 boost>=1.68.0
-eloiseh/LightGBM
-python3
-python3-dev
+libssl
+python3.6
+python3.6-dev

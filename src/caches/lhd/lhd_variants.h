@@ -26,31 +26,6 @@ public:
     virtual void evict();
 };
 
-static Factory<LHDBase> factoryLRU("LHDLRU");
-
-
-class LHDSampledLRU : public LHDBase
-{
-public:
-    LHDSampledLRU();
-};
-
-static Factory<LHDSampledLRU> factoryLHDSampledLRU("LHDSampledLRU");
-
-
-
-
-class LHDAdaptSize : public LHDBase
-{
-public:
-    LHDAdaptSize();
-
-    virtual void setSize(uint64_t cs);
-};
-
-static Factory<LHDAdaptSize> factoryAdaptSize("LHDAdaptSize");
-
-
 
 class LHDHyperbolic : public LHDBase
 {
@@ -60,8 +35,6 @@ public:
 
 static Factory<LHDHyperbolic> factoryHyperbolic("LHDHyperbolic");
 
-
-
 class LHDSAMPLEDGDSF : public LHDBase
 {
 public:
@@ -70,39 +43,6 @@ public:
 
 static Factory<LHDSAMPLEDGDSF> factoryLHDSAMPLEDGDSF("LHDSampledGDSF");
 
-
-
-
-class LHDHeapGDSF : public LHDBase
-{
-public:
-    LHDHeapGDSF();
-};
-
-static Factory<LHDHeapGDSF> factoryLHDHeapGDSF("LHDHeapGDSF");
-
-
-
-
-class LHDBySize : public LHDBase
-{
-public:
-    LHDBySize();
-};
-
-static Factory<LHDBySize> factoryLHDBySize("LHDBySize");
-
-
-class LHDByReuse : public LHDBase
-{
-public:
-    LHDByReuse();
-};
-
-static Factory<LHDByReuse> factoryLHDByReuse("LHDByReuse");
-
-
-
 class LHD2 : public LHDBase
 {
 public:
@@ -110,8 +50,6 @@ public:
 };
 
 static Factory<LHD2> factoryLHD2("LHD2");
-
-
 
 class LHDGDWheel : public LHDBase
 {

@@ -3,7 +3,6 @@
 //
 
 #include "simulation.h"
-
 #include <fstream>
 #include <string>
 #include <regex>
@@ -12,11 +11,19 @@
 #include "random_variants.h"
 #include "ucb.h"
 #include "request.h"
-#include "simulation_belady.h"
-#include "simulation_lfo.h"
-#include "simulation_lr.h"
+#include "hyperbolic.h"
+//#include "simulation_lfo.h"
+//#include "simulation_lfo2.h"
+#include "simulation_future.h"
+#include "simulation_lr_belady.h"
+#include "simulation_belady_static.h"
+#include "simulation_bins.h"
+#include "simulation_truncate.h"
+#include <chrono>
+#include "utils.h"
 
 using namespace std;
+using namespace chrono;
 
 
 map<string, string> _simulation(string trace_file, string cache_type, uint64_t cache_size,
@@ -25,7 +32,7 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     unique_ptr<Cache> webcache = move(Cache::create_unique(cache_type));
     if(webcache == nullptr) {
         cerr<<"cache type not implemented"<<endl;
-        return {};
+        exit(-2);
     }
 
     // configure cache size
@@ -33,47 +40,87 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
 
     uint64_t n_warmup = 0;
     bool uni_size = false;
-    for (auto& kv: params) {
-        webcache->setPar(kv.first, kv.second);
-        if (kv.first == "n_warmup")
-            n_warmup = stoull(kv.second);
-        if (kv.first == "uni_size")
-            uni_size = static_cast<bool>(stoi(kv.second));
+    uint64_t segment_window = 1000000;
+    uint n_extra_fields = 0;
+
+    for (auto it = params.cbegin(); it != params.cend();) {
+        if (it->first == "n_warmup") {
+            n_warmup = stoull(it->second);
+            it = params.erase(it);
+        } else if (it->first == "uni_size") {
+            uni_size = static_cast<bool>(stoi(it->second));
+            it = params.erase(it);
+        } else if (it->first == "segment_window") {
+            segment_window = stoull((it->second));
+            it = params.erase(it);
+        } else if (it->first == "n_extra_fields") {
+            n_extra_fields = stoull(it->second);
+            ++it;
+        } else {
+            ++it;
+        }
     }
 
-    ifstream infile;
-    uint64_t byte_req = 0, byte_hit = 0, obj_req = 0, obj_hit = 0;
-    uint64_t t, id, size;
+    webcache->init_with_params(params);
 
+
+    ifstream infile;
     infile.open(trace_file);
     if (!infile) {
         cerr << "Exception opening/reading file"<<endl;
-        return {};
+        exit(-1);
     }
 
-    SimpleRequest req(0, 0);
-    uint64_t i = 0;
-    while (infile >> t >> id >> size) {
+    uint64_t byte_req = 0, byte_hit = 0, obj_req = 0, obj_hit = 0;
+    //don't use real timestamp, use relative seq starting from 1
+    uint64_t tmp, id, size;
+    uint64_t seg_byte_req = 0, seg_byte_hit = 0, seg_obj_req = 0, seg_obj_hit = 0;
+    string seg_bhr;
+    string seg_ohr;
+
+    //todo: read extra fields
+    uint tmp1;
+
+    SimpleRequest req(0, 0, 0);
+    uint64_t seq = 0;
+    auto t_now = system_clock::now();
+    while (infile >> tmp >> id >> size) {
+        for (int i = 0; i < n_extra_fields; ++i)
+            infile>>tmp1;
+        //todo: currently real timestamp t is not used. Only relative seq is used
         if (uni_size)
             size = 1;
 
-        if (i >= n_warmup) {
-            byte_req += size;
-            obj_req++;
-        }
+        DPRINTF("seq: %lu\n", seq);
 
-        req.reinit(id, size);
+        if (seq >= n_warmup)
+            update_metric_req(byte_req, obj_req, size);
+        update_metric_req(seg_byte_req, seg_obj_req, size);
+
+        req.reinit(id, size, seq+1);
         if (webcache->lookup(req)) {
-            if (i >= n_warmup) {
-                byte_hit += size;
-                obj_hit++;
-            }
+            if (seq >= n_warmup)
+                update_metric_req(byte_hit, obj_hit, size);
+            update_metric_req(seg_byte_hit, seg_obj_hit, size);
         } else {
             webcache->admit(req);
         }
-//        cout << i << " " << t << " " << obj_hit << endl;
-        if (!(++i%1000000))
-            cout <<"seq: "<< i <<" hit rate: "<<double(byte_hit) / byte_req<< endl;
+
+        ++seq;
+
+        if (!(seq%segment_window)) {
+            auto _t_now = chrono::system_clock::now();
+            cerr<<"delta t: "<<chrono::duration_cast<std::chrono::milliseconds>(_t_now - t_now).count()/1000.<<endl;
+            cerr<<"seq: " << seq << endl;
+            double _seg_bhr = double(seg_byte_hit) / seg_byte_req;
+            double _seg_ohr = double(seg_obj_hit) / seg_obj_req;
+            cerr<<"accu bhr: " << double(byte_hit) / byte_req << endl;
+            cerr<<"seg bhr: " << _seg_bhr << endl;
+            seg_bhr+=to_string(_seg_bhr)+"\t";
+            seg_ohr+=to_string(_seg_ohr)+"\t";
+            seg_byte_hit=seg_obj_hit=seg_byte_req=seg_obj_req=0;
+            t_now = _t_now;
+        }
     }
 
     infile.close();
@@ -81,18 +128,29 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     map<string, string> res = {
             {"byte_hit_rate", to_string(double(byte_hit) / byte_req)},
             {"object_hit_rate", to_string(double(obj_hit) / obj_req)},
+            {"segment_byte_hit_rate", seg_bhr},
+            {"segment_object_hit_rate", seg_ohr},
     };
     return res;
 }
 
 map<string, string> simulation(string trace_file, string cache_type,
         uint64_t cache_size, map<string, string> params){
-    if (cache_type == "Belady")
-        return _simulation_belady(trace_file, cache_type, cache_size, params);
-    else if (cache_type == "LFO")
-        return _simulation_lfo(trace_file, cache_type, cache_size, params);
-    else if (cache_type == "LR" || cache_type == "SampleBelady")
-        return _simulation_lr(trace_file, cache_type, cache_size, params);
+    if (cache_type == "LR" || cache_type == "Belady" || cache_type == "BeladySample" || cache_type == "LRUKSample" ||
+        cache_type == "LFUSample" || cache_type == "GDBT")
+        return _simulation_future(trace_file, cache_type, cache_size, params);
+//    else if (cache_type == "LFO")
+//        return LFO::_simulation_lfo(trace_file, cache_type, cache_size, params);
+//    else if (cache_type == "LFO2")
+//        return _simulation_lfo2(trace_file, cache_type, cache_size, params);
+//    else if (cache_type == "LRBelady")
+//        return _simulation_lr_belady(trace_file, cache_type, cache_size, params);
+//    else if (cache_type == "BeladyStatic")
+//        return _simulation_belady_static(trace_file, cache_type, cache_size, params);
+//    else if (cache_type == "Bins")
+//        return _simulation_bins(trace_file, cache_type, cache_size, params);
+//    else if (cache_type == "BeladyTruncate")
+//        return _simulation_truncate(trace_file, cache_type, cache_size, params);
     else
         return _simulation(trace_file, cache_type, cache_size, params);
 }

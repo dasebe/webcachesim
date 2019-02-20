@@ -1,5 +1,29 @@
 # webcachesim:
 
+```bash
+
+
+
+cd mongo-c-driver-1.13.1/cmake-build/
+cmake -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON -DCMAKE_INSTALL_PREFIX=~/mongo-c-driver ..
+make && make install
+
+cd mongo-cxx-driver-r3.4.0/build
+cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=~/mongo-cxx-driver -DCMAKE_PREFIX_PATH=~/mongo-c-driver  ..
+make && make install
+
+cd webcachesim/build
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="~/mongo-cxx-driver;~/mongo-c-driver" ..
+make
+
+# add binary and trace dir to path
+# append to .bash_profile
+export PATH=$PATH:/data/zhenyus/webcachesim/build/bin
+export WEBCACHESIM_TRACE_DIR=/data/zhenyus/webcachesim/trace
+
+```
+
+
 ## Steps For pywebcachsim:
 * `WEBCACHESIM_ROOT` is the dir of your github repo
 
@@ -28,7 +52,7 @@ pywebcachesim --help
 * To run a example configuration. Check the yaml file to see the detail configuration:
 
 ```bash
-pywebcachesim --config_file ${WEBCACHESIM_ROOT}/job_simple.yaml --write_dir ${WEBCACHESIM_ROOT}/log --trace_dir ${WEBCACHESIM_ROOT}/test --debug True
+pywebcachesim --config_file ${WEBCACHESIM_ROOT}/test/job_simple.yaml --write_dir ${WEBCACHESIM_ROOT}/log --trace_dir ${WEBCACHESIM_ROOT}/test --debug True
 ```
 
 * Install `jupyterlab`

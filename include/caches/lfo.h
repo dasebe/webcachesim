@@ -42,6 +42,6 @@ public:
     virtual void evict();
 };
 
-static Factory<LFOCache> factoryBelady("LFO");
+static Factory<LFOCache> factoryLFO("LFO");
 
 #endif //WEBCACHESIM_LFO_H

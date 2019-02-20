@@ -1,9 +1,226 @@
+LRUK:
+  k: 4
 LFO:
-  - cutoff: 0.5
-    window: 10000000
+  cutoff: 0.5
+  window: 10000000
+  sample_size: 1000000
+  sample_type: 2
+LFO2:
+  window: 10000000
 LR:
-  - sample_rate: 32
-    threshold: 10000000
-    batch_size: 10
-    learning_rate: 0.000001
-    n_past_intervals: 4
+  sample_rate:
+    - 64
+  training_sample_interval: 64
+  threshold: 10000000
+  gradient_window:
+#    - 1
+#    - 2
+#    - 5
+#    - 10
+#    - 20
+#    - 50
+#    - 100
+#    - 200
+#    - 500
+#    - 1000
+#    - 2000
+#    - 5000
+#    - 10000
+#    - 20000
+#    - 50000
+#    - 100000
+#    - 200000
+#    - 500000
+    - 1000000
+  learning_rate:
+    - 0.000001
+#    - 0.00005
+#    - 0.00002
+#    - 0.00001
+##    - 0.0005
+#    - 0.0002
+#    - 0.0001
+#    - 0.005
+#    - 0.002
+#    - 0.001
+#    - 0.01
+  n_past_intervals: 4
+  version: balance 
+LRUKSample:
+  sample_rate: 32
+BeladySample:
+  sample_rate:
+    - 64
+  threshold:
+    - 40000000
+LRBelady:
+  sample_rate:
+    - 32
+  threshold: 10000000
+  gradient_window:
+#    - 1
+#    - 2
+#    - 5
+#    - 10
+#    - 20
+#    - 50
+#    - 100
+#    - 200
+#    - 500
+#    - 1000
+#    - 2000
+#    - 5000
+#    - 10000
+#    - 20000
+#    - 50000
+    - 100000
+#    - 200000
+#    - 500000
+#    - 1000000
+  learning_rate:
+#    - 0.000001
+#    - 0.00005
+#    - 0.00002
+    - 0.00001
+#    - 0.0005
+#    - 0.0002
+#    - 0.0001
+#    - 0.005
+#    - 0.002
+#    - 0.001
+#    - 0.01
+  n_past_intervals: 4
+  out_sample:
+#    - 0
+    - 1
+  bias_point:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+  alpha:
+    - 0.1
+    - 0.2
+    - 0.5
+    - 1
+    - 2
+    - 5
+  version:
+    seven
+BeladyStatic:
+  zero_cost:
+    - 0
+    - 1
+  static_window:
+    - 200000
+    - 500000
+    - 1000000
+    - 2000000
+    - 5000000
+    - 10000000
+    - 20000000
+  version:
+    assert
+Bins:
+  sample_rate:
+    - 32
+  threshold: 10000000
+  n_past_intervals: 4
+  w0:
+    - 1
+    - 0.9
+    - 0.8
+    - 0.7
+    - 0.6
+    - 0.5
+    - 0.4
+    - 0.3
+    - 0.2
+    - 0.1
+  w1:
+    - 0.5
+    - 0.4
+    - 0.3
+    - 0.2
+    - 0.1
+    - 0
+  w2:
+    - 0.3
+    - 0.2
+    - 0.1
+    - 0
+  w3:
+    - 0.2
+    - 0.1
+    - 0
+  w4:
+    - 0.2
+    - 0.1
+    - 0
+  w5:
+    - 0.1
+    - 0
+  w6:
+    - 0.1
+    - 0
+  w7:
+    - 0.1
+    - 0
+  w8:
+    - 0.1
+    - 0
+  w9:
+    - 0.1
+    - 0
+GDBT:
+  training_sample_interval:
+#    - 1
+#    - 5
+#    - 10
+#    - 20
+    - 64
+#    - 50
+#    - 100
+#    - 1000
+#    - 10000
+  sample_rate:
+#    - 16
+    - 64
+#    - 128
+#    - 256
+#    - 512
+#    - 1024
+#    - 2048
+  threshold: 10000000
+  gradient_window:
+#    - 50000
+    - 100000
+#    - 200000
+  max_n_past_timestamps:
+#    - 4
+#    - 8
+#    - 16
+    - 32
+#    - 64
+  num_iterations:
+#    - 1
+#    - 2
+#    - 4
+#    - 8
+#    - 16
+    - 32
+  num_threads:
+#    - 1
+    - 16
+  objective:
+    - byte_hit_rate
+#    - object_hit_rate
+  version: known_size
+Hyperbolic:
+  sample_rate: 64
+LeCaR:
+  learning_rate: 0.45
+

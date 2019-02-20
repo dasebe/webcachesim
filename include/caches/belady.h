@@ -6,18 +6,11 @@
 #define WEBCACHESIM_BELADY_H
 
 #include "cache.h"
-#include <boost/bimap.hpp>
-#include <boost/bimap/multiset_of.hpp>
 #include <utils.h>
+#include <unordered_map>
+#include <map>
 
-typedef boost::bimap<boost::bimaps::set_of<KeyT>,
-        boost::bimaps::multiset_of<uint64_t, std::greater<uint64_t>>> Bimap;
-
-typedef Bimap::left_map::const_iterator left_const_iterator;
-typedef Bimap::right_map::const_iterator right_const_iterator;
-
-typedef Bimap::left_map::const_iterator left_iterator;
-typedef Bimap::right_map::const_iterator right_iterator;
+using namespace std;
 
 /*
   Belady: Optimal for unit size
@@ -26,7 +19,9 @@ class BeladyCache : public Cache
 {
 protected:
     // list for recency order
-    Bimap _cacheMap;
+    multimap<uint64_t , uint64_t, greater<uint64_t >> _valueMap;
+    // only store in-cache object, value is size
+    unordered_map<uint64_t, uint64_t> _cacheMap;
 
 public:
     BeladyCache()
