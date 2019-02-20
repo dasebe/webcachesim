@@ -6,10 +6,7 @@
 #include "cache.hpp"
 #include "repl.hpp"
 #include "parser.hpp"
-#include "lru.hpp"
-#include "adaptsize.hpp"
 #include "hyperbolic.hpp"
-#include "hitdensity.hpp"
 #include "gds.hpp"
 #include "ranked_lru.hpp"
 #include "gdwheel.hpp"
@@ -70,14 +67,6 @@ LHDSAMPLEDGDSF::LHDSAMPLEDGDSF()
     int admissionSamples = 8;
     lhdcache->repl = new repl::RankedGreedyDualSizeFreq(assoc, admissionSamples);
 }
-
-LHD2::LHD2()
-{
-    lhdcache = new cache::Cache();
-    lhdcache->availableCapacity = (uint64_t)1 * 1024 * 1024;
-    lhdcache->repl = new repl::LHD(lhdcache);
-}
-
 
 LHDGDWheel::LHDGDWheel()
 {

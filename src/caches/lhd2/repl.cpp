@@ -5,10 +5,7 @@
 #include "lhd.hpp"
 #include "lru.hpp"
 
-#include <libconfig.h++>
-#include "config.hpp"
-
-repl::Policy* repl::Policy::create(cache::Cache* cache, const libconfig::Setting &settings) {
+repl::Policy* repl::Policy::create(cache::Cache* cache) {
   misc::ConfigReader cfg(settings);
 
   std::string type = cfg.read<const char*>("repl.type");
@@ -21,8 +18,8 @@ repl::Policy* repl::Policy::create(cache::Cache* cache, const libconfig::Setting
   }
 
   // ranking policies
-  int assoc = cfg.read<int>("cache.assoc");
-  int admissionSamples = cfg.read<int>("cache.admissionSamples");
+  int assoc = 64;
+  int admissionSamples = 8;
 
   std::cout << "Ranked associativity = " << assoc << std::endl;
 

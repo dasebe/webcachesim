@@ -52,7 +52,7 @@ struct MediumRequest {
   int32_t type;
   int32_t keySize;
   int64_t valueSize;
-  int32_t id;
+  int64_t id;
   int8_t  miss;
 
   inline int64_t size() const { return keySize + valueSize + MEMCACHED_OVERHEAD; }
@@ -63,7 +63,7 @@ static constexpr Request NULL_REQUEST{0., 0, 0, 0, 0, 0, false};
 struct PartialRequest {
   int32_t appId;
   int64_t size;
-  int32_t id;
+  int64_t id;
 } __attribute__((packed));
 
 static uint64_t file_size(const char* fname) {

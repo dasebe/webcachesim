@@ -35,6 +35,7 @@ public:
 
 static Factory<LHDHyperbolic> factoryHyperbolic("LHDHyperbolic");
 
+
 class LHDSAMPLEDGDSF : public LHDBase
 {
 public:
@@ -43,13 +44,6 @@ public:
 
 static Factory<LHDSAMPLEDGDSF> factoryLHDSAMPLEDGDSF("LHDSampledGDSF");
 
-class LHD2 : public LHDBase
-{
-public:
-    LHD2();
-};
-
-static Factory<LHD2> factoryLHD2("LHD2");
 
 class LHDGDWheel : public LHDBase
 {

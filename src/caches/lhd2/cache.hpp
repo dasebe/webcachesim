@@ -67,9 +67,9 @@ struct Cache {
     return sizeMap.size();
   }
 
-  void access(const parser::Request& req) {
+    bool access(const parser::Request& req) {
     assert(req.size() > 0);
-    if (req.type != parser::GET) { return; }
+    if (req.type != parser::GET) { return(false); }
 
     auto id = repl::candidate_t::make(req);
     auto itr = sizeMap.find(id);
@@ -162,6 +162,8 @@ struct Cache {
 
     assert(consumedCapacity <= availableCapacity);
     repl->update(id, req);
+
+    return hit;
   }
 
   void dumpStats() {
