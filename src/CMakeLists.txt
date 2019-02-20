@@ -4,8 +4,8 @@ set(LIB_SOURCE
         caches/random_variants.cpp
         caches/belady.cpp
         caches/lhd_competitors/lhd_competitors.cpp
-        caches/lhd2/lhd_variants.cpp
-        caches/lhd2/lhd.cpp
+        caches/lhd/lhd_variants.cpp
+        caches/lhd/lhd.cpp
         random_helper.cpp
         simulation.cpp
 #        simulation_lfo.cpp
