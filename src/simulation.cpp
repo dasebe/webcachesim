@@ -6,6 +6,7 @@
 #include <fstream>
 #include <string>
 #include <regex>
+//todo: don't need to include the headers in order to use these algorithms
 #include "lru_variants.h"
 #include "gd_variants.h"
 #include "random_variants.h"
