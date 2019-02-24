@@ -6,20 +6,13 @@
 #include <fstream>
 #include <string>
 #include <regex>
-//todo: don't need to include the headers in order to use these algorithms
-#include "lru_variants.h"
-#include "gd_variants.h"
-#include "random_variants.h"
-#include "ucb.h"
 #include "request.h"
-#include "hyperbolic.h"
-//#include "simulation_lfo.h"
-//#include "simulation_lfo2.h"
 #include "simulation_future.h"
-#include "simulation_lr_belady.h"
-#include "simulation_belady_static.h"
-#include "simulation_bins.h"
-#include "simulation_truncate.h"
+#include "cache.h"
+//#include "simulation_lr_belady.h"
+//#include "simulation_belady_static.h"
+//#include "simulation_bins.h"
+//#include "simulation_truncate.h"
 #include <chrono>
 #include "utils.h"
 

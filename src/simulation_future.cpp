@@ -4,14 +4,11 @@
 
 #include <chrono>
 #include "simulation_future.h"
-#include "random_variants.h"
+#include "cache.h"
 #include <fstream>
 #include "request.h"
 #include "annotate.h"
 #include "utils.h"
-
-#include "belady.h"
-#include "gdbt.h"
 
 using namespace std;
 using namespace chrono;
