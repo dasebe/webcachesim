@@ -18,9 +18,9 @@
 
 LHDBase::LHDBase()
 {
-    lhdcache = new cache::Cache();
+    lhdcache = new cache_competitors::Cache();
     lhdcache->availableCapacity = (uint64_t)1 * 1024 * 1024;
-    lhdcache->repl = new repl::LRU();
+    lhdcache->repl = new repl_competitors::LRU();
 }
 
 void LHDBase::setSize(uint64_t cs) {
@@ -30,7 +30,7 @@ void LHDBase::setSize(uint64_t cs) {
 
 bool LHDBase::lookup(SimpleRequest& req)
 {
-    const parser::Request preq {1, (int64_t)req.get_size(), (int64_t)req.get_id()};
+    const parser_competitors::Request preq {1, (int64_t)req.get_size(), (int64_t)req.get_id()};
     return(lhdcache->access(preq));
 }
 
@@ -51,25 +51,25 @@ void LHDBase::evict()
 
 LHDHyperbolic::LHDHyperbolic()
 {
-    lhdcache = new cache::Cache();
+    lhdcache = new cache_competitors::Cache();
     lhdcache->availableCapacity = (uint64_t)1 * 1024 * 1024;
     int assoc = 64;
     int admissionSamples = 8;
-    lhdcache->repl = new repl::RankedHyperbolicSizeAware(assoc, admissionSamples, lhdcache);
+    lhdcache->repl = new repl_competitors::RankedHyperbolicSizeAware(assoc, admissionSamples, lhdcache);
 }
 
 LHDSAMPLEDGDSF::LHDSAMPLEDGDSF()
 {
-    lhdcache = new cache::Cache();
+    lhdcache = new cache_competitors::Cache();
     lhdcache->availableCapacity = (uint64_t)1 * 1024 * 1024;
     int assoc = 64;
     int admissionSamples = 8;
-    lhdcache->repl = new repl::RankedGreedyDualSizeFreq(assoc, admissionSamples);
+    lhdcache->repl = new repl_competitors::RankedGreedyDualSizeFreq(assoc, admissionSamples);
 }
 
 LHDGDWheel::LHDGDWheel()
 {
-    lhdcache = new cache::Cache();
+    lhdcache = new cache_competitors::Cache();
     lhdcache->availableCapacity = (uint64_t)1 * 1024 * 1024;
-    lhdcache->repl = new repl::GDWheel();
+    lhdcache->repl = new repl_competitors::GDWheel();
 }

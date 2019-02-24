@@ -6,20 +6,20 @@
 #include "bytes.hpp"
 #include "repl.hpp"
 
-namespace cache {
+namespace cache_competitors {
 
 struct Cache {
-  repl::Policy* repl;
+  repl_competitors::Policy* repl;
   uint64_t availableCapacity;
   uint64_t consumedCapacity;
-  std::unordered_map<repl::candidate_t, uint32_t> sizeMap;
+  std::unordered_map<repl_competitors::candidate_t, uint32_t> sizeMap;
 
   Cache()
     : repl(nullptr)
     , availableCapacity(-1)
     , consumedCapacity(0) {}
 
-  uint32_t getSize(repl::candidate_t id) const {
+  uint32_t getSize(repl_competitors::candidate_t id) const {
     auto itr = sizeMap.find(id);
     if (itr != sizeMap.end()) {
       return itr->second;
@@ -32,10 +32,10 @@ struct Cache {
     return sizeMap.size();
   }
 
-  bool access(const parser::Request& req) {
+  bool access(const parser_competitors::Request& req) {
     assert(req.size() > 0);
 
-    auto id = repl::candidate_t::make(req);
+    auto id = repl_competitors::candidate_t::make(req);
     auto itr = sizeMap.find(id);
     bool hit = (itr != sizeMap.end());
 
@@ -55,7 +55,7 @@ struct Cache {
 
     while (consumedCapacity + requestSize > availableCapacity) {
       // need to evict stuff!
-      repl::candidate_t victim = repl->rank(req);
+      repl_competitors::candidate_t victim = repl->rank(req);
       auto victimItr = sizeMap.find(victim);
       if (victimItr == sizeMap.end()) {
         std::cerr << "Couldn't find victim: " << victim << std::endl;

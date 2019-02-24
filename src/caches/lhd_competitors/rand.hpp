@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-namespace misc {
+namespace misc_competitors {
 
   // placeholder random number generator from Knuth MMIX
   class Rand {

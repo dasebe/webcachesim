@@ -1,6 +1,6 @@
 #pragma once
 
-namespace misc {
+namespace misc_competitors {
 
   // This data structure gives you the view of an infinitely-large
   // queue where only a small region of the queue is active at a

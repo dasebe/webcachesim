@@ -4,15 +4,15 @@
 #include "ranked_age.hpp"
 
 /* forward declaration */
-namespace cache {
+namespace cache_competitors {
   class Cache;
 }
 
-namespace repl {
-  namespace fn {
+namespace repl_competitors {
+  namespace fn_competitors {
     class HyperbolicSizeAware{
     public:
-      HyperbolicSizeAware(cache::Cache* _cache) 
+      HyperbolicSizeAware(cache_competitors::Cache* _cache)
         : cache(_cache) 
         , accesses(0.)
         , entryTime(-1ull)
@@ -35,7 +35,7 @@ namespace repl {
         return - (COST * accesses[id]) / (timeSinceEntry * size);
       }
 
-      void update(candidate_t id, const parser::Request& req) {
+      void update(candidate_t id, const parser_competitors::Request& req) {
         if (isPresent(id)) {
           /* hit */
           accesses[id] += 1;
@@ -63,7 +63,7 @@ namespace repl {
       static constexpr rank_t COST = 1; // cost 1 is to maximize hit rate
       static constexpr float  LEEWAY = 0.1; // init access count from the last evicted rank
 
-      cache::Cache* cache;
+      cache_competitors::Cache* cache;
 
       CandidateMap<float> accesses;
       CandidateMap<uint64_t> entryTime;
@@ -73,6 +73,6 @@ namespace repl {
     }; // class HyperbolicSizeAware
   } // namespace fn
 
-  typedef RankedPolicy<fn::HyperbolicSizeAware> RankedHyperbolicSizeAware;
+  typedef RankedPolicy<fn_competitors::HyperbolicSizeAware> RankedHyperbolicSizeAware;
 
 } // namespace repl

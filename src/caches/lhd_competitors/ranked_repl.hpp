@@ -8,7 +8,7 @@
 #include "repl.hpp"
 #include "circular_queue.hpp"
 
-namespace repl {
+namespace repl_competitors {
 
   template<class Fn>
   class RankedPolicy : public virtual Policy {
@@ -24,7 +24,7 @@ namespace repl {
     {}
     ~RankedPolicy() { }
 
-    void update(candidate_t id, const parser::Request& req) {
+    void update(candidate_t id, const parser_competitors::Request& req) {
       bool insert = false;
       if (indices.find(id) == indices.end()) {
         /* insert */
@@ -61,7 +61,7 @@ namespace repl {
       fn.replaced(id);
     }
 
-    candidate_t rank(const parser::Request& req) {
+    candidate_t rank(const parser_competitors::Request& req) {
       assert(!cands.empty());
 
       struct Candidate {
@@ -93,7 +93,7 @@ namespace repl {
       return victim.id;
     }
 
-    void dumpStats(cache::Cache* cache) {
+    void dumpStats(cache_competitors::Cache* cache) {
       Policy::dumpStats(cache);
 
       fn.dumpStats();
@@ -103,13 +103,13 @@ namespace repl {
     Fn fn;
   private:
     int associativity;
-    misc::Rand rand;
+    misc_competitors::Rand rand;
 
     std::vector<candidate_t> cands;
     std::unordered_map<candidate_t, size_t> indices;
     std::unordered_map<candidate_t, size_t> slab_ids;
     const size_t ADMISSION_SAMPLES;
-    misc::CircularNQueue<candidate_t> recentAdmissions;
+    misc_competitors::CircularNQueue<candidate_t> recentAdmissions;
     double EWMA_DECAY;
     double ewmaVictimRank;
   };
