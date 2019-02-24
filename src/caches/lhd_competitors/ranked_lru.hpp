@@ -2,9 +2,9 @@
 
 #include "ranked_age.hpp"
 
-namespace repl {
+namespace repl_competitors {
 
-  namespace fn {
+  namespace fn_competitors {
 
     class LRU : public Age {
     public:
@@ -19,6 +19,6 @@ namespace repl {
 
   } // namespace fn
 
-  typedef RankedPolicy<fn::LRU> RankedLRU;
+  typedef RankedPolicy<fn_competitors::LRU> RankedLRU;
 
 } // namespace repl

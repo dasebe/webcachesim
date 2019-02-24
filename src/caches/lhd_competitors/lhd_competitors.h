@@ -6,7 +6,7 @@
 #include "cache.h"
 //#include "cache_object.h"
 
-namespace cache {
+namespace cache_competitors {
     class Cache;
 }
 
@@ -14,7 +14,7 @@ namespace cache {
 class LHDBase : public Cache
 {
 protected:
-    cache::Cache* lhdcache;
+    cache_competitors::Cache* lhdcache;
 
 public:
     LHDBase();
@@ -51,7 +51,7 @@ public:
     LHDGDWheel();
 };
 
-static Factory<LHDGDWheel> factoryLHDGDWheel("LHDGDWheel");
+static Factory<LHDGDWheel> factoryLHDGDWheel("GDWheel");
 
 
 

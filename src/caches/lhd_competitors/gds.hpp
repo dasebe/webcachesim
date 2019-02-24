@@ -3,9 +3,9 @@
 #include "ranked_repl.hpp"
 #include "ranked_heap_repl.hpp"
 
-namespace repl {
+namespace repl_competitors {
 
-  namespace fn {
+  namespace fn_competitors {
     class GreedyDualSize {
     public:
       GreedyDualSize() : ranks(0), L(0) {}
@@ -17,7 +17,7 @@ namespace repl {
 	return -ranks[id];
       }
 
-      void update(candidate_t id, const parser::Request& req) {
+      void update(candidate_t id, const parser_competitors::Request& req) {
 	ranks[id] = L + COST / req.size();
       }
 
@@ -47,7 +47,7 @@ namespace repl {
 	return -ranks[id];
       }
 
-      void update(candidate_t id, const parser::Request& req) {
+      void update(candidate_t id, const parser_competitors::Request& req) {
 	freq[id] += 1;
 	ranks[id] = L + COST * freq[id] / req.size();
       }
@@ -70,10 +70,10 @@ namespace repl {
     }; // class GreedyDualSize
   } // namespace fn
 
-  typedef RankedPolicy<fn::GreedyDualSize> RankedGreedyDualSize;
-  typedef RankedPolicy<fn::GreedyDualSizeFreq> RankedGreedyDualSizeFreq;
+  typedef RankedPolicy<fn_competitors::GreedyDualSize> RankedGreedyDualSize;
+  typedef RankedPolicy<fn_competitors::GreedyDualSizeFreq> RankedGreedyDualSizeFreq;
 
-  typedef RankedHeapPolicy<fn::GreedyDualSize> GreedyDualSize;
-  typedef RankedHeapPolicy<fn::GreedyDualSizeFreq> GreedyDualSizeFreq;
+  typedef RankedHeapPolicy<fn_competitors::GreedyDualSize> GreedyDualSize;
+  typedef RankedHeapPolicy<fn_competitors::GreedyDualSizeFreq> GreedyDualSizeFreq;
 
 } // namespace repl

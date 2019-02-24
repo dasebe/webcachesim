@@ -4,7 +4,7 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-namespace parser {
+namespace parser_competitors {
 
     typedef float float32_t;
 

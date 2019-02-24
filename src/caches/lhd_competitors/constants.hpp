@@ -4,7 +4,7 @@
 
 const int MONITOR = 0;
 
-namespace cache {
+namespace cache_competitors {
 
 const uint64_t STATS_INTERVAL = 1000000;
 
@@ -14,13 +14,13 @@ namespace libconfig {
   class Setting;
 }
 
-namespace parser{
+namespace parser_competitors{
   const uint64_t FAST_FORWARD = 0;
 }
 
-namespace repl {
+namespace repl_competitors {
 
-namespace fn {
+namespace fn_competitors {
 
 namespace eva {
 
@@ -32,7 +32,7 @@ const bool FULL_DEBUG_INFO = false;
 
 }
 
-namespace hitdensity {
+namespace hitdensity_competitors {
 
 void initParameters();
 
@@ -48,7 +48,7 @@ extern uint32_t APP_CLASSES;
 
 }
 
-namespace adaptsize {
+namespace adaptsize_competitors {
 
 const int RECONFIGURATION_INTERVAL = 500000;
 const double EWMA_DECAY = 0.3;

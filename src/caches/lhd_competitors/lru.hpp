@@ -3,7 +3,7 @@
 #include <unordered_map>
 #include "repl.hpp"
 
-namespace repl {
+namespace repl_competitors {
 
   template <typename DataT>
   struct List {
@@ -110,7 +110,7 @@ namespace repl {
 
   class LRU : public Policy {
   public:
-    void update(candidate_t id, const parser::Request& req) {
+    void update(candidate_t id, const parser_competitors::Request& req) {
       auto* entry = tags.lookup(id);
       if (entry) {
 	assert(entry->data == id);
@@ -128,7 +128,7 @@ namespace repl {
       delete entry;
     }
 
-    candidate_t rank(const parser::Request& req) {
+    candidate_t rank(const parser_competitors::Request& req) {
       return list.back();
     }
 

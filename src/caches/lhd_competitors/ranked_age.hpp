@@ -5,9 +5,9 @@
 
 #include "ranked_repl.hpp"
 
-namespace repl {
+namespace repl_competitors {
 
-  namespace fn {
+  namespace fn_competitors {
 
     class Age {
     public:
@@ -24,7 +24,7 @@ namespace repl {
 	return lastUse[id] != lastUse.DEFAULT;
       }
 
-      void update(candidate_t id, const parser::Request& req) {
+      void update(candidate_t id, const parser_competitors::Request& req) {
 	lastUse[id] = now;
 	++now;
       }

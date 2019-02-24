@@ -4,7 +4,7 @@
 #include "rand.hpp"
 #include "priority_queue.hpp"
 
-namespace repl {
+namespace repl_competitors {
 
 template<class Fn>
 class RankedHeapPolicy : public virtual Policy {
@@ -16,7 +16,7 @@ class RankedHeapPolicy : public virtual Policy {
 
     ~RankedHeapPolicy() { }
 
-    void update(candidate_t id, const parser::Request& req) {
+    void update(candidate_t id, const parser_competitors::Request& req) {
         fn.update(id, req);
         typename Fn::rank_t rank = fn.rank(id);
 
@@ -37,11 +37,11 @@ class RankedHeapPolicy : public virtual Policy {
         fn.replaced(id);
     }
 
-    candidate_t rank(const parser::Request& req) {
+    candidate_t rank(const parser_competitors::Request& req) {
         return pq.peek().key;
     }
 
-    void dumpStats(cache::Cache* cache) {
+    void dumpStats(cache_competitors::Cache* cache) {
         Policy::dumpStats(cache);
         fn.dumpStats();
     }

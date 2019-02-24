@@ -3,7 +3,7 @@
 #include <string>
 #include <sstream>
 
-namespace misc {
+namespace misc_competitors {
 
 inline std::string bytes(uint64_t size) {
   std::stringstream ss;

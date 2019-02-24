@@ -7,13 +7,13 @@
 
 //#include "growing_vector.hpp"
 
-namespace repl {
+namespace repl_competitors {
 
 struct candidate_t {
   int64_t size;
   int64_t id;
 
-  static candidate_t make(const parser::Request& req) { 
+  static candidate_t make(const parser_competitors::Request& req) {
     return candidate_t{req.size(), req.id};
   }
 
@@ -74,8 +74,8 @@ public:
 namespace std {
 
   template <>
-  struct hash<repl::candidate_t> {
-    size_t operator() (const repl::candidate_t& x) const {
+  struct hash<repl_competitors::candidate_t> {
+    size_t operator() (const repl_competitors::candidate_t& x) const {
       return x.id;
     }
   };
@@ -84,7 +84,7 @@ namespace std {
 
 namespace {
 
-  inline std::ostream& operator<< (std::ostream& os, const repl::candidate_t& x) {
+  inline std::ostream& operator<< (std::ostream& os, const repl_competitors::candidate_t& x) {
     return os << "(" << x.size << ", " << x.id << ")";
   }
 

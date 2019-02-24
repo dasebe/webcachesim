@@ -3,7 +3,7 @@
 #include "lru.hpp"
 #include "repl.hpp"
 
-namespace misc {
+namespace misc_competitors {
 
 static constexpr uint64_t POW(int N, int d) {
     return d > 0?
@@ -12,14 +12,14 @@ static constexpr uint64_t POW(int N, int d) {
 
 }
 
-namespace repl {
+namespace repl_competitors {
 
 class GDWheel : public Policy {
   public:
     GDWheel() : freq(0) {}
     ~GDWheel() {}
     
-    void update(candidate_t id, const parser::Request& req) {
+    void update(candidate_t id, const parser_competitors::Request& req) {
         freq[id] += 1;
         
         auto* entry = tags.lookup(id);
@@ -48,13 +48,13 @@ class GDWheel : public Policy {
         freq.erase(id);
     }
 
-    candidate_t rank(const parser::Request& req) {
+    candidate_t rank(const parser_competitors::Request& req) {
         hcw.forth();
         assert(!hcw.wheels[0].get_list().empty());
         return hcw.wheels[0].get_list().back().id;
     }
 
-    void dumpStats(cache::Cache* cache) {
+    void dumpStats(cache_competitors::Cache* cache) {
         std::cerr << "GD-Wheel overflows " << overflows << std::endl;
     }
 
@@ -62,7 +62,7 @@ class GDWheel : public Policy {
     static constexpr int N = 256;
     static constexpr int DEPTH = 2;
 
-    static const uint64_t MAX_VALUE = misc::POW(N, DEPTH);
+    static const uint64_t MAX_VALUE = misc_competitors::POW(N, DEPTH);
 
     struct Data {
         candidate_t id;
