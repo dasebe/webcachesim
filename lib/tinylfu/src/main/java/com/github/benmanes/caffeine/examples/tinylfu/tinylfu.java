@@ -19,12 +19,12 @@ public class tinylfu {
         // whole_byte_cache ~= warmup_byte_cache
         String trace_file = args[0];
 
-        long cache_size = Long.parseLong(args[2]);
+        long cache_size = Long.parseUnsignedLong(args[2]);
         long n_warmup = 0;
 
         for (int i = 3; i < args.length; i += 2) {
             if (args[i].equals("n_warmup")) {
-                n_warmup = Long.parseLong(args[i+1]);
+                n_warmup = Long.parseUnsignedLong(args[i+1]);
             }
         }
 
@@ -60,7 +60,7 @@ public class tinylfu {
                     warmup_byte_evict = cache.stats().evictionWeight();
                 }
                 String[] values = line.split(" ");
-                long key = Long.parseLong(values[1]);
+                long key = Long.parseUnsignedLong(values[1]);
                 Integer size = Integer.valueOf(values[2]);
 
                 if (counter < n_warmup)
