@@ -23,7 +23,7 @@ set(LIB_SOURCE
         caches/bins.cpp
         caches/belady_truncate.cpp
         caches/gbdt.cpp
-        caches/hyperbolic.cpp caches/lecar.cpp)
+        caches/hyperbolic.cpp caches/lecar.cpp simulation_tinylfu.cpp)
 #message(123)
 
 find_package(Boost)

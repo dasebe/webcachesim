@@ -18,7 +18,6 @@ public class tinylfu {
         // - (whole_byte_cache - warmup_byte_cache)
         // whole_byte_cache ~= warmup_byte_cache
         String trace_file = args[0];
-        String trace_path = System.getenv("WEBCACHESIM_TRACE_DIR");
 
         long cache_size = Long.parseLong(args[2]);
         long n_warmup = 0;
@@ -51,7 +50,7 @@ public class tinylfu {
         long warmup_byte_request = 0;
         long warmup_byte_evict = 0;
         try {
-            reader = new BufferedReader(new FileReader(trace_path+"/"+trace_file));
+            reader = new BufferedReader(new FileReader(trace_file));
             String line = reader.readLine();
             while (line != null) {
 //                System.out.println(line);
@@ -92,8 +91,8 @@ public class tinylfu {
         double object_hit_rate = ((double) (whole_n_hit-warmup_n_hit))/(whole_n_request-warmup_n_request);
         double byte_hit_rate = ((double) (whole_byte_request - warmup_byte_request -
                 (whole_byte_evict - warmup_byte_evict)) )/(whole_byte_request - warmup_byte_request);
-        System.out.println(object_hit_rate);
         System.out.println(byte_hit_rate);
+        System.out.println(object_hit_rate);
 //        System.out.println(whole_miss - warmup_miss);
     }
 
