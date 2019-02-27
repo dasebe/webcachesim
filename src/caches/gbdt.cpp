@@ -12,6 +12,9 @@ using namespace std;
 
 //init with a wrong value
 uint8_t GDBTMeta::_max_n_past_timestamps= 0;
+uint8_t GDBTMeta::base_edwt_window = 1;
+uint8_t GDBTMeta::n_edwt_feature = 1;
+vector<double > GDBTMeta::edwt_windows = vector<double >(GDBTMeta::n_edwt_feature);
 
 
 
@@ -221,6 +224,13 @@ void GDBTCache::sample(uint64_t &t) {
             training_data->data.push_back(j);
             ++counter;
 
+            for (uint8_t k = 0; k < GDBTMeta::n_edwt_feature; ++k) {
+                training_data->indices.push_back(max_n_past_timestamps + n_extra_fields + 2 + k);
+                training_data->data.push_back(meta._edwt[k]*pow(0.5, (t - meta._past_timestamp) /
+                GDBTMeta::edwt_windows[k]));
+                ++counter;
+            }
+
             training_data->labels.push_back(obj);
             training_data->indptr.push_back(counter);
         }
@@ -318,6 +328,13 @@ void GDBTCache::sample(uint64_t &t) {
             training_data->indices.push_back(max_n_past_timestamps+n_extra_fields+1);
             training_data->data.push_back(j);
             ++counter;
+
+            for (uint8_t k = 0; k < GDBTMeta::n_edwt_feature; ++k) {
+                training_data->indices.push_back(max_n_past_timestamps + n_extra_fields + 2 + k);
+                training_data->data.push_back(meta._edwt[k]*pow(0.5, (t - meta._past_timestamp) /
+                                                                     GDBTMeta::edwt_windows[k]));
+                ++counter;
+            }
 
             training_data->labels.push_back(obj);
             training_data->indptr.push_back(counter);
@@ -454,6 +471,13 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
         indices.push_back(max_n_past_timestamps+n_extra_fields+1);
         data.push_back(j);
         ++counter;
+
+        for (uint8_t k = 0; k < GDBTMeta::n_edwt_feature; ++k) {
+            indices.push_back(max_n_past_timestamps + n_extra_fields + 2 + k);
+            data.push_back(meta._edwt[k]*pow(0.5, (t - meta._past_timestamp) /
+                                                                 GDBTMeta::edwt_windows[k]));
+            ++counter;
+        }
 
         if (meta._future_timestamp - t < threshold) {
             //gdbt don't need to log

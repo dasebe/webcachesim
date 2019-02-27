@@ -19,6 +19,9 @@
     class GDBTMeta {
     public:
         static uint8_t _max_n_past_timestamps;
+        static uint8_t base_edwt_window;
+        static uint8_t n_edwt_feature;
+        static vector<double > edwt_windows;
         uint64_t _key;
         uint64_t _size;
         uint8_t _past_distance_idx;
@@ -26,6 +29,7 @@
         vector<uint64_t> _past_distances;
         uint64_t _future_timestamp;
         vector<uint64_t> _extra_features;
+        vector<double > _edwt;
     
         GDBTMeta(const uint64_t & key, const uint64_t & size, const uint64_t & past_timestamp,
                 const uint64_t & future_timestamp, const vector<uint64_t> & extra_features) {
@@ -36,17 +40,22 @@
             _past_distance_idx = (uint8_t) 0;
             _future_timestamp = future_timestamp;
             _extra_features = extra_features;
+            _edwt = vector<double >(n_edwt_feature, 1);
         }
     
         inline void update(const uint64_t &past_timestamp, const uint64_t &future_timestamp) {
             //distance
-            _past_distances[_past_distance_idx%_max_n_past_timestamps] = past_timestamp - _past_timestamp;
+            uint64_t _distance = past_timestamp - _past_timestamp;
+            _past_distances[_past_distance_idx%_max_n_past_timestamps] = _distance;
             _past_distance_idx = _past_distance_idx + (uint8_t) 1;
             if (_past_distance_idx >= _max_n_past_timestamps * 2)
                 _past_distance_idx -= _max_n_past_timestamps;
             //timestamp
             _past_timestamp = past_timestamp;
             _future_timestamp = future_timestamp;
+            for (uint8_t i = 0; i < n_edwt_feature; ++i) {
+                _edwt[i] = _edwt[i] * pow(0.5, _distance/edwt_windows[i]) + 1;
+            }
         }
     };
     
@@ -148,8 +157,14 @@
     
             //init
             GDBTMeta::_max_n_past_timestamps = max_n_past_timestamps;
-            //interval, distances, size, extra_features, n_past_intervals
-            n_feature = max_n_past_timestamps + n_extra_fields + 2 + 1;
+            GDBTMeta::base_edwt_window = 10;
+            GDBTMeta::n_edwt_feature = 10;
+            GDBTMeta::edwt_windows = vector<double >(GDBTMeta::n_edwt_feature);
+            for (uint8_t i = 0; i < GDBTMeta::n_edwt_feature; ++i) {
+                GDBTMeta::edwt_windows[i] = pow(2, GDBTMeta::base_edwt_window+i);
+            }
+            //interval, distances, size, extra_features, n_past_intervals, ewdt
+            n_feature = max_n_past_timestamps + n_extra_fields + 2 + 1 + GDBTMeta::n_edwt_feature;
             if (n_extra_fields) {
                 string categorical_feature = to_string(max_n_past_timestamps+1);
                 for (uint i = 0; i < n_extra_fields-1; ++i) {
