@@ -119,6 +119,9 @@ public:
     vector<vector<Gradient>> pending_gradients;
     uint64_t gradient_window = 10000;
 
+    enum ObjectiveT: uint8_t {byte_hit_rate=0, object_hit_rate=1};
+    ObjectiveT objective = byte_hit_rate;
+
     //todo: seed and generator
     default_random_engine _generator = default_random_engine();
     uniform_int_distribution<std::size_t> _distribution = uniform_int_distribution<std::size_t>();
@@ -149,6 +152,15 @@ public:
             } else if (it.first == "alpha") {
                 alpha = stod(it.second);
                 assert(alpha > 0);
+            } else if (it.first == "objective") {
+                if (it.second == "byte_hit_rate")
+                    objective = byte_hit_rate;
+                else if (it.second == "object_hit_rate")
+                    objective = object_hit_rate;
+                else {
+                    cerr<<"error: unknown objective"<<endl;
+                    exit(-1);
+                }
             } else if (it.first == "bias_point") {
                 bias_point = (uint8_t) stoul(it.second);
                 assert(bias_point <= 6);
