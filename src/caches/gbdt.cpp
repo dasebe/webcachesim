@@ -217,6 +217,10 @@ void GDBTCache::sample(uint64_t &t) {
                 ++counter;
             }
 
+            training_data->indices.push_back(max_n_past_timestamps+n_extra_fields+1);
+            training_data->data.push_back(j);
+            ++counter;
+
             training_data->labels.push_back(obj);
             training_data->indptr.push_back(counter);
         }
@@ -310,6 +314,10 @@ void GDBTCache::sample(uint64_t &t) {
                 training_data->data.push_back(meta._extra_features[k]);
                 ++counter;
             }
+
+            training_data->indices.push_back(max_n_past_timestamps+n_extra_fields+1);
+            training_data->data.push_back(j);
+            ++counter;
 
             training_data->labels.push_back(obj);
             training_data->indptr.push_back(counter);
@@ -442,6 +450,10 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
             data.push_back(meta._extra_features[k]);
             ++counter;
         }
+
+        indices.push_back(max_n_past_timestamps+n_extra_fields+1);
+        data.push_back(j);
+        ++counter;
 
         if (meta._future_timestamp - t < threshold) {
             //gdbt don't need to log

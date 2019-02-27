@@ -148,8 +148,8 @@
     
             //init
             GDBTMeta::_max_n_past_timestamps = max_n_past_timestamps;
-            //interval, distances, size, extra_features
-            n_feature = max_n_past_timestamps + 1 + n_extra_fields;
+            //interval, distances, size, extra_features, n_past_intervals
+            n_feature = max_n_past_timestamps + n_extra_fields + 2 + 1;
             if (n_extra_fields) {
                 string categorical_feature = to_string(max_n_past_timestamps+1);
                 for (uint i = 0; i < n_extra_fields-1; ++i) {
