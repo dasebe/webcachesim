@@ -43,6 +43,10 @@ void GDBTCache::try_train(uint64_t &t) {
     auto timeBegin = chrono::system_clock::now();
     auto &training_data = pending_training_data[gradient_window_idx];
 
+    //training data not init
+    if (!training_data)
+        return;
+
     //no training data in the window
     if (training_data->labels.empty()) {
         delete pending_training_data[gradient_window_idx];
@@ -145,10 +149,6 @@ void GDBTCache::try_train(uint64_t &t) {
 }
 
 void GDBTCache::sample(uint64_t &t) {
-    //don't train at the first threshold
-    if (t < threshold) {
-        return;
-    }
     if (meta_holder[0].empty() || meta_holder[1].empty())
         return;
 #ifdef LOG_SAMPLE_RATE
@@ -166,6 +166,10 @@ void GDBTCache::sample(uint64_t &t) {
             uint32_t pos = (i + rand_idx) % meta_holder[0].size();
 
             auto &meta = meta_holder[0][pos];
+
+            //don't train at the first threshold
+            if (meta._future_timestamp <= threshold)
+                continue;
 
             uint64_t known_future_interval;
             double obj;
@@ -271,6 +275,10 @@ void GDBTCache::sample(uint64_t &t) {
             uint32_t pos = (i + rand_idx) % meta_holder[1].size();
 
             auto &meta = meta_holder[1][pos];
+
+            //don't train at the first threshold
+            if (meta._future_timestamp <= threshold)
+                continue;
 
             uint64_t known_future_interval;
             double obj;
@@ -418,6 +426,11 @@ void GDBTCache::admit(SimpleRequest &_req) {
 
 pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
     uint32_t rand_idx = _distribution(_generator) % meta_holder[0].size();
+    //if not trained yet, use random
+    if (booster == nullptr) {
+        return {meta_holder[0][rand_idx]._key, rand_idx};
+    }
+
     uint n_sample;
     if (sample_rate < meta_holder[0].size())
         n_sample = sample_rate;
@@ -498,37 +511,33 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
     }
     int64_t len;
     uint32_t sample_pos;
-    if (booster != nullptr) {
-        vector<double> result(n_sample);
-        LGBM_BoosterPredictForCSR(booster,
-                                  static_cast<void *>(indptr.data()),
-                                  C_API_DTYPE_INT32,
-                                  indices.data(),
-                                  static_cast<void *>(data.data()),
-                                  C_API_DTYPE_FLOAT64,
-                                  indptr.size(),
-                                  data.size(),
-                                  n_feature,  //remove future t
-                                  C_API_PREDICT_NORMAL,
-                                  0,
-                                  GDBT_train_params,
-                                  &len,
-                                  result.data());
-        double msr = 0;
-        for (int i = 0; i < result.size(); ++i) {
-            msr += pow((result[i] - label[i]), 2);
-        }
-        msr /= result.size();
-//        cerr<<"inference l2: "<<msr<<endl;
-        inference_error = inference_error * 0.9 + msr *0.1;
-        if (objective == object_hit_rate)
-            for (uint32_t i = 0; i < n_sample; ++i)
-                result[i] += log1p(sizes[i]);
-        auto max_it = max_element(result.begin(), result.end());
-        sample_pos = (uint32_t) distance(result.begin(), max_it);
-    } else {
-        sample_pos = 0;
+    vector<double> result(n_sample);
+    LGBM_BoosterPredictForCSR(booster,
+                              static_cast<void *>(indptr.data()),
+                              C_API_DTYPE_INT32,
+                              indices.data(),
+                              static_cast<void *>(data.data()),
+                              C_API_DTYPE_FLOAT64,
+                              indptr.size(),
+                              data.size(),
+                              n_feature,  //remove future t
+                              C_API_PREDICT_NORMAL,
+                              0,
+                              GDBT_train_params,
+                              &len,
+                              result.data());
+    double msr = 0;
+    for (int i = 0; i < result.size(); ++i) {
+        msr += pow((result[i] - label[i]), 2);
     }
+    msr /= result.size();
+//        cerr<<"inference l2: "<<msr<<endl;
+    inference_error = inference_error * 0.9 + msr *0.1;
+    if (objective == object_hit_rate)
+        for (uint32_t i = 0; i < n_sample; ++i)
+            result[i] += log1p(sizes[i]);
+    auto max_it = max_element(result.begin(), result.end());
+    sample_pos = (uint32_t) distance(result.begin(), max_it);
 
     uint32_t max_pos = (sample_pos+rand_idx)%meta_holder[0].size();
     auto & meta = meta_holder[0][max_pos];
