@@ -158,7 +158,7 @@
             //init
             GDBTMeta::_max_n_past_timestamps = max_n_past_timestamps;
             GDBTMeta::base_edwt_window = 10;
-            GDBTMeta::n_edwt_feature = 10;
+            GDBTMeta::n_edwt_feature = 15;
             GDBTMeta::edwt_windows = vector<double >(GDBTMeta::n_edwt_feature);
             for (uint8_t i = 0; i < GDBTMeta::n_edwt_feature; ++i) {
                 GDBTMeta::edwt_windows[i] = pow(2, GDBTMeta::base_edwt_window+i);
