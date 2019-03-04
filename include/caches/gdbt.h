@@ -58,6 +58,13 @@
             }
         }
     };
+
+
+    //init with a wrong value
+    uint8_t GDBTMeta::_max_n_past_timestamps= 0;
+    uint8_t GDBTMeta::base_edwt_window = 1;
+    uint8_t GDBTMeta::n_edwt_feature = 1;
+    vector<double > GDBTMeta::edwt_windows = vector<double >(GDBTMeta::n_edwt_feature);
     
     
     class GDBTTrainingData {
@@ -158,7 +165,7 @@
             //init
             GDBTMeta::_max_n_past_timestamps = max_n_past_timestamps;
             GDBTMeta::base_edwt_window = 10;
-            GDBTMeta::n_edwt_feature = 15;
+            GDBTMeta::n_edwt_feature = 10;
             GDBTMeta::edwt_windows = vector<double >(GDBTMeta::n_edwt_feature);
             for (uint8_t i = 0; i < GDBTMeta::n_edwt_feature; ++i) {
                 GDBTMeta::edwt_windows[i] = pow(2, GDBTMeta::base_edwt_window+i);

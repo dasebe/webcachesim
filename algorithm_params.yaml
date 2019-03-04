@@ -1,10 +1,6 @@
 LRUK:
   k:
-    - 2
-    - 3
-#    - 4
-    - 5
-    - 6
+    - 4
 LFO:
   cutoff: 0.5
   window: 10000000
@@ -185,23 +181,9 @@ Bins:
     - 0
 GDBT:
   training_sample_interval:
-#    - 1
-#    - 5
-#    - 10
-#    - 20
     - 64
-#    - 50
-#    - 100
-#    - 1000
-#    - 10000
   sample_rate:
-#    - 16
     - 64
-#    - 128
-#    - 256
-#    - 512
-#    - 1024
-#    - 2048
   threshold: 10000000
   gradient_window:
 #    - 50000
@@ -222,11 +204,11 @@ GDBT:
     - 32
   num_threads:
 #    - 1
-    - 16
+    - 4
   objective:
     - byte_hit_rate
 #    - object_hit_rate
-  version: known_size
+  version: optimized_random
 Hyperbolic:
   sample_rate: 64
 LeCaR:

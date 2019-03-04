@@ -10,15 +10,6 @@
 using namespace chrono;
 using namespace std;
 
-//init with a wrong value
-uint8_t GDBTMeta::_max_n_past_timestamps= 0;
-uint8_t GDBTMeta::base_edwt_window = 1;
-uint8_t GDBTMeta::n_edwt_feature = 1;
-vector<double > GDBTMeta::edwt_windows = vector<double >(GDBTMeta::n_edwt_feature);
-
-
-
-
 void GDBTCache::try_train(uint64_t &t) {
     static uint64_t next_idx = 0;
     if (t < gradient_window)
