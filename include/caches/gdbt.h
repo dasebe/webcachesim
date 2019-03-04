@@ -65,8 +65,8 @@
     uint8_t GDBTMeta::base_edwt_window = 1;
     uint8_t GDBTMeta::n_edwt_feature = 1;
     vector<double > GDBTMeta::edwt_windows = vector<double >(GDBTMeta::n_edwt_feature);
-    
-    
+
+
     class GDBTTrainingData {
     public:
         // training info
@@ -112,6 +112,7 @@
                 {"feature_fraction",           "0.8"},
                 {"bagging_freq",               "5"},
                 {"bagging_fraction",           "0.8"},
+                {"learning_rate",              "0.1"},
         };
     
         double training_error = 0;
@@ -144,6 +145,8 @@
                     n_extra_fields = stoull(it.second);
                 } else if (it.first == "num_iterations") {
                     GDBT_train_params["num_iterations"] = it.second;
+                } else if (it.first == "learning_rate") {
+                    GDBT_train_params["learning_rate"] = it.second;
                 } else if (it.first == "num_threads") {
                     GDBT_train_params["num_threads"] = it.second;
                 } else if (it.first == "training_sample_interval") {
