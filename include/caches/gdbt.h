@@ -174,7 +174,7 @@
                 GDBTMeta::edwt_windows[i] = pow(2, GDBTMeta::base_edwt_window+i);
             }
             //interval, distances, size, extra_features, n_past_intervals, ewdt
-            n_feature = max_n_past_timestamps + n_extra_fields + 2 + 1 + GDBTMeta::n_edwt_feature;
+            n_feature = max_n_past_timestamps + n_extra_fields + 2 + GDBTMeta::n_edwt_feature;
             if (n_extra_fields) {
                 string categorical_feature = to_string(max_n_past_timestamps+1);
                 for (uint i = 0; i < n_extra_fields-1; ++i) {

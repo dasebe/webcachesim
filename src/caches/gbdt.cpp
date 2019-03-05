@@ -100,6 +100,17 @@ void GDBTCache::try_train(uint64_t &t) {
     }
     msr /= result.size();
     training_error = training_error * 0.9 + msr *0.1;
+
+    vector<double > importance(n_feature);
+    LGBM_BoosterFeatureImportance(booster,
+            0,
+            0,
+            importance.data());
+    cout<<"i";
+    for (auto & it: importance)
+        cout<<" "<<it;
+    cout<<endl;
+
 ////    cerr<<"training l2: "<<msr<<endl;
 //
 ////    vector<double > importance(max_n_past_timestamps+1);

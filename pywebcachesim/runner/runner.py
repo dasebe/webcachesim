@@ -31,7 +31,7 @@ def runner_run(args: dict, tasks: list):
             task_str = to_task_str(task)
             # f.write(task_str+f' &> /tmp/{ts}.log\n')
             ts_task = int(time.time()*1000000)
-            task_str = f'bash --login -c "{task_str}" &> /tmp/{ts_task}.log\n'
+            task_str = f'bash --login -c "{task_str}" > tmp/{ts_task}.out 2> tmp/{ts_task}.err\n'
             if i == 0:
                 print(f'first task: {task_str}')
             f.write(task_str)
