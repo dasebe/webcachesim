@@ -103,8 +103,6 @@ msr_big_200m.tr:
       - 80000000
     sample_rate:
       - 64
-    gradient_window:
-      - 100000
   LR:
     threshold: 80000000
 
