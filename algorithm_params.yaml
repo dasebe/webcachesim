@@ -17,37 +17,9 @@ LR:
   training_sample_interval: 64
   threshold: 10000000
   gradient_window:
-#    - 1
-#    - 2
-#    - 5
-#    - 10
-#    - 20
-#    - 50
-#    - 100
-#    - 200
-#    - 500
-#    - 1000
-#    - 2000
-#    - 5000
-#    - 10000
-#    - 20000
-#    - 50000
-#    - 100000
-#    - 200000
-#    - 500000
     - 1000000
   learning_rate:
     - 0.000001
-#    - 0.00005
-#    - 0.00002
-#    - 0.00001
-##    - 0.0005
-#    - 0.0002
-#    - 0.0001
-#    - 0.005
-#    - 0.002
-#    - 0.001
-#    - 0.01
   n_past_intervals: 4
   version: known_size
 LRUKSample:
@@ -62,37 +34,9 @@ LRBelady:
     - 32
   threshold: 10000000
   gradient_window:
-#    - 1
-#    - 2
-#    - 5
-#    - 10
-#    - 20
-#    - 50
-#    - 100
-#    - 200
-#    - 500
-#    - 1000
-#    - 2000
-#    - 5000
-#    - 10000
-#    - 20000
-#    - 50000
     - 100000
-#    - 200000
-#    - 500000
-#    - 1000000
   learning_rate:
-#    - 0.000001
-#    - 0.00005
-#    - 0.00002
     - 0.00001
-#    - 0.0005
-#    - 0.0002
-#    - 0.0001
-#    - 0.005
-#    - 0.002
-#    - 0.001
-#    - 0.01
   n_past_intervals: 4
   out_sample:
 #    - 0
@@ -212,7 +156,7 @@ GDBT:
 #    - 0.01
   objective:
     - byte_hit_rate
-#    - object_hit_rate
+    - object_hit_rate
   version: optimized_random
 Hyperbolic:
   sample_rate: 64
