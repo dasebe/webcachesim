@@ -152,7 +152,7 @@
                     GDBT_train_params["num_threads"] = it.second;
                 } else if (it.first == "training_sample_interval") {
                     training_sample_interval = stoull(it.second);
-                } else if (it.first == "n_edwt_feature") {
+                } else if (it.first == "n_ewdt_feature") {
                     n_ewdt_feature = stoull(it.second);
                 } else if (it.first == "objective") {
                     if (it.second == "byte_hit_rate")
