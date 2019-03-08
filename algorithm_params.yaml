@@ -134,9 +134,9 @@ GDBT:
     - 100000
 #    - 200000
   max_n_past_timestamps:
-#    - 4
-#    - 8
-#    - 16
+    - 4
+    - 8
+    - 16
     - 32
 #    - 64
   num_iterations:
@@ -157,6 +157,11 @@ GDBT:
   objective:
     - byte_hit_rate
     - object_hit_rate
+  n_ewdt_feature:
+    - 10
+    - 12
+    - 14
+    - 16
   version: optimized_random
 Hyperbolic:
   sample_rate: 64

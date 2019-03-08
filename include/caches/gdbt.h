@@ -99,6 +99,7 @@
         uint64_t n_feature;
         uint64_t training_sample_interval = 1;
         uint64_t num_threads = 1;
+        uint64_t n_ewdt_feature = 10;
     
         BoosterHandle booster = nullptr;
     
@@ -151,6 +152,8 @@
                     GDBT_train_params["num_threads"] = it.second;
                 } else if (it.first == "training_sample_interval") {
                     training_sample_interval = stoull(it.second);
+                } else if (it.first == "n_edwt_feature") {
+                    n_ewdt_feature = stoull(it.second);
                 } else if (it.first == "objective") {
                     if (it.second == "byte_hit_rate")
                         objective = byte_hit_rate;
@@ -168,7 +171,7 @@
             //init
             GDBTMeta::_max_n_past_timestamps = max_n_past_timestamps;
             GDBTMeta::base_edwt_window = 10;
-            GDBTMeta::n_edwt_feature = 10;
+            GDBTMeta::n_edwt_feature = n_ewdt_feature;
             GDBTMeta::edwt_windows = vector<double >(GDBTMeta::n_edwt_feature);
             for (uint8_t i = 0; i < GDBTMeta::n_edwt_feature; ++i) {
                 GDBTMeta::edwt_windows[i] = pow(2, GDBTMeta::base_edwt_window+i);
