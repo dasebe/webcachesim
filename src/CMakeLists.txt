@@ -29,9 +29,12 @@ set(LIB_SOURCE
 find_package(Boost)
 INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
 
+find_library(LIGHTGBM_LIB lib_lightgbm.so)
+find_path(LIGHTGBM_PATH LightGBM)
+
 add_library(webcachesim SHARED ${LIB_SOURCE})
 
 target_include_directories(webcachesim PUBLIC include)
-target_include_directories(webcachesim PUBLIC ../lib/LightGBM/include)
+target_include_directories(webcachesim PUBLIC ${LIGHTGBM_PATH})
 
-TARGET_LINK_LIBRARIES(webcachesim LINK_PUBLIC ${Boost_LIBRARIES} _lightgbm)
+TARGET_LINK_LIBRARIES(webcachesim LINK_PUBLIC ${Boost_LIBRARIES} ${LIGHTGBM_LIB})

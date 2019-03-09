@@ -3,6 +3,9 @@
 ```bash
 
 
+cd LightGBM-LightGBM-eloiseh/build
+cmake -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=~/LightGBM ..
+make && make install
 
 cd mongo-c-driver-1.13.1/cmake-build/
 cmake -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON -DCMAKE_INSTALL_PREFIX=~/mongo-c-driver ..

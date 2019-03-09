@@ -166,9 +166,9 @@ file(GLOB SOURCES
     src/treelearner/*.cpp
 )
 
-#add_executable(lightgbm src/main.cpp ${SOURCES} src/test.cpp)
-add_library(_lightgbm SHARED src/c_api.cpp ${SOURCES})
-#target_link_libraries(lightgbm _lightgbm)
+add_executable(lightgbm src/main.cpp ${SOURCES} src/test.cpp)
+add_library(_lightgbm SHARED src/c_api.cpp ${SOURCES} src/test.cpp)
+target_link_libraries(lightgbm _lightgbm)
 
 if(MSVC)
     set_target_properties(_lightgbm PROPERTIES OUTPUT_NAME "lib_lightgbm")
@@ -210,12 +210,12 @@ if(USE_MPI)
   TARGET_LINK_LIBRARIES(_lightgbm ${MPI_CXX_LIBRARIES})
 endif(USE_MPI)
 
-#if(USE_OPENMP)
-#    if(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
-#        TARGET_LINK_LIBRARIES(lightgbm ${OpenMP_libomp_LIBRARY})
-#        TARGET_LINK_LIBRARIES(_lightgbm ${OpenMP_libomp_LIBRARY})
-#    endif()
-#endif(USE_OPENMP)
+if(USE_OPENMP)
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+        TARGET_LINK_LIBRARIES(lightgbm ${OpenMP_libomp_LIBRARY})
+        TARGET_LINK_LIBRARIES(_lightgbm ${OpenMP_libomp_LIBRARY})
+    endif()
+endif(USE_OPENMP)
 
 if(USE_GPU)
   TARGET_LINK_LIBRARIES(lightgbm ${OpenCL_LIBRARY} ${Boost_LIBRARIES})
@@ -234,9 +234,9 @@ if(WIN32 AND (MINGW OR CYGWIN))
     TARGET_LINK_LIBRARIES(_lightgbm IPHLPAPI)
 endif()
 
-#install(TARGETS lightgbm _lightgbm
-#        RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-#        LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
-#        ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
-#
-#install(DIRECTORY ${LightGBM_HEADER_DIR}/LightGBM DESTINATION ${CMAKE_INSTALL_PREFIX}/include)
+install(TARGETS lightgbm _lightgbm
+        RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+        LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+
+install(DIRECTORY ${LightGBM_HEADER_DIR}/LightGBM DESTINATION ${CMAKE_INSTALL_PREFIX}/include)
