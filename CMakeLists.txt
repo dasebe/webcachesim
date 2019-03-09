@@ -2,8 +2,7 @@ cmake_minimum_required (VERSION 3.2.2)
 project (webcachesim)
 set (CMAKE_CXX_STANDARD 11)
 
-#set(CMAKE_BUILD_TYPE Debug CACHE STRING "build type (Debug/Release)")
-#set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug;Release")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
