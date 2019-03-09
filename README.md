@@ -4,7 +4,7 @@
 
 
 cd LightGBM-LightGBM-eloiseh/build
-cmake -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=~/LightGBM ..
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=~/LightGBM ..
 make && make install
 
 cd mongo-c-driver-1.13.1/cmake-build/
@@ -16,7 +16,7 @@ cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=
 make && make install
 
 cd webcachesim/build
-cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="~/mongo-cxx-driver;~/mongo-c-driver" ..
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="~/mongo-cxx-driver;~/mongo-c-driver;~/LightGBM" ..
 make
 
 # add binary and trace dir to path
