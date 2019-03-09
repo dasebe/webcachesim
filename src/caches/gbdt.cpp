@@ -232,8 +232,9 @@ void GDBTCache::sample(uint64_t &t) {
 
             for (uint8_t k = 0; k < GDBTMeta::n_edwt_feature; ++k) {
                 training_data->indices.push_back(max_n_past_timestamps + n_extra_fields + 2 + k);
-                training_data->data.push_back(meta._edwt[k]*pow(0.5, (t - meta._past_timestamp) /
-                GDBTMeta::edwt_windows[k]));
+                uint32_t _distance_idx = min(uint32_t (t-meta._past_timestamp) / GDBTMeta::edwt_windows[k],
+                        GDBTMeta::max_hash_edwt_idx);
+                training_data->data.push_back(meta._edwt[k]*GDBTMeta::hash_edwt[_distance_idx]);
                 ++counter;
             }
 
@@ -341,8 +342,9 @@ void GDBTCache::sample(uint64_t &t) {
 
             for (uint8_t k = 0; k < GDBTMeta::n_edwt_feature; ++k) {
                 training_data->indices.push_back(max_n_past_timestamps + n_extra_fields + 2 + k);
-                training_data->data.push_back(meta._edwt[k]*pow(0.5, (t - meta._past_timestamp) /
-                                                                     GDBTMeta::edwt_windows[k]));
+                uint32_t _distance_idx = min(uint32_t (t-meta._past_timestamp) / GDBTMeta::edwt_windows[k],
+                        GDBTMeta::max_hash_edwt_idx);
+                training_data->data.push_back(meta._edwt[k]*GDBTMeta::hash_edwt[_distance_idx]);
                 ++counter;
             }
 
@@ -489,8 +491,9 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
 
         for (uint8_t k = 0; k < GDBTMeta::n_edwt_feature; ++k) {
             indices.push_back(max_n_past_timestamps + n_extra_fields + 2 + k);
-            data.push_back(meta._edwt[k]*pow(0.5, (t - meta._past_timestamp) /
-                                                                 GDBTMeta::edwt_windows[k]));
+            uint32_t _distance_idx = min(uint32_t (t-meta._past_timestamp) / GDBTMeta::edwt_windows[k],
+                                         GDBTMeta::max_hash_edwt_idx);
+            data.push_back(meta._edwt[k]*GDBTMeta::hash_edwt[_distance_idx]);
             ++counter;
         }
 
