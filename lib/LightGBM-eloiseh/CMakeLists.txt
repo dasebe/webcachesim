@@ -13,11 +13,11 @@ OPTION(USE_SWIG "Enable SWIG to generate Java API" OFF)
 OPTION(USE_HDFS "Enable HDFS support (EXPERIMENTAL)" OFF)
 OPTION(USE_R35 "Set to ON if your R version is not smaller than 3.5" OFF)
 
-include(CheckCXXCompilerFlag)
-CHECK_CXX_COMPILER_FLAG("-march=native" COMPILER_SUPPORTS_MARCH_NATIVE)
-if(COMPILER_SUPPORTS_MARCH_NATIVE)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
-endif()
+#include(CheckCXXCompilerFlag)
+#CHECK_CXX_COMPILER_FLAG("-march=native" COMPILER_SUPPORTS_MARCH_NATIVE)
+#if(COMPILER_SUPPORTS_MARCH_NATIVE)
+#    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
+#endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffast-math")
 
