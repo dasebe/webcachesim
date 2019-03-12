@@ -99,7 +99,7 @@ map<string, string> _simulation_truncate(string trace_file, string cache_type, u
             update_metric_req(byte_req, obj_req, size);
         update_metric_req(seg_byte_req, seg_obj_req, size);
 
-        req.reinit(id, size, seq+1, next_seq, &extra_features);
+        req.reinit(id, size, seq+1, next_seq);
 
         byte_request_hit = webcache->lookup_truncate(req);
         if (seq >= n_warmup)
