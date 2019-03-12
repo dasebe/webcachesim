@@ -70,7 +70,8 @@ map<string, string> _simulation_truncate(string trace_file, string cache_type, u
     }
     //suppose already annotated
     uint64_t byte_req = 0, byte_hit = 0, obj_req = 0, obj_hit = 0;
-    uint64_t t, id, size, next_t;
+        //don't use real timestamp, use relative seq starting from 1
+    uint64_t tmp, id, size, next_seq;
     uint64_t seg_byte_req = 0, seg_byte_hit = 0, seg_obj_req = 0, seg_obj_hit = 0;
     string seg_bhr;
     string seg_ohr;
@@ -84,22 +85,21 @@ map<string, string> _simulation_truncate(string trace_file, string cache_type, u
     AnnotatedRequest req(0, 0, 0, 0);
     uint64_t seq = 0;
     auto t_now = system_clock::now();
-
-    while (infile >> t >> id >> size >> next_t) {
-        for (int i = 0; i < n_extra_fields; ++i)
-            infile>>tmp1;
+    while (infile >> next_seq >> tmp >> id >> size) {
+        for (int j = 0; j < n_extra_fields; ++j)
+            infile>tmp1;
+        //todo: currently real timestamp t is not used. Only relative seq is used
         if (uni_size)
             size = 1;
 
         DPRINTF("seq: %lu\n", seq);
 
-
-        req.reinit(id, size, t, next_t);
-
         //don't fetch all
         if (seq >= n_warmup)
             update_metric_req(byte_req, obj_req, size);
         update_metric_req(seg_byte_req, seg_obj_req, size);
+
+        req.reinit(id, size, seq+1, next_seq, &extra_features);
 
         byte_request_hit = webcache->lookup_truncate(req);
         if (seq >= n_warmup)
