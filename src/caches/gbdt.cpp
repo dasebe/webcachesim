@@ -429,10 +429,6 @@ void GDBTCache::admit(SimpleRequest &_req) {
 
 
 pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
-    double max_future_interval;
-    uint32_t max_pos;
-    uint64_t min_past_timestamp;
-
     uint32_t rand_idx = _distribution(_generator) % meta_holder[0].size();
     //if not trained yet, use random
     if (booster == nullptr) {
@@ -521,7 +517,6 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
 //        indptr.push_back(indptr[indptr.size() - 1] + j + 3);
     }
     int64_t len;
-    uint32_t sample_pos;
     vector<double> result(n_sample);
     LGBM_BoosterPredictForCSR(booster,
                               static_cast<void *>(indptr.data()),
@@ -548,6 +543,10 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
         for (uint32_t i = 0; i < n_sample; ++i)
             result[i] += log1p(sizes[i]);
 
+    double max_future_interval;
+    uint32_t max_pos;
+    uint64_t min_past_timestamp;
+
     for (int i = 0; i < n_sample; ++i)
         if (!i || result[i] > max_future_interval ||
             (result[i] == max_future_interval && (past_timestamps[i] < min_past_timestamp))) {
@@ -555,7 +554,7 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
             max_pos = i;
             min_past_timestamp = past_timestamps[i];
         }
-    uint32_t _max_pos = (max_pos+rand_idx)%meta_holder[0].size();
+    max_pos = (max_pos+rand_idx)%meta_holder[0].size();
     auto & meta = meta_holder[0][max_pos];
     auto & max_key = meta._key;
 
