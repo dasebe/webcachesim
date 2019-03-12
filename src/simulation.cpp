@@ -146,8 +146,8 @@ map<string, string> simulation(string trace_file, string cache_type,
 //        return _simulation_belady_static(trace_file, cache_type, cache_size, params);
 //    else if (cache_type == "Bins")
 //        return _simulation_bins(trace_file, cache_type, cache_size, params);
-//    else if (cache_type == "BeladyTruncate")
-//        return _simulation_truncate(trace_file, cache_type, cache_size, params);
+   else if (cache_type == "BeladyTruncate")
+       return _simulation_truncate(trace_file, cache_type, cache_size, params);
     else
         return _simulation(trace_file, cache_type, cache_size, params);
 }
