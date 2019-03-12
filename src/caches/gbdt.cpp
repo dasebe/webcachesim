@@ -429,6 +429,10 @@ void GDBTCache::admit(SimpleRequest &_req) {
 
 
 pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
+    double max_future_interval;
+    uint32_t max_pos;
+    uint64_t min_past_timestamp;
+
     uint32_t rand_idx = _distribution(_generator) % meta_holder[0].size();
     //if not trained yet, use random
     if (booster == nullptr) {
@@ -446,6 +450,7 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
     vector<int32_t> indices;
     vector<double> data;
     vector<double> sizes;
+    vector<uint64_t > past_timestamps;
 
     uint64_t counter = 0;
     for (uint32_t i = 0; i < n_sample; i++) {
@@ -459,6 +464,7 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
             data.push_back(p_i);
             ++counter;
         }
+        past_timestamps.emplace_back(meta._past_timestamp);
 
         uint8_t j = 0;
         uint64_t this_past_timestamp = meta._past_timestamp;
@@ -541,10 +547,15 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
     if (objective == object_hit_rate)
         for (uint32_t i = 0; i < n_sample; ++i)
             result[i] += log1p(sizes[i]);
-    auto max_it = max_element(result.begin(), result.end());
-    sample_pos = (uint32_t) distance(result.begin(), max_it);
 
-    uint32_t max_pos = (sample_pos+rand_idx)%meta_holder[0].size();
+    for (int i = 0; i < n_sample; ++i)
+        if (!i || result[i] > max_future_interval ||
+            (result[i] == max_future_interval && (past_timestamps[i] < min_past_timestamp))) {
+            max_future_interval = result[i];
+            max_pos = i;
+            min_past_timestamp = past_timestamps[i];
+        }
+    uint32_t _max_pos = (max_pos+rand_idx)%meta_holder[0].size();
     auto & meta = meta_holder[0][max_pos];
     auto & max_key = meta._key;
 
