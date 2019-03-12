@@ -11,7 +11,7 @@ set(LIB_SOURCE
 #        simulation_lfo.cpp
 #        simulation_lfo2.cpp
         simulation_future.cpp
-#        simulation_truncate.cpp
+        simulation_truncate.cpp
         caches/annotate.cpp
         caches/ucb.cpp
         caches/belady_sample.cpp

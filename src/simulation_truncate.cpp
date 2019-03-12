@@ -20,7 +20,7 @@ map<string, string> _simulation_truncate(string trace_file, string cache_type, u
                                     map<string, string> params){
     //annotate a file
     //not necessary to annotate, but it's easier
-    annotate(trace_file);
+
 
     // create cache
     unique_ptr<Cache> _webcache = move(Cache::create_unique(cache_type));
@@ -36,6 +36,7 @@ map<string, string> _simulation_truncate(string trace_file, string cache_type, u
     uint64_t n_warmup = 0;
     bool uni_size = false;
     uint64_t segment_window = 1000000;
+    uint n_extra_fields = 0;
 
     for (auto it = params.cbegin(); it != params.cend();) {
         if (it->first == "n_warmup") {
@@ -51,10 +52,14 @@ map<string, string> _simulation_truncate(string trace_file, string cache_type, u
         } else if (it->first == "segment_window") {
             segment_window = stoull((it->second));
             it = params.erase(it);
+        } else if (it->first == "n_extra_fields") {
+            n_extra_fields = stoull(it->second);
+            ++it;
         } else {
             ++it;
         }
     }
+    annotate(trace_file, n_extra_fields);
 
     webcache->init_with_params(params);
 
@@ -71,6 +76,8 @@ map<string, string> _simulation_truncate(string trace_file, string cache_type, u
     string seg_ohr;
     uint64_t byte_request_hit;
 
+    //todo: read extra fields
+    uint tmp1;
 
 
     cerr<<"simulating"<<endl;
@@ -79,6 +86,8 @@ map<string, string> _simulation_truncate(string trace_file, string cache_type, u
     auto t_now = system_clock::now();
 
     while (infile >> t >> id >> size >> next_t) {
+        for (int i = 0; i < n_extra_fields; ++i)
+            infile>>tmp1;
         if (uni_size)
             size = 1;
 
