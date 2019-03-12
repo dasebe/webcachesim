@@ -87,7 +87,7 @@ map<string, string> _simulation_truncate(string trace_file, string cache_type, u
     auto t_now = system_clock::now();
     while (infile >> next_seq >> tmp >> id >> size) {
         for (int j = 0; j < n_extra_fields; ++j)
-            infile>tmp1;
+            infile>>tmp1;
         //todo: currently real timestamp t is not used. Only relative seq is used
         if (uni_size)
             size = 1;
