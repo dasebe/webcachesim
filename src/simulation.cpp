@@ -13,7 +13,7 @@
 //#include "simulation_lr_belady.h"
 //#include "simulation_belady_static.h"
 //#include "simulation_bins.h"
-//#include "simulation_truncate.h"
+#include "simulation_truncate.h"
 #include <chrono>
 #include "utils.h"
 
