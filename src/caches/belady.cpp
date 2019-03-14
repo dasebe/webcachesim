@@ -9,6 +9,8 @@ bool BeladyCache::lookup(SimpleRequest& _req) {
     auto & req = dynamic_cast<AnnotatedRequest&>(_req);
     _valueMap.emplace(req._next_seq, req._id);
     auto if_hit = _cacheMap.find(req._id) !=_cacheMap.end();
+    //time to delete the past next_seq
+    _valueMap.erase(_req._t);
     return if_hit;
 }
 
@@ -30,8 +32,6 @@ void BeladyCache::admit(SimpleRequest& _req) {
     while (_currentSize > _cacheSize) {
         evict();
     }
-    //time to delete the past next_seq
-    auto it = _valueMap.erase(_req._t);
 }
 
 void BeladyCache::evict() {
