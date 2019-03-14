@@ -11,6 +11,7 @@ uint64_t BeladyTruncateCache::lookup_truncate(AnnotatedRequest &req){
     if (it == _cacheMap.end()) {
         //bring in
         admit(req);
+        _valueMap.erase(req._t);
         return 0;
     } else {
         uint64_t size_hit = it->second;
@@ -22,6 +23,7 @@ uint64_t BeladyTruncateCache::lookup_truncate(AnnotatedRequest &req){
                 evict();
             }
         }
+        _valueMap.erase(req._t);
         return size_hit;
     }
 }
