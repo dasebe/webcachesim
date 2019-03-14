@@ -30,6 +30,8 @@ void BeladyCache::admit(SimpleRequest& _req) {
     while (_currentSize > _cacheSize) {
         evict();
     }
+    //time to delete the past next_seq
+    auto it = _valueMap.erase(_req._t);
 }
 
 void BeladyCache::evict() {
