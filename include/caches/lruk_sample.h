@@ -8,7 +8,7 @@
 
 #include <cache.h>
 #include <unordered_map>
-#include "random_variants.h"
+#include "lr.h"
 
 using namespace std;
 
