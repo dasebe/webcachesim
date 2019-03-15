@@ -12,8 +12,8 @@ LR:
   sample_rate:
     - 64
   objective:
-#    - byte_hit_rate
-    - object_hit_rate
+    - byte_hit_rate
+#    - object_hit_rate
   training_sample_interval: 64
   threshold: 10000000
   gradient_window:
