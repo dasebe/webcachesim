@@ -15,13 +15,13 @@ LR:
     - byte_hit_rate
 #    - object_hit_rate
   training_sample_interval: 64
-  threshold: 10000000
-  gradient_window:
+  forget_window: 10000000
+  batch_size:
     - 1000000
   learning_rate:
     - 0.000001
-  n_past_intervals: 4
-  version: known_size
+  max_n_past_timestamps: 4
+  version: not_future
 LRUKSample:
   sample_rate: 32
 BeladySample:
