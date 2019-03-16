@@ -55,7 +55,7 @@ wc200m.tr:
       - 256
 #      - 512
   LR:
-    threshold: 40000000
+    forget_window: 40000000
     sample_rate: 256
 
 

@@ -26,8 +26,7 @@ public:
     vector<uint64_t> _past_timestamps;
     uint64_t _size;
 
-    LRMeta(const uint64_t & key, const uint64_t & size, const uint64_t & past_timestamp,
-            const uint64_t & future_timestamp) {
+    LRMeta(const uint64_t & key, const uint64_t & size, const uint64_t & past_timestamp) {
         _key = key;
         _size = size;
         _past_timestamps = vector<uint64_t >(LR::max_n_past_timestamps);
@@ -169,7 +168,13 @@ public:
     bool lookup(SimpleRequest& req);
 //    bool lookup_without_update(SimpleRequest &_req);
     void admit(SimpleRequest& req);
+
+    /*
+     * rank and evict from cache
+     */
     void evict(const uint64_t & t);
+
+    void forget(uint64_t & t);
     void evict(SimpleRequest & req) {};
     void evict() {};
     //sample, rank the 1st and return

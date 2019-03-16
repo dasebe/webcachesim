@@ -386,8 +386,13 @@ void LRCache::train() {
 bool LRCache::lookup(SimpleRequest &req) {
     bool ret;
     if (!(req._t%1000000)) {
+        cerr << "cache size: "<<_currentSize<<"/"<<_cacheSize<<endl;
+        cerr << "n_metadata: "<<key_map.size()<<endl;
+        assert(key_map.size() == forget_table.size());
+        cerr << "n_pending: "<< pending_training_data.size() <<endl;
+        cerr << "n_training: "<<training_data.size()<<endl;
         cerr << "mean diff: " << mean_diff << endl;
-        for (int j = 0; j < LR::max_n_past_timestamps; ++j)
+        for (int j = 0; j < weights.size() ; ++j)
             cerr << "weight " << j << ": " << weights[j] << endl;
         cerr << "bias: " << bias << endl;
     }
@@ -399,28 +404,30 @@ bool LRCache::lookup(SimpleRequest &req) {
         bool & list_idx = it->second.first;
         uint32_t & pos_idx = it->second.second;
         LRMeta & meta = meta_holder[list_idx][pos_idx];
+        assert(meta._key == req._id);
         uint8_t last_timestamp_idx = (meta._past_timestamp_idx - static_cast<uint8_t>(1))% LR::max_n_past_timestamps;
         uint64_t last_timestamp = meta._past_timestamps[last_timestamp_idx];
         uint64_t forget_timestamp = last_timestamp + forget_window;
+        //if the key in key_map, it must also in forget table
         auto forget_it = forget_table.find(forget_timestamp);
-        if (forget_it != forget_table.end()) {
-            //re-request
-            auto pending_range = pending_training_data.equal_range(forget_timestamp);
-            for (auto pending_it = pending_range.first; pending_it != pending_range.second;) {
-                //mature
-                auto future_distance = req._t - last_timestamp;
-                training_data.emplace_back(pending_it->second, future_distance);
-                //training
-                if (training_data.size() == batch_size) {
-                    train();
-                    training_data.clear();
-                }
-                pending_it = pending_training_data.erase(pending_it);
+        assert(forget_it != forget_table.end());
+        //re-request
+        auto pending_range = pending_training_data.equal_range(forget_timestamp);
+        for (auto pending_it = pending_range.first; pending_it != pending_range.second;) {
+            //mature
+            auto future_distance = req._t - last_timestamp;
+            training_data.emplace_back(pending_it->second, future_distance);
+            //training
+            if (training_data.size() == batch_size) {
+                train();
+                training_data.clear();
             }
-            //remove this entry
-            forget_table.erase(forget_it);
+            pending_it = pending_training_data.erase(pending_it);
         }
-        forget_table.insert({req._t+forget_timestamp, req._id});
+        //remove this entry
+        forget_table.erase(forget_it);
+        forget_table.insert({req._t+forget_window, req._id});
+        assert(key_map.size() == forget_table.size());
 
         //make this update after update training, otherwise the last timestamp will change
         meta.update(req._t);
@@ -429,21 +436,41 @@ bool LRCache::lookup(SimpleRequest &req) {
     } else {
         ret = false;
     }
+    forget(req._t);
+    //sampling
+//    if (!(req._t % training_sample_interval))
+//        sample(req._t);
+    return ret;
+}
 
+void LRCache::forget(uint64_t &t) {
     //remove item from forget table, which is not going to be affect from update
-    auto forget_it = forget_table.find(req._t);
+    auto forget_it = forget_table.find(t);
     if (forget_it != forget_table.end()) {
-        auto & key = forget_it->second;
+        auto &key = forget_it->second;
         auto meta_it = key_map.find(key);
         if (!meta_it->second.first) {
-            cerr<<"force evicting object passing forget window"<<endl;
-            exit(1);
-            //todo: force eviction
+            cerr << "warning: force evicting object passing forget window" << endl;
+            auto &pos = meta_it->second.second;
+            auto &meta = meta_holder[0][pos];
+            assert(meta._key == key);
+            key_map.erase(key);
+            _currentSize -= meta._size;
+            //evict
+            uint32_t tail0_pos = meta_holder[0].size()-1;
+            if (pos !=  tail0_pos) {
+                //swap tail
+                meta_holder[0][pos] = meta_holder[0][tail0_pos];
+                key_map.find(meta_holder[0][tail0_pos]._key)->second.second = pos;
+            }
+            meta_holder[0].pop_back();
+            forget_table.erase(forget_it);
+            assert(key_map.size() == forget_table.size());
         } else {
-            auto & pos = meta_it->second.second;
-            auto & meta = meta_holder[1][pos];
+            auto &pos = meta_it->second.second;
+            auto &meta = meta_holder[1][pos];
             //timeout mature
-            auto pending_range = pending_training_data.equal_range(req._t);
+            auto pending_range = pending_training_data.equal_range(t);
             for (auto pending_it = pending_range.first; pending_it != pending_range.second;) {
                 //mature
                 auto future_distance = forget_window;
@@ -456,27 +483,25 @@ bool LRCache::lookup(SimpleRequest &req) {
                 pending_it = pending_training_data.erase(pending_it);
             }
 
-            uint64_t & ekey = meta._key;
+            uint64_t &ekey = meta._key;
             key_map.erase(ekey);
+            assert(meta._key == key);
             //evict
-            uint32_t tail1_pos = meta_holder[1].size()-1;
-            if (pos !=  tail1_pos) {
+            uint32_t tail1_pos = meta_holder[1].size() - 1;
+            if (pos != tail1_pos) {
                 //swap tail
                 meta_holder[1][pos] = meta_holder[1][tail1_pos];
                 key_map.find(meta_holder[1][tail1_pos]._key)->second.second = pos;
             }
             meta_holder[1].pop_back();
+            //forget
+            forget_table.erase(forget_it);
+            assert(key_map.size() == forget_table.size());
         }
-        //forget
-        forget_table.erase(forget_it);
     }
 
-    //sampling
-//    if (!(req._t % training_sample_interval))
-//        sample(req._t);
-
-    return ret;
 }
+
 //
 //bool LRCache::lookup_without_update(SimpleRequest &_req) {
 //    auto & req = dynamic_cast<AnnotatedRequest &>(_req);
@@ -504,8 +529,7 @@ bool LRCache::lookup(SimpleRequest &req) {
 //    return false;
 //}
 
-void LRCache::admit(SimpleRequest &_req) {
-    AnnotatedRequest & req = static_cast<AnnotatedRequest &>(_req);
+void LRCache::admit(SimpleRequest &req) {
     const uint64_t & size = req._size;
     // object feasible to store?
     if (size > _cacheSize) {
@@ -517,8 +541,10 @@ void LRCache::admit(SimpleRequest &_req) {
     if (it == key_map.end()) {
         //fresh insert
         key_map.insert({req._id, {0, (uint32_t) meta_holder[0].size()}});
-        meta_holder[0].emplace_back(req._id, req._size, req._t, req._next_seq);
+        meta_holder[0].emplace_back(req._id, req._size, req._t);
         _currentSize += size;
+        forget_table.insert({req._t + forget_window, req._id});
+        assert(key_map.size() == forget_table.size());
         if (_currentSize <= _cacheSize)
             return;
     } else if (size + _currentSize <= _cacheSize){
@@ -625,7 +651,6 @@ void LRCache::evict(const uint64_t & t) {
     auto epair = rank(t);
     uint64_t & key = epair.first;
     uint32_t & old_pos = epair.second;
-
     //bring list 0 to list 1
     uint32_t new_pos = meta_holder[1].size();
 
