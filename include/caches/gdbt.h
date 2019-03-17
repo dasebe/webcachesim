@@ -24,9 +24,7 @@ namespace GDBT {
     vector<double > hash_edwt;
     uint32_t max_hash_edwt_idx;
     uint64_t forget_window = 10000000;
-    float log1p_forget_window = log1p(forget_window);
     uint64_t n_extra_fields = 0;
-
 }
 
 
@@ -70,13 +68,11 @@ public:
 class GDBTPendingTrainingData {
 public:
     vector<uint64_t > past_distances;
-    uint64_t sample_time;
     uint64_t size;
     vector<uint64_t > extra_features;
     vector<double > edwt;
     GDBTPendingTrainingData(const GDBTMeta& meta, const uint64_t & t) {
         size = meta._size;
-        sample_time = t;
         past_distances.emplace_back(t - meta._past_timestamp);
         uint64_t this_past_timestamp = meta._past_timestamp;
         for (int j = 0; j < meta._past_distance_idx && j < GDBT::max_n_past_timestamps-1; ++j) {
@@ -203,7 +199,6 @@ public:
                 sample_rate = stoul(it.second);
             } else if (it.first == "forget_window") {
                 GDBT::forget_window = stoull(it.second);
-                GDBT::log1p_forget_window = std::log1p(GDBT::forget_window);
             } else if (it.first == "max_n_past_timestamps") {
                 GDBT::max_n_past_timestamps = (uint8_t) stoi(it.second);
             } else if (it.first == "batch_size") {

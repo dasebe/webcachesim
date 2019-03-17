@@ -183,7 +183,7 @@ bool GDBTCache::lookup(SimpleRequest &req) {
         auto pending_range = pending_training_data.equal_range(forget_timestamp);
         for (auto pending_it = pending_range.first; pending_it != pending_range.second;) {
             //mature
-            float future_distance = log1p(req._t - pending_it->second.sample_time);
+            float future_distance = req._t - last_timestamp;
             //don't use label within the first forget window because the data is not static
             if (req._t > GDBT::forget_window)
                 training_data.append(pending_it->second, future_distance);
@@ -261,7 +261,7 @@ void GDBTCache::forget(uint64_t &t) {
         auto pending_range = pending_training_data.equal_range(t);
         for (auto pending_it = pending_range.first; pending_it != pending_range.second;) {
             //mature
-            float future_distance = GDBT::log1p_forget_window;
+            float future_distance = GDBT::forget_window;
             training_data.append(pending_it->second, future_distance);
             //training
             if (training_data.labels.size() == batch_size) {
@@ -405,9 +405,11 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
                               GDBT_inference_params,
                               &len,
                               result.data());
+    for (int i = 0; i < n_sample; ++i)
+        result[i] -= (t - past_timestamps[i]);
     if (objective == object_hit_rate)
         for (uint32_t i = 0; i < n_sample; ++i)
-            result[i] += log1p(sizes[i]);
+            result[i] *= sizes[i];
 
     double worst_score;
     uint32_t worst_pos;
