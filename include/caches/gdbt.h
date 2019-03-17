@@ -183,8 +183,6 @@ public:
 
     unordered_map<string, string> GDBT_inference_params;
 
-    double training_error = 0;
-
     enum ObjectiveT: uint8_t {byte_hit_rate=0, object_hit_rate=1};
     ObjectiveT objective = byte_hit_rate;
 
