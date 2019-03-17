@@ -142,7 +142,8 @@ void LRCache::forget(uint64_t &t) {
         auto &key = forget_it->second;
         auto meta_it = key_map.find(key);
         if (!meta_it->second.first) {
-//            cerr << "warning: force evicting object passing forget window" << endl;
+            if (!weights.empty() && t > LR::forget_window*1.5)
+                cerr << "warning: force evicting object passing forget window" << endl;
             auto &pos = meta_it->second.second;
             auto &meta = meta_holder[0][pos];
             assert(meta._key == key);
