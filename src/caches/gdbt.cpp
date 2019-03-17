@@ -174,7 +174,7 @@ bool GDBTCache::lookup(SimpleRequest &req) {
         uint32_t & pos_idx = it->second.second;
         GDBTMeta & meta = meta_holder[list_idx][pos_idx];
         assert(meta._key == req._id);
-        uint8_t last_timestamp = meta._past_timestamp;
+        uint64_t last_timestamp = meta._past_timestamp;
         uint64_t forget_timestamp = last_timestamp + GDBT::forget_window;
         //if the key in key_map, it must also in forget table
         auto forget_it = forget_table.find(forget_timestamp);
