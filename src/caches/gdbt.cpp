@@ -127,8 +127,8 @@ void GDBTCache::sample(uint64_t &t) {
     auto n_l1 = static_cast<uint32_t>(meta_holder[1].size());
     auto rand_idx = _distribution(_generator);
     // at least sample 1 from the list, at most size of the list
-    auto n_sample_l0 = min(max(uint32_t (sample_rate*n_l0/(n_l0+n_l1)), (uint32_t) 1), n_l0);
-    auto n_sample_l1 = min(max(sample_rate - n_sample_l0, (uint32_t) 1), n_l1);
+    auto n_sample_l0 = min(max(uint32_t (training_sample_interval*n_l0/(n_l0+n_l1)), (uint32_t) 1), n_l0);
+    auto n_sample_l1 = min(max(uint32_t (training_sample_interval - n_sample_l0), (uint32_t) 1), n_l1);
 
     //sample list 0
     {
