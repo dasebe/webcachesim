@@ -50,10 +50,12 @@ class LRPendingTrainingData {
 public:
     //past timestamp0 is in metadata
     vector<double > past_distances;
+    uint64_t sample_time;
     uint64_t size;
 
     LRPendingTrainingData(const LRMeta & meta, const uint64_t & t) {
         size = meta._size;
+        sample_time = t;
         uint8_t n_past_timestamps = min(LR::max_n_past_timestamps, meta._past_timestamp_idx);
         for (uint8_t i = 0; i < n_past_timestamps; ++i) {
             uint8_t past_timestamp_idx = static_cast<uint8_t>(meta._past_timestamp_idx - 1 - i)
@@ -96,15 +98,6 @@ public:
     uint64_t training_sample_interval = 32;
 
     double learning_rate = 0.0001;
-    // omit bias sampling
-//    uint64_t n_window_bins = 10;
-//    uint64_t size_bin;
-    // learning_rate
-    // n_past_interval
-//    enum BiasPointT : uint8_t {none = 0, edge = 1, center = 2, mid = 3, rebalance = 4, bin0 = 5, sides = 6};
-//    uint8_t bias_point = none;
-//    double alpha = 1;
-//    uint64_t * f_evicted = nullptr;
 
     vector<double > weights;
     double bias = 0;
@@ -139,11 +132,6 @@ public:
                 LR::max_n_past_timestamps = (uint8_t) stoi(it.second);
             } else if (it.first == "batch_size") {
                 batch_size = stoull(it.second);
-//            } else if (it.first == "n_window_bins") {
-//                n_window_bins = stoull(it.second);
-//            } else if (it.first == "alpha") {
-//                alpha = stod(it.second);
-//                assert(alpha > 0);
             } else if (it.first == "objective") {
                 if (it.second == "byte_hit_rate")
                     objective = byte_hit_rate;
@@ -153,17 +141,11 @@ public:
                     cerr<<"error: unknown objective"<<endl;
                     exit(-1);
                 }
-//            } else if (it.first == "bias_point") {
-//                bias_point = (uint8_t) stoul(it.second);
-//                assert(bias_point <= 6);
             } else {
                 cerr << "unrecognized parameter: " << it.first << endl;
             }
         }
 
-        //init
-//        size_bin = forget_window/n_window_bins;
-//        weights = vector<double >(LR::max_n_past_timestamps);
         training_data.reserve(batch_size);
     }
 
@@ -183,7 +165,6 @@ public:
     pair<uint64_t, uint32_t > rank(const uint64_t & t);
     void train();
     void sample(uint64_t &t);
-//    void sample_without_update(uint64_t &t);
 };
 
 static Factory<LRCache> factoryLR("LR");

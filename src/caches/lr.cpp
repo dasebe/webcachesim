@@ -100,7 +100,7 @@ bool LRCache::lookup(SimpleRequest &req) {
         auto pending_range = pending_training_data.equal_range(forget_timestamp);
         for (auto pending_it = pending_range.first; pending_it != pending_range.second;) {
             //mature
-            auto future_distance = log1p(req._t - last_timestamp);
+            auto future_distance = log1p(req._t - pending_it->second.sample_time);
             //don't use label within the first forget window because the data is not static
             if (req._t > LR::forget_window)
                 training_data.emplace_back(pending_it->second, future_distance);
@@ -140,20 +140,6 @@ void LRCache::forget(uint64_t &t) {
 //            cerr << "warning: force evicting object passing forget window" << endl;
             auto &pos = meta_it->second.second;
             auto &meta = meta_holder[0][pos];
-            //timeout mature
-            auto pending_range = pending_training_data.equal_range(t);
-            for (auto pending_it = pending_range.first; pending_it != pending_range.second;) {
-                //mature
-                auto future_distance = LR::log1p_forget_window;
-                training_data.emplace_back(pending_it->second, future_distance);
-                //training
-                if (training_data.size() == batch_size) {
-                    train();
-                    training_data.clear();
-                }
-                pending_it = pending_training_data.erase(pending_it);
-            }
-
             assert(meta._key == key);
             key_map.erase(key);
             _currentSize -= meta._size;
@@ -171,20 +157,6 @@ void LRCache::forget(uint64_t &t) {
         } else {
             auto &pos = meta_it->second.second;
             auto &meta = meta_holder[1][pos];
-            //timeout mature
-            auto pending_range = pending_training_data.equal_range(t);
-            for (auto pending_it = pending_range.first; pending_it != pending_range.second;) {
-                //mature
-                auto future_distance = LR::log1p_forget_window;
-                training_data.emplace_back(pending_it->second, future_distance);
-                //training
-                if (training_data.size() == batch_size) {
-                    train();
-                    training_data.clear();
-                }
-                pending_it = pending_training_data.erase(pending_it);
-            }
-
             assert(meta._key == key);
             key_map.erase(key);
             //evict
@@ -198,6 +170,19 @@ void LRCache::forget(uint64_t &t) {
             //forget
             forget_table.erase(forget_it);
             assert(key_map.size() == forget_table.size());
+        }
+        //timeout mature
+        auto pending_range = pending_training_data.equal_range(t);
+        for (auto pending_it = pending_range.first; pending_it != pending_range.second;) {
+            //mature
+            auto future_distance = LR::log1p_forget_window;
+            training_data.emplace_back(pending_it->second, future_distance);
+            //training
+            if (training_data.size() == batch_size) {
+                train();
+                training_data.clear();
+            }
+            pending_it = pending_training_data.erase(pending_it);
         }
     }
 }
