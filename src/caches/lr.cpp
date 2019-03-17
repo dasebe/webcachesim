@@ -4,9 +4,6 @@
 
 #include "lr.h"
 
-//init with a wrong value
-
-
 void LRCache::train() {
     if (weights.empty())
         weights = vector<double >(LR::max_n_past_timestamps);
@@ -27,154 +24,10 @@ void LRCache::train() {
             gradient_weights[i] += diff * LR::log1p_forget_window;
         gradient_bias += diff;
     }
-//    for (int i = 0; i < LR::max_n_past_timestamps; ++i)
-//        weights[i] -= learning_rate / batch_size * gradient_weights[i];
-//    bias -= learning_rate / batch_size * gradient_bias;
+    for (int i = 0; i < LR::max_n_past_timestamps; ++i)
+        weights[i] -= learning_rate / batch_size * gradient_weights[i];
+    bias -= learning_rate / batch_size * gradient_bias;
 }
-
-//void LRCache::try_train(uint64_t &t) {
-//    static uint64_t next_idx = 0;
-//    if (t < gradient_window)
-//        return;
-//    //look at previous window
-//    auto gradient_window_idx = t / gradient_window - 1;
-//    //already update
-//    if (gradient_window_idx != next_idx)
-//        return;
-//    ++next_idx;
-//    //perhaps no gradient at all
-//    if (gradient_window_idx >= pending_gradients.size())
-//        return;
-//
-//    if (bias_point == none) {
-//        uint64_t n_update = 0;
-//        for (uint j = 0; j < n_window_bins && !pending_gradients[gradient_window_idx].empty(); ++j) {
-//            auto &gradients = pending_gradients[gradient_window_idx][j];
-//            if (gradients.n_update) {
-//                n_update += gradients.n_update;
-//            }
-//        }
-//        if (!n_update)
-//            return;
-//        for (uint j = 0; j < n_window_bins && !pending_gradients[gradient_window_idx].empty(); ++j) {
-//            auto &gradients = pending_gradients[gradient_window_idx][j];
-//            if (gradients.n_update) {
-//                bias -= learning_rate / n_update * gradients.bias;
-//                for (uint i = 0; i < LR::max_n_past_timestamps; ++i)
-//                    weights[i] -= learning_rate / n_update * gradients.weights[i];
-//            }
-//        }
-//        return;
-//    }
-//
-//    if ( edge <= bias_point && bias_point <= mid ) {
-//        //bias weight
-//        double f_evicted_idx = ((double) (* f_evicted)) / size_bin;
-//        auto sample_bias = vector<double >(n_window_bins);
-//        double sum_sample_bias = 0;
-//        for (uint j = 0; j < n_window_bins && ! pending_gradients[gradient_window_idx].empty(); ++j) {
-//            auto &gradients = pending_gradients[gradient_window_idx][j];
-//            double class_id;  //smaller is better
-//            double base;
-//            if (gradients.n_update) {
-//                if (bias_point == edge) {
-//                    if (j <= f_evicted_idx) {
-//                        class_id = j;
-//                    } else {
-//                        class_id = n_window_bins - 1 - j;
-//                    }
-//                } else if (bias_point == center) {
-//                    class_id = abs(f_evicted_idx - j);
-//                } else if (bias_point == mid) {
-//                    if (j <= f_evicted_idx) {
-//                        class_id = abs(f_evicted_idx / 2. - j);
-//                    } else {
-//                        class_id = abs((f_evicted_idx + n_window_bins) / 2 - j);
-//                    }
-//                }
-//                base = 1 - 0.1 * class_id;
-//                double weight = pow(base, alpha);
-//                sample_bias[j] = weight * gradients.n_update;
-//                sum_sample_bias += weight * gradients.n_update;
-//            }
-//        }
-//
-//        if (sum_sample_bias == 0)
-//            return;
-//
-//        for (uint j = 0; j < n_window_bins && ! pending_gradients[gradient_window_idx].empty(); ++j) {
-//            auto &gradients = pending_gradients[gradient_window_idx][j];
-//            if (gradients.n_update) {
-//                if (gradients.n_update) {
-//                    bias -= learning_rate / gradients.n_update / sum_sample_bias * sample_bias[j] * gradients.bias ;
-//                    for (uint i = 0; i < LR::max_n_past_timestamps; ++i)
-//                        weights[i] -= learning_rate / gradients.n_update / sum_sample_bias * sample_bias[j] * gradients.weights[i];
-//                }
-//            }
-//        }
-//        return;
-//    }
-//
-//    if (bias_point == rebalance) {
-//        uint64_t n_update = 0;
-//        for (uint j = 0; j < n_window_bins && !pending_gradients[gradient_window_idx].empty(); ++j) {
-//            auto &gradients = pending_gradients[gradient_window_idx][j];
-//            if (gradients.n_update) {
-//                n_update += 1;
-//            }
-//        }
-//        if (!n_update)
-//            return;
-//        for (uint j = 0; j < n_window_bins && !pending_gradients[gradient_window_idx].empty(); ++j) {
-//            auto &gradients = pending_gradients[gradient_window_idx][j];
-//            if (gradients.n_update) {
-//                bias -= learning_rate / gradients.n_update / n_update * gradients.bias;
-//                for (uint i = 0; i < LR::max_n_past_timestamps; ++i)
-//                    weights[i] -= learning_rate / gradients.n_update / n_update * gradients.weights[i];
-//            }
-//        }
-//        return;
-//    }
-//
-//    if (bias_point == bin0) {
-//        if(!pending_gradients[gradient_window_idx].empty()) {
-//            auto &gradients = pending_gradients[gradient_window_idx][0];
-//            if (gradients.n_update) {
-//                bias -= learning_rate / gradients.n_update * gradients.bias;
-//                for (uint i = 0; i < LR::max_n_past_timestamps; ++i)
-//                    weights[i] -= learning_rate / gradients.n_update * gradients.weights[i];
-//            }
-//        }
-//        return;
-//    }
-//
-//    if (bias_point == sides) {
-//        uint64_t n_update = 0;
-//        double f_evicted_idx = ((double) (* f_evicted)) / size_bin;
-//        for (uint j = 0; j < n_window_bins && !pending_gradients[gradient_window_idx].empty(); ++j) {
-//            if ((f_evicted_idx - j < 2 && f_evicted_idx - j >= 1 ) || (j > f_evicted_idx && j - f_evicted_idx <=1)) {
-//                auto &gradients = pending_gradients[gradient_window_idx][j];
-//                if (gradients.n_update) {
-//                    n_update += gradients.n_update;
-//                }
-//            }
-//        }
-//        if (!n_update)
-//            return;
-//        for (uint j = 0; j < n_window_bins && !pending_gradients[gradient_window_idx].empty(); ++j) {
-//            if ((f_evicted_idx - j < 2 && f_evicted_idx - j >= 1 ) || (j > f_evicted_idx && j - f_evicted_idx <=1)) {
-//                auto &gradients = pending_gradients[gradient_window_idx][j];
-//                if (gradients.n_update) {
-//                    bias -= learning_rate / n_update * gradients.bias;
-//                    for (uint i = 0; i < LR::max_n_past_timestamps; ++i)
-//                        weights[i] -= learning_rate / n_update * gradients.weights[i];
-//                }
-//            }
-//        }
-//        return;
-//    }
-//
-//}
 
 void LRCache::sample(uint64_t &t) {
     // warmup not finish
@@ -214,63 +67,6 @@ void LRCache::sample(uint64_t &t) {
         }
     }
 }
-
-//void LRCache::sample_without_update(uint64_t &t) {
-//    if (meta_holder[0].empty() || meta_holder[1].empty())
-//        return;
-//    /*
-//     * sample the cache to get in-cache distribution
-//     */
-//#ifdef LOG_SAMPLE_RATE
-//    bool log_flag = ((double) rand() / (RAND_MAX)) < LOG_SAMPLE_RATE;
-//#endif
-//
-//    //sample list 0
-//    {
-//        uint32_t rand_idx = _distribution(_generator) % meta_holder[0].size();
-//        uint n_sample = min(sample_rate, (uint) meta_holder[0].size());
-//
-//        for (uint32_t i = 0; i < n_sample; i++) {
-//            uint32_t pos = (i + rand_idx) % meta_holder[0].size();
-//            auto &meta = meta_holder[0][pos];
-//
-//            //fill in past_interval
-//            uint8_t j = 0;
-//            auto past_intervals = vector<double >(LR::max_n_past_timestamps);
-//            for (j = 0; j < meta._past_timestamp_idx && j < LR::max_n_past_timestamps; ++j) {
-//                uint8_t past_timestamp_idx = (meta._past_timestamp_idx - 1 - j) % LR::max_n_past_timestamps;
-//                uint64_t past_interval = t - meta._past_timestamps[past_timestamp_idx];
-//                if (past_interval >= threshold)
-//                    past_intervals[j] = log1p_threshold;
-//                else
-//                    past_intervals[j] = log1p(past_interval);
-//            }
-//            for (; j < LR::max_n_past_timestamps; j++)
-//                past_intervals[j] = log1p_threshold;
-//
-//            uint64_t known_future_interval;
-//            double log1p_known_future_interval;
-//            if (meta._future_timestamp - t < threshold) {
-//                known_future_interval = meta._future_timestamp - t;
-//                log1p_known_future_interval = log1p(known_future_interval);
-//            }
-//            else {
-////                known_future_interval = threshold - 1;
-//                log1p_known_future_interval = log1p_threshold;
-//            }
-//
-//#ifdef LOG_SAMPLE_RATE
-//            //print distribution
-//            if (log_flag) {
-//                cout << 2 <<" ";
-//                for (uint k = 0; k < LR::max_n_past_timestamps; ++k)
-//                    cout << past_intervals[k] << " ";
-//                cout << log1p_known_future_interval << endl;
-//            }
-//#endif
-//        }
-//    }
-//}
 
 bool LRCache::lookup(SimpleRequest &req) {
     bool ret;
@@ -405,33 +201,6 @@ void LRCache::forget(uint64_t &t) {
         }
     }
 }
-
-//
-//bool LRCache::lookup_without_update(SimpleRequest &_req) {
-//    auto & req = dynamic_cast<AnnotatedRequest &>(_req);
-//    static uint64_t i = 0;
-//    if (!(i%1000000)) {
-//        cerr << "mean diff: " << mean_diff << endl;
-//        for (int j = 0; j < LR::max_n_past_timestamps; ++j)
-//            cerr << "weight " << j << ": " << weights[j] << endl;
-//        cerr << "bias: " << bias << endl;
-//    }
-//    ++i;
-//
-//    //todo: deal with size consistently
-//    try_train(req._t);
-//    sample_without_update(req._t);
-//
-//    auto it = key_map.find(req._id);
-//    if (it != key_map.end()) {
-//        //update past timestamps
-//        bool & list_idx = it->second.first;
-//        uint32_t & pos_idx = it->second.second;
-//        meta_holder[list_idx][pos_idx].update(req._t, req._next_seq);
-//        return !list_idx;
-//    }
-//    return false;
-//}
 
 void LRCache::admit(SimpleRequest &req) {
     const uint64_t & size = req._size;
