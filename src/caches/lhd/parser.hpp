@@ -123,7 +123,7 @@ public:
     while (file.good()) {
       PartialRequest pr;
       file.read((char*)&pr, sizeof(pr)); // >> r;
-      pr.size = std::max(pr.size, 1l);
+      pr.size = std::max(pr.size, 1LL);
       if (pr.size > MAX_REQUEST_SIZE) {
         std::cerr << "Trimming object of size: " << pr.size << std::endl;
         pr.size = MAX_REQUEST_SIZE - MEMCACHED_OVERHEAD;
@@ -149,7 +149,7 @@ public:
         std::cout << "Reset back to head of file" << std::endl;
       }
       file.read((char*)&r, sizeof(r));
-      r.valueSize = std::max(r.valueSize, 1l);
+      r.valueSize = std::max(r.valueSize, 1LL);
       if (r.size() > MAX_REQUEST_SIZE) {
         std::cout << "Trimming object of size: " << r.valueSize << std::endl;
         r.valueSize = MAX_REQUEST_SIZE - r.keySize - MEMCACHED_OVERHEAD;

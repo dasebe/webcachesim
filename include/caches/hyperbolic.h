@@ -37,7 +37,7 @@ public:
     unordered_map<uint64_t, uint32_t> key_map;
     vector<HyperbolicMeta> meta_holder;
 
-    uint64_t sample_rate = 64;
+    unsigned long sample_rate = 64;
 
     //todo: seed and generator
     default_random_engine _generator = default_random_engine();

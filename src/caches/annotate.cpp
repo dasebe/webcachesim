@@ -34,7 +34,7 @@ public:
 };
 
 
-void annotate(string &trace_file, uint n_extra_fields) {
+void annotate(string &trace_file, int n_extra_fields) {
     //todo: there is a risk that multiple process write a same file
 
     auto expect_file = trace_file+".ant";
