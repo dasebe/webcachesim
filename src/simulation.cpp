@@ -73,15 +73,14 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     string seg_bhr;
     string seg_ohr;
 
-    //todo: read extra fields
-    uint tmp1;
+    vector<uint64_t > extra_features(n_extra_fields, 0);
 
     SimpleRequest req(0, 0, 0);
     uint64_t seq = 0;
     auto t_now = system_clock::now();
     while (infile >> tmp >> id >> size) {
         for (int i = 0; i < n_extra_fields; ++i)
-            infile>>tmp1;
+            infile>>extra_features[i];
         //todo: currently real timestamp t is not used. Only relative seq is used
         if (uni_size)
             size = 1;
@@ -92,7 +91,7 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
             update_metric_req(byte_req, obj_req, size);
         update_metric_req(seg_byte_req, seg_obj_req, size);
 
-        req.reinit(id, size, seq+1);
+        req.reinit(id, size, seq+1, &extra_features);
         if (webcache->lookup(req)) {
             if (seq >= n_warmup)
                 update_metric_req(byte_hit, obj_hit, size);
