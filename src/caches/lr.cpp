@@ -305,7 +305,9 @@ bool LRCache::lookup(SimpleRequest &req) {
         for (auto pending_it = pending_range.first; pending_it != pending_range.second;) {
             //mature
             auto future_distance = log1p(req._t - last_timestamp);
-            training_data.emplace_back(pending_it->second, future_distance);
+            //don't use label within the first forget window because the data is not static
+            if (req._t > LR::forget_window)
+                training_data.emplace_back(pending_it->second, future_distance);
             //training
             if (training_data.size() == batch_size) {
                 train();
@@ -339,7 +341,7 @@ void LRCache::forget(uint64_t &t) {
         auto &key = forget_it->second;
         auto meta_it = key_map.find(key);
         if (!meta_it->second.first) {
-            cerr << "warning: force evicting object passing forget window" << endl;
+//            cerr << "warning: force evicting object passing forget window" << endl;
             auto &pos = meta_it->second.second;
             auto &meta = meta_holder[0][pos];
             //timeout mature
@@ -484,69 +486,47 @@ void LRCache::admit(SimpleRequest &req) {
 pair<uint64_t, uint32_t> LRCache::rank(const uint64_t & t) {
     uint32_t rand_idx = _distribution(_generator) % meta_holder[0].size();
     //if not trained yet, use random
-    if (!weights.size()) {
+    if (weights.empty()) {
         return {meta_holder[0][rand_idx]._key, rand_idx};
     }
 
-//    double max_future_interval;
-//    uint64_t max_key;
-//    uint32_t max_pos;
-//    uint64_t min_past_timestamp;
-//
-//    uint n_sample;
-//    if (sample_rate < meta_holder[0].size())
-//        n_sample = sample_rate;
-//    else
-//        n_sample = meta_holder[0].size();
-//
-//    for (uint32_t i = 0; i < n_sample; i++) {
-//        uint32_t pos = (i+rand_idx)%meta_holder[0].size();
-//        auto & meta = meta_holder[0][pos];
-//        //fill in past_interval
-//        uint8_t j = 0;
-//        auto past_intervals = vector<double >(LR::max_n_past_timestamps);
-//        for (j = 0; j < meta._past_timestamp_idx && j < LR::max_n_past_timestamps; ++j) {
-//            uint8_t past_timestamp_idx = (meta._past_timestamp_idx - 1 - j) % LR::max_n_past_timestamps;
-//            uint64_t past_interval = t - meta._past_timestamps[past_timestamp_idx];
-//            if (past_interval >= threshold)
-//                past_intervals[j] = log1p_threshold;
-//            else
-//                past_intervals[j] = log1p(past_interval);
-//        }
-//        for (; j < LR::max_n_past_timestamps; j++)
-//            past_intervals[j] = log1p_threshold;
-//
-//        double future_interval = 0;
-//        for (j = 0; j < LR::max_n_past_timestamps; j++)
-//            future_interval += weights[j] * past_intervals[j];
-//        if (objective == object_hit_rate)
-//            future_interval += log1p(meta._size);
-//
-//        uint8_t oldest_idx = (meta._past_timestamp_idx - 1)%LR::max_n_past_timestamps;
-//        uint64_t past_timestamp = meta._past_timestamps[oldest_idx];
-//
-//
-//        if (!i || future_interval > max_future_interval ||
-//                (future_interval == max_future_interval && (past_timestamp < min_past_timestamp))) {
-//            max_future_interval = future_interval;
-//            max_key = meta._key;
-//            max_pos = pos;
-//            min_past_timestamp = past_timestamp;
-//        }
+    double worst_score;
+    uint64_t worst_key;
+    uint32_t worst_pos;
+    uint64_t min_past_timestamp;
 
-        //statistics
-//        double diff = future_interval+bias - log1p(meta._future_timestamp-t);
-//        mean_diff = 0.99*mean_diff + 0.01*abs(diff);
-//        cerr<<mean_diff<<endl;
-//        if (!(tmp_i%100000)) {
-//            cerr<<past_timestamps.size()<<endl;
-//            ++tmp_i;
-//
-//        }
-//
-//    }
+    uint n_sample = min(sample_rate, (uint32_t) meta_holder[0].size());
 
-//    return {max_key, max_pos};
+    for (uint32_t i = 0; i < n_sample; i++) {
+        uint32_t pos = (i + rand_idx) % meta_holder[0].size();
+        auto &meta = meta_holder[0][pos];
+        //fill in past_interval
+        double score = 0;
+        int8_t j = 0;
+        auto past_intervals = vector<double>(LR::max_n_past_timestamps);
+        for (; j < meta._past_timestamp_idx && j < LR::max_n_past_timestamps; ++j) {
+            uint8_t past_timestamp_idx = (meta._past_timestamp_idx - 1 - j) % LR::max_n_past_timestamps;
+            uint64_t past_interval = t - meta._past_timestamps[past_timestamp_idx];
+            if (past_interval < LR::forget_window)
+                score += log1p(past_interval) * weights[j];
+        }
+        for (; j < LR::max_n_past_timestamps; ++j)
+            score += LR::log1p_forget_window * weights[j];
+        if (objective == object_hit_rate)
+            score += log1p(meta._size);
+
+        uint8_t oldest_idx = (meta._past_timestamp_idx - 1) % LR::max_n_past_timestamps;
+        uint64_t past_timestamp = meta._past_timestamps[oldest_idx];
+
+        if (!i || score > worst_score || (score == worst_score && (past_timestamp < min_past_timestamp))) {
+            worst_score = score;
+            worst_key = meta._key;
+            worst_pos = pos;
+            min_past_timestamp = past_timestamp;
+        }
+    }
+
+    return {worst_key, worst_pos};
 }
 
 void LRCache::evict(const uint64_t & t) {
