@@ -17,6 +17,8 @@ using namespace std;
 
 namespace LR {
     uint8_t max_n_past_timestamps = 4;
+    uint64_t forget_window = 10000000;
+    double log1p_forget_window = log1p(forget_window);
 }
 
 class LRMeta {
@@ -47,27 +49,30 @@ public:
 class LRPendingTrainingData {
 public:
     //past timestamp0 is in metadata
-    vector<uint64_t> past_distances;
+    vector<double > past_distances;
     uint64_t size;
 
     LRPendingTrainingData(const LRMeta & meta, const uint64_t & t) {
         size = meta._size;
         uint8_t n_past_timestamps = min(LR::max_n_past_timestamps, meta._past_timestamp_idx);
-        past_distances = vector<uint64_t >(n_past_timestamps);
         for (uint8_t i = 0; i < n_past_timestamps; ++i) {
             uint8_t past_timestamp_idx = static_cast<uint8_t>(meta._past_timestamp_idx - 1 - i)
                     % LR::max_n_past_timestamps;
-            past_distances[i] = t - meta._past_timestamps[past_timestamp_idx];
+            uint64_t past_distance = t - meta._past_timestamps[past_timestamp_idx];
+            if (past_distance < LR::forget_window)
+                past_distances.emplace_back(log1p(past_distance));
+            else
+                break;
         }
     }
 };
 
 class LRTrainingData {
 public:
-    vector<uint64_t > past_distances;
+    vector<double > past_distances;
     uint64_t size;
-    uint64_t future_distance;
-    LRTrainingData(const LRPendingTrainingData & pending, uint64_t & _future_distance) {
+    double future_distance;
+    LRTrainingData(const LRPendingTrainingData & pending, double & _future_distance) {
         size = pending.size;
         past_distances = pending.past_distances;
         future_distance = _future_distance;
@@ -89,9 +94,6 @@ public:
     // sample_size
     uint32_t sample_rate = 32;
     uint64_t training_sample_interval = 32;
-    // threshold
-    uint64_t forget_window = 10000000;
-    double log1p_forget_window = log1p(forget_window);
 
     double learning_rate = 0.0001;
     // omit bias sampling
@@ -129,8 +131,8 @@ public:
             } else if (it.first == "training_sample_interval") {
                 training_sample_interval = stoull(it.second);
             } else if (it.first == "forget_window") {
-                forget_window = stoull(it.second);
-                log1p_forget_window = std::log1p(forget_window);
+                LR::forget_window = stoull(it.second);
+                LR::log1p_forget_window = std::log1p(LR::forget_window);
             } else if (it.first == "learning_rate") {
                 learning_rate = stod(it.second);
             } else if (it.first == "max_n_past_timestamps") {

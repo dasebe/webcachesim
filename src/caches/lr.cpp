@@ -8,7 +8,28 @@
 
 
 void LRCache::train() {
-
+    if (weights.empty())
+        weights = vector<double >(LR::max_n_past_timestamps);
+    auto gradient_weights = vector<double >(LR::max_n_past_timestamps);
+    double gradient_bias = 0;
+    for (auto & training: training_data) {
+        double score = 0;
+        int i = 0;
+        for (; i < training.past_distances.size(); ++i)
+            score += weights[i] * training.past_distances[i];
+        for (; i < LR::max_n_past_timestamps; ++i)
+            score += weights[i] * LR::log1p_forget_window;
+        double diff = score + bias - training.future_distance;
+        i = 0;
+        for (; i < training.past_distances.size(); ++i)
+            gradient_weights[i] += diff * training.past_distances[i];
+        for (; i < LR::max_n_past_timestamps; ++i)
+            gradient_weights[i] += diff * LR::log1p_forget_window;
+        gradient_bias += diff;
+    }
+//    for (int i = 0; i < LR::max_n_past_timestamps; ++i)
+//        weights[i] -= learning_rate / batch_size * gradient_weights[i];
+//    bias -= learning_rate / batch_size * gradient_bias;
 }
 
 //void LRCache::try_train(uint64_t &t) {
@@ -154,178 +175,46 @@ void LRCache::train() {
 //    }
 //
 //}
-//
-//void LRCache::sample(uint64_t &t) {
-//    if (meta_holder[0].empty() || meta_holder[1].empty())
-//        return;
-//#ifdef LOG_SAMPLE_RATE
-//    bool log_flag = ((double) rand() / (RAND_MAX)) < LOG_SAMPLE_RATE;
-//#endif
-//
-//    //sample list 0
-//    {
-//        uint32_t rand_idx = _distribution(_generator) % meta_holder[0].size();
-//        uint n_sample = min( (uint) ceil((double) sample_rate*meta_holder[0].size()/(meta_holder[0].size()+meta_holder[1].size())),
-//                             (uint) meta_holder[0].size());
-//
-//        for (uint32_t i = 0; i < n_sample; i++) {
-//            uint32_t pos = (i + rand_idx) % meta_holder[0].size();
-//            auto &meta = meta_holder[0][pos];
-//
-//            //fill in past_interval
-//            uint8_t j = 0;
-//            auto past_intervals = vector<double >(LR::max_n_past_timestamps);
-//            for (j = 0; j < meta._past_timestamp_idx && j < LR::max_n_past_timestamps; ++j) {
-//                uint8_t past_timestamp_idx = (meta._past_timestamp_idx - 1 - j) % LR::max_n_past_timestamps;
-//                uint64_t past_interval = t - meta._past_timestamps[past_timestamp_idx];
-//                if (past_interval >= threshold)
-//                    past_intervals[j] = log1p_threshold;
-//                else
-//                    past_intervals[j] = log1p(past_interval);
-//            }
-//            for (; j < LR::max_n_past_timestamps; j++)
-//                past_intervals[j] = log1p_threshold;
-//
-//
-//            uint64_t known_future_interval;
-//            double log1p_known_future_interval;
-//            //known_future_interval < threshold
-//            if (meta._future_timestamp - t < threshold) {
-//                known_future_interval = meta._future_timestamp - t;
-//                log1p_known_future_interval = log1p(known_future_interval);
-//            }
-//            else {
-//                known_future_interval = threshold-1;
-//                log1p_known_future_interval = log1p_threshold;
-//            }
-//
-//#ifdef LOG_SAMPLE_RATE
-//            //print distribution
-//            if (log_flag) {
-//                cout << 0 <<" ";
-//                for (uint k = 0; k < LR::max_n_past_timestamps; ++k)
-//                    cout << past_intervals[k] << " ";
-//                cout << log1p_known_future_interval << endl;
-//            }
-//#endif
-//
-//            double score = 0;
-//            for (j = 0; j < LR::max_n_past_timestamps; j++)
-//                score += weights[j] * past_intervals[j];
-//
-//            //statistics
-//            double diff = score + bias - log1p_known_future_interval;
-//            mean_diff = 0.99 * mean_diff + 0.01 * abs(diff);
-//
-//            //update gradient
-//            auto gradient_window_idx = (t + known_future_interval) / gradient_window;
-//            auto bin_idx = known_future_interval / size_bin;
-//            if (gradient_window_idx >= pending_gradients.size())
-//                pending_gradients.resize(gradient_window_idx + 1);
-//            if (pending_gradients[gradient_window_idx].empty())
-//                pending_gradients[gradient_window_idx].resize(n_window_bins);
-//            auto &gradient = pending_gradients[gradient_window_idx][bin_idx];
-//            for (uint k = 0; k < LR::max_n_past_timestamps; ++k)
-//                gradient.weights[k] += diff * past_intervals[k];
-//            gradient.bias += diff;
-//            ++gradient.n_update;
-//        }
-//    }
-//
-////    cout<<n_out_window<<endl;
-//
-//    //sample list 1
-//    if (meta_holder[1].size()){
-//        uint32_t rand_idx = _distribution(_generator) % meta_holder[1].size();
-//        //sample less from list 1 as there are gc
-//        uint n_sample = min( (uint) floor( (double) sample_rate*meta_holder[1].size()/(meta_holder[0].size()+meta_holder[1].size())),
-//                             (uint) meta_holder[1].size());
-////        cout<<n_sample<<endl;
-//
-//        for (uint32_t i = 0; i < n_sample; i++) {
-//            //garbage collection
-//            while (meta_holder[1].size()) {
-//                uint32_t pos = (i + rand_idx) % meta_holder[1].size();
-//                auto &meta = meta_holder[1][pos];
-//                uint8_t oldest_idx = (meta._past_timestamp_idx - (uint8_t) 1)%LR::max_n_past_timestamps;
-//                uint64_t & past_timestamp = meta._past_timestamps[oldest_idx];
-//                if (past_timestamp + threshold < t) {
-//                    uint64_t & ekey = meta._key;
-//                    key_map.erase(ekey);
-//                    //evict
-//                    uint32_t tail1_pos = meta_holder[1].size()-1;
-//                    if (pos !=  tail1_pos) {
-//                        //swap tail
-//                        meta_holder[1][pos] = meta_holder[1][tail1_pos];
-//                        key_map.find(meta_holder[1][tail1_pos]._key)->second.second = pos;
-//                    }
-//                    meta_holder[1].pop_back();
-//                } else
-//                    break;
-//            }
-//            if (!meta_holder[1].size())
-//                break;
-//            uint32_t pos = (i + rand_idx) % meta_holder[1].size();
-//            auto &meta = meta_holder[1][pos];
-//            //fill in past_interval
-//            uint8_t j = 0;
-//            auto past_intervals = vector<double >(LR::max_n_past_timestamps);
-//            for (j = 0; j < meta._past_timestamp_idx && j < LR::max_n_past_timestamps; ++j) {
-//                uint8_t past_timestamp_idx = (meta._past_timestamp_idx - 1 - j) % LR::max_n_past_timestamps;
-//                uint64_t past_interval = t - meta._past_timestamps[past_timestamp_idx];
-//                if (past_interval >= threshold)
-//                    past_intervals[j] = log1p_threshold;
-//                else
-//                    past_intervals[j] = log1p(past_interval);
-//            }
-//            for (; j < LR::max_n_past_timestamps; j++)
-//                past_intervals[j] = log1p_threshold;
-//
-//            uint64_t known_future_interval;
-//            double log1p_known_future_interval;
-//            if (meta._future_timestamp - t < threshold) {
-//                known_future_interval = meta._future_timestamp - t;
-//                log1p_known_future_interval = log1p(known_future_interval);
-//            }
-//            else {
-//                known_future_interval = threshold - 1;
-//                log1p_known_future_interval = log1p_threshold;
-//            }
-//
-//#ifdef LOG_SAMPLE_RATE
-//            //print distribution
-//            if (log_flag) {
-//                cout << 1 <<" ";
-//                for (uint k = 0; k < LR::max_n_past_timestamps; ++k)
-//                    cout << past_intervals[k] << " ";
-//                cout << log1p_known_future_interval << endl;
-//            }
-//#endif
-//            double score = 0;
-//            for (j = 0; j < LR::max_n_past_timestamps; j++)
-//                score += weights[j] * past_intervals[j];
-//
-//            //statistics
-//            double diff = score + bias - log1p_known_future_interval;
-//            mean_diff = 0.99 * mean_diff + 0.01 * abs(diff);
-//
-//
-//            //update gradient
-//            auto gradient_window_idx = (t + known_future_interval) / gradient_window;
-//            auto bin_idx = known_future_interval / size_bin;
-//            if (gradient_window_idx >= pending_gradients.size())
-//                pending_gradients.resize(gradient_window_idx + 1);
-//            if (pending_gradients[gradient_window_idx].empty())
-//                pending_gradients[gradient_window_idx].resize(n_window_bins);
-//            auto &gradient = pending_gradients[gradient_window_idx][bin_idx];
-//            for (uint k = 0; k < LR::max_n_past_timestamps; ++k)
-//                gradient.weights[k] += diff * past_intervals[k];
-//            gradient.bias += diff;
-//            ++gradient.n_update;
-//        }
-//    }
-//}
-//
+
+void LRCache::sample(uint64_t &t) {
+    // warmup not finish
+    if (meta_holder[0].empty() || meta_holder[1].empty())
+        return;
+#ifdef LOG_SAMPLE_RATE
+    bool log_flag = ((double) rand() / (RAND_MAX)) < LOG_SAMPLE_RATE;
+#endif
+    auto n_l0 = static_cast<uint32_t>(meta_holder[0].size());
+    auto n_l1 = static_cast<uint32_t>(meta_holder[1].size());
+    auto rand_idx = _distribution(_generator);
+    // at least sample 1 from the list, at most size of the list
+    auto n_sample_l0 = min(max(uint32_t (sample_rate*n_l0/(n_l0+n_l1)), (uint32_t) 1), n_l0);
+    auto n_sample_l1 = min(max(sample_rate - n_sample_l0, (uint32_t) 1), n_l1);
+
+    //sample list 0
+    {
+        for (uint32_t i = 0; i < n_sample_l0; i++) {
+            uint32_t pos = (uint32_t) (i + rand_idx) % n_l0;
+            auto &meta = meta_holder[0][pos];
+            uint8_t last_timestamp_idx = (meta._past_timestamp_idx - static_cast<uint8_t>(1))% LR::max_n_past_timestamps;
+            uint64_t last_timestamp = meta._past_timestamps[last_timestamp_idx];
+            uint64_t forget_timestamp = last_timestamp + LR::forget_window;
+            pending_training_data.insert({forget_timestamp, LRPendingTrainingData(meta, t)});
+        }
+    }
+
+    //sample list 1
+    {
+        for (uint32_t i = 0; i < n_sample_l1; i++) {
+            uint32_t pos = (uint32_t) (i + rand_idx) % n_l1;
+            auto &meta = meta_holder[1][pos];
+            uint8_t last_timestamp_idx = (meta._past_timestamp_idx - static_cast<uint8_t>(1))% LR::max_n_past_timestamps;
+            uint64_t last_timestamp = meta._past_timestamps[last_timestamp_idx];
+            uint64_t forget_timestamp = last_timestamp + LR::forget_window;
+            pending_training_data.insert({forget_timestamp, LRPendingTrainingData(meta, t)});
+        }
+    }
+}
+
 //void LRCache::sample_without_update(uint64_t &t) {
 //    if (meta_holder[0].empty() || meta_holder[1].empty())
 //        return;
@@ -407,7 +296,7 @@ bool LRCache::lookup(SimpleRequest &req) {
         assert(meta._key == req._id);
         uint8_t last_timestamp_idx = (meta._past_timestamp_idx - static_cast<uint8_t>(1))% LR::max_n_past_timestamps;
         uint64_t last_timestamp = meta._past_timestamps[last_timestamp_idx];
-        uint64_t forget_timestamp = last_timestamp + forget_window;
+        uint64_t forget_timestamp = last_timestamp + LR::forget_window;
         //if the key in key_map, it must also in forget table
         auto forget_it = forget_table.find(forget_timestamp);
         assert(forget_it != forget_table.end());
@@ -415,7 +304,7 @@ bool LRCache::lookup(SimpleRequest &req) {
         auto pending_range = pending_training_data.equal_range(forget_timestamp);
         for (auto pending_it = pending_range.first; pending_it != pending_range.second;) {
             //mature
-            auto future_distance = req._t - last_timestamp;
+            auto future_distance = log1p(req._t - last_timestamp);
             training_data.emplace_back(pending_it->second, future_distance);
             //training
             if (training_data.size() == batch_size) {
@@ -426,7 +315,7 @@ bool LRCache::lookup(SimpleRequest &req) {
         }
         //remove this entry
         forget_table.erase(forget_it);
-        forget_table.insert({req._t+forget_window, req._id});
+        forget_table.insert({req._t+LR::forget_window, req._id});
         assert(key_map.size() == forget_table.size());
 
         //make this update after update training, otherwise the last timestamp will change
@@ -438,8 +327,8 @@ bool LRCache::lookup(SimpleRequest &req) {
     }
     forget(req._t);
     //sampling
-//    if (!(req._t % training_sample_interval))
-//        sample(req._t);
+    if (!(req._t % training_sample_interval))
+        sample(req._t);
     return ret;
 }
 
@@ -453,6 +342,20 @@ void LRCache::forget(uint64_t &t) {
             cerr << "warning: force evicting object passing forget window" << endl;
             auto &pos = meta_it->second.second;
             auto &meta = meta_holder[0][pos];
+            //timeout mature
+            auto pending_range = pending_training_data.equal_range(t);
+            for (auto pending_it = pending_range.first; pending_it != pending_range.second;) {
+                //mature
+                auto future_distance = LR::log1p_forget_window;
+                training_data.emplace_back(pending_it->second, future_distance);
+                //training
+                if (training_data.size() == batch_size) {
+                    train();
+                    training_data.clear();
+                }
+                pending_it = pending_training_data.erase(pending_it);
+            }
+
             assert(meta._key == key);
             key_map.erase(key);
             _currentSize -= meta._size;
@@ -464,6 +367,7 @@ void LRCache::forget(uint64_t &t) {
                 key_map.find(meta_holder[0][tail0_pos]._key)->second.second = pos;
             }
             meta_holder[0].pop_back();
+            //forget
             forget_table.erase(forget_it);
             assert(key_map.size() == forget_table.size());
         } else {
@@ -473,7 +377,7 @@ void LRCache::forget(uint64_t &t) {
             auto pending_range = pending_training_data.equal_range(t);
             for (auto pending_it = pending_range.first; pending_it != pending_range.second;) {
                 //mature
-                auto future_distance = forget_window;
+                auto future_distance = LR::log1p_forget_window;
                 training_data.emplace_back(pending_it->second, future_distance);
                 //training
                 if (training_data.size() == batch_size) {
@@ -483,9 +387,8 @@ void LRCache::forget(uint64_t &t) {
                 pending_it = pending_training_data.erase(pending_it);
             }
 
-            uint64_t &ekey = meta._key;
-            key_map.erase(ekey);
             assert(meta._key == key);
+            key_map.erase(key);
             //evict
             uint32_t tail1_pos = meta_holder[1].size() - 1;
             if (pos != tail1_pos) {
@@ -499,7 +402,6 @@ void LRCache::forget(uint64_t &t) {
             assert(key_map.size() == forget_table.size());
         }
     }
-
 }
 
 //
@@ -543,7 +445,7 @@ void LRCache::admit(SimpleRequest &req) {
         key_map.insert({req._id, {0, (uint32_t) meta_holder[0].size()}});
         meta_holder[0].emplace_back(req._id, req._size, req._t);
         _currentSize += size;
-        forget_table.insert({req._t + forget_window, req._id});
+        forget_table.insert({req._t + LR::forget_window, req._id});
         assert(key_map.size() == forget_table.size());
         if (_currentSize <= _cacheSize)
             return;
