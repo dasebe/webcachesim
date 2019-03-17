@@ -138,7 +138,7 @@ public:
             } else if (it.first == "max_n_past_timestamps") {
                 LR::max_n_past_timestamps = (uint8_t) stoi(it.second);
             } else if (it.first == "batch_size") {
-                uint64_t batch_size = stoull(it.second);
+                batch_size = stoull(it.second);
 //            } else if (it.first == "n_window_bins") {
 //                n_window_bins = stoull(it.second);
 //            } else if (it.first == "alpha") {
