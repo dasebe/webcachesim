@@ -18,6 +18,7 @@ using namespace std;
 
 namespace GDBT {
     uint8_t max_n_past_timestamps = 32;
+    uint8_t max_n_past_distances = 31;
     uint8_t base_edwt_window = 10;
     uint8_t n_edwt_feature = 10;
     vector<uint32_t > edwt_windows;
@@ -43,7 +44,7 @@ public:
         _key = key;
         _size = size;
         _past_timestamp = past_timestamp;
-        _past_distances = vector<uint64_t >(GDBT::max_n_past_timestamps-1);
+        _past_distances = vector<uint64_t >(GDBT::max_n_past_distances);
         _past_distance_idx = (uint8_t) 0;
         _extra_features = extra_features;
         _edwt = vector<double >(GDBT::n_edwt_feature, 1);
@@ -52,10 +53,10 @@ public:
     inline void update(const uint64_t &past_timestamp) {
         //distance
         uint64_t _distance = past_timestamp - _past_timestamp;
-        _past_distances[_past_distance_idx%GDBT::max_n_past_timestamps] = _distance;
+        _past_distances[_past_distance_idx%GDBT::max_n_past_distances] = _distance;
         _past_distance_idx = _past_distance_idx + (uint8_t) 1;
-        if (_past_distance_idx >= GDBT::max_n_past_timestamps * 2)
-            _past_distance_idx -= GDBT::max_n_past_timestamps;
+        if (_past_distance_idx >= GDBT::max_n_past_distances * 2)
+            _past_distance_idx -= GDBT::max_n_past_distances;
         //timestamp
         _past_timestamp = past_timestamp;
         for (uint8_t i = 0; i < GDBT::n_edwt_feature; ++i) {
@@ -76,8 +77,8 @@ public:
         past_distances.reserve(GDBT::max_n_past_timestamps);
         past_distances.emplace_back(t - meta._past_timestamp);
         uint64_t this_past_distance = 0;
-        for (int j = 0; j < meta._past_distance_idx && j < GDBT::max_n_past_timestamps-1; ++j) {
-            uint8_t past_distance_idx = (meta._past_distance_idx - 1 - j) % GDBT::max_n_past_timestamps;
+        for (int j = 0; j < meta._past_distance_idx && j < GDBT::max_n_past_distances; ++j) {
+            uint8_t past_distance_idx = (meta._past_distance_idx - 1 - j) % GDBT::max_n_past_distances;
             const uint64_t & past_distance = meta._past_distances[past_distance_idx];
             this_past_distance += past_distance;
             if (this_past_distance < GDBT::forget_window) {
@@ -233,6 +234,7 @@ public:
             }
         }
 
+        GDBT::max_n_past_distances = GDBT::max_n_past_timestamps-1;
         //init
         GDBT::edwt_windows = vector<uint32_t >(GDBT::n_edwt_feature);
         for (uint8_t i = 0; i < GDBT::n_edwt_feature; ++i) {

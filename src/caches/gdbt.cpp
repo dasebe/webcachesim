@@ -350,17 +350,17 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
 
         uint8_t j = 0;
         uint64_t this_past_distance = 0;
-        for (j = 0; j < meta._past_distance_idx && j < GDBT::max_n_past_timestamps-1; ++j) {
-            uint8_t past_distance_idx = (meta._past_distance_idx - 1 - j) % GDBT::max_n_past_timestamps;
+        for (j = 0; j < meta._past_distance_idx && j < GDBT::max_n_past_distances; ++j) {
+            uint8_t past_distance_idx = (meta._past_distance_idx - 1 - j) % GDBT::max_n_past_distances;
             uint64_t & past_distance = meta._past_distances[past_distance_idx];
             this_past_distance += past_distance;
             if (this_past_distance < GDBT::forget_window) {
                 indices.push_back(j+1);
                 data.push_back(past_distance);
                 ++counter;
-            }
+            } else
+                break;
         }
-        counter += j;
 
         indices.push_back(GDBT::max_n_past_timestamps);
         data.push_back(meta._size);
