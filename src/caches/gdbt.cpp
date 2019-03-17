@@ -184,15 +184,13 @@ bool GDBTCache::lookup(SimpleRequest &req) {
         if (!pending.empty()) {
             //mature
             float future_distance = req._t - last_timestamp;
-            if (req._t > GDBT::forget_window) {
-                for (auto & pending_it: pending) {
-                    //don't use label within the first forget window because the data is not static
-                    training_data.append(pending_it, future_distance);
-                    //training
-                    if (training_data.labels.size() == batch_size) {
-                        train();
-                        training_data.clear();
-                    }
+            for (auto & pending_it: pending) {
+                //don't use label within the first forget window because the data is not static
+                training_data.append(pending_it, future_distance);
+                //training
+                if (training_data.labels.size() == batch_size) {
+                    train();
+                    training_data.clear();
                 }
             }
             pending.clear();
