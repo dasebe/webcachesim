@@ -180,6 +180,8 @@ public:
             {"learning_rate",              "0.1"},
     };
 
+    unordered_map<string, string> GDBT_inference_params;
+
     double training_error = 0;
     double inference_error = 0;
 
@@ -251,6 +253,7 @@ public:
             }
             GDBT_train_params["categorical_feature"] = categorical_feature;
         }
+        GDBT_inference_params = GDBT_train_params;
     }
 
     bool lookup(SimpleRequest& req);

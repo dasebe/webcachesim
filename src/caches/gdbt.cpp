@@ -402,7 +402,7 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
                               n_feature,  //remove future t
                               C_API_PREDICT_NORMAL,
                               0,
-                              GDBT_train_params,
+                              GDBT_inference_params,
                               &len,
                               result.data());
     if (objective == object_hit_rate)
