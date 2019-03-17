@@ -137,7 +137,7 @@ void GDBTCache::sample(uint64_t &t) {
             auto &meta = meta_holder[0][pos];
             uint64_t last_timestamp = meta._past_timestamp;
             uint64_t forget_timestamp = last_timestamp + GDBT::forget_window;
-            pending_training_data.insert({forget_timestamp, GDBTPendingTrainingData(meta, t)});
+            pending_training_data[forget_timestamp%GDBT::s_forget_table].emplace_back(GDBTPendingTrainingData(meta, t));
         }
     }
 
@@ -148,7 +148,7 @@ void GDBTCache::sample(uint64_t &t) {
             auto &meta = meta_holder[1][pos];
             uint64_t last_timestamp = meta._past_timestamp;
             uint64_t forget_timestamp = last_timestamp + GDBT::forget_window;
-            pending_training_data.insert({forget_timestamp, GDBTPendingTrainingData(meta, t)});
+            pending_training_data[forget_timestamp%GDBT::s_forget_table].emplace_back(GDBTPendingTrainingData(meta, t));
         }
     }
 }
@@ -159,7 +159,6 @@ bool GDBTCache::lookup(SimpleRequest &req) {
     if (!(req._t%1000000)) {
         cerr << "cache size: "<<_currentSize<<"/"<<_cacheSize<<endl;
         cerr << "n_metadata: "<<key_map.size()<<endl;
-        assert(key_map.size() == forget_table.size());
         cerr << "n_pending: "<< pending_training_data.size() <<endl;
         cerr << "n_training: "<<training_data.labels.size()<<endl;
         cerr << "training loss: " << training_loss << endl;
@@ -170,34 +169,37 @@ bool GDBTCache::lookup(SimpleRequest &req) {
     auto it = key_map.find(req._id);
     if (it != key_map.end()) {
         //update past timestamps
-        bool & list_idx = it->second.first;
-        uint32_t & pos_idx = it->second.second;
-        GDBTMeta & meta = meta_holder[list_idx][pos_idx];
+        bool &list_idx = it->second.first;
+        uint32_t &pos_idx = it->second.second;
+        GDBTMeta &meta = meta_holder[list_idx][pos_idx];
         assert(meta._key == req._id);
         uint64_t last_timestamp = meta._past_timestamp;
         uint64_t forget_timestamp = last_timestamp + GDBT::forget_window;
         //if the key in key_map, it must also in forget table
-        auto forget_it = forget_table.find(forget_timestamp);
-        assert(forget_it != forget_table.end());
+        //todo: key never 0 because we want to use forget table 0 means None
+        auto &forget_key = forget_table[forget_timestamp % GDBT::s_forget_table];
+        assert(forget_key);
         //re-request
-        auto pending_range = pending_training_data.equal_range(forget_timestamp);
-        for (auto pending_it = pending_range.first; pending_it != pending_range.second;) {
+        auto &pending = pending_training_data[forget_timestamp % GDBT::s_forget_table];
+        if (!pending.empty()) {
             //mature
             float future_distance = req._t - last_timestamp;
-            //don't use label within the first forget window because the data is not static
-            if (req._t > GDBT::forget_window)
-                training_data.append(pending_it->second, future_distance);
-            //training
-            if (training_data.labels.size() == batch_size) {
-                train();
-                training_data.clear();
+            if (req._t > GDBT::forget_window) {
+                for (auto & pending_it: pending) {
+                    //don't use label within the first forget window because the data is not static
+                    training_data.append(pending_it, future_distance);
+                    //training
+                    if (training_data.labels.size() == batch_size) {
+                        train();
+                        training_data.clear();
+                    }
+                }
             }
-            pending_it = pending_training_data.erase(pending_it);
+            pending.clear();
         }
         //remove this entry
-        forget_table.erase(forget_it);
-        forget_table.insert({req._t+GDBT::forget_window, req._id});
-        assert(key_map.size() == forget_table.size());
+        forget_table[forget_timestamp%GDBT::s_forget_table] = 0;
+        forget_table[(req._t+GDBT::forget_window)%GDBT::s_forget_table] = req._id+1;
 
         //make this update after update training, otherwise the last timestamp will change
         meta.update(req._t);
@@ -217,9 +219,9 @@ bool GDBTCache::lookup(SimpleRequest &req) {
 
 void GDBTCache::forget(uint64_t &t) {
     //remove item from forget table, which is not going to be affect from update
-    auto forget_it = forget_table.find(t);
-    if (forget_it != forget_table.end()) {
-        auto &key = forget_it->second;
+    auto & _forget_key = forget_table[t%GDBT::s_forget_table];
+    if (_forget_key) {
+        auto key = _forget_key - 1;
         auto meta_it = key_map.find(key);
         if (!meta_it->second.first) {
             if (booster && t > GDBT::forget_window*1.5)
@@ -237,9 +239,6 @@ void GDBTCache::forget(uint64_t &t) {
                 key_map.find(meta_holder[0][tail0_pos]._key)->second.second = pos;
             }
             meta_holder[0].pop_back();
-            //forget
-            forget_table.erase(forget_it);
-            assert(key_map.size() == forget_table.size());
         } else {
             auto &pos = meta_it->second.second;
             auto &meta = meta_holder[1][pos];
@@ -253,22 +252,23 @@ void GDBTCache::forget(uint64_t &t) {
                 key_map.find(meta_holder[1][tail1_pos]._key)->second.second = pos;
             }
             meta_holder[1].pop_back();
-            //forget
-            forget_table.erase(forget_it);
-            assert(key_map.size() == forget_table.size());
         }
+        forget_table[t%GDBT::s_forget_table] = 0;
         //timeout mature
-        auto pending_range = pending_training_data.equal_range(t);
-        for (auto pending_it = pending_range.first; pending_it != pending_range.second;) {
+        auto &pending = pending_training_data[t % GDBT::s_forget_table];
+        if (!pending.empty()) {
             //mature
             float future_distance = GDBT::forget_window;
-            training_data.append(pending_it->second, future_distance);
-            //training
-            if (training_data.labels.size() == batch_size) {
-                train();
-                training_data.clear();
+            for (auto & pending_it: pending) {
+                //don't use label within the first forget window because the data is not static
+                training_data.append(pending_it, future_distance);
+                //training
+                if (training_data.labels.size() == batch_size) {
+                    train();
+                    training_data.clear();
+                }
             }
-            pending_it = pending_training_data.erase(pending_it);
+            pending.clear();
         }
     }
 }
@@ -287,8 +287,7 @@ void GDBTCache::admit(SimpleRequest &req) {
         key_map.insert({req._id, {0, (uint32_t) meta_holder[0].size()}});
         meta_holder[0].emplace_back(req._id, req._size, req._t, req._extra_features);
         _currentSize += size;
-        forget_table.insert({req._t + GDBT::forget_window, req._id});
-        assert(key_map.size() == forget_table.size());
+        forget_table[(req._t + GDBT::forget_window)%GDBT::s_forget_table] = req._id+1;
         if (_currentSize <= _cacheSize)
             return;
     } else if (size + _currentSize <= _cacheSize){

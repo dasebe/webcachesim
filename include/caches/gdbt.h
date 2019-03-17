@@ -25,6 +25,7 @@ namespace GDBT {
     vector<double > hash_edwt;
     uint32_t max_hash_edwt_idx;
     uint64_t forget_window = 10000000;
+    uint64_t s_forget_table = forget_window + 1;
     uint64_t n_extra_fields = 0;
 }
 
@@ -152,9 +153,9 @@ public:
     unordered_map<uint64_t, pair<bool, uint32_t>> key_map;
     vector<GDBTMeta> meta_holder[2];
 
-    unordered_map<uint64_t, uint64_t> forget_table;
+    vector<uint64_t> forget_table;
     //one object can be sample multiple times
-    unordered_multimap<uint64_t, GDBTPendingTrainingData> pending_training_data;
+    vector<vector<GDBTPendingTrainingData>> pending_training_data;
     GDBTTrainingData training_data;
 
     // sample_size
@@ -163,7 +164,6 @@ public:
 
     uint64_t batch_size = 100000;
     uint64_t n_feature;
-    uint64_t num_threads = 1;
     double training_loss = 0;
 
     BoosterHandle booster = nullptr;
@@ -184,7 +184,6 @@ public:
     unordered_map<string, string> GDBT_inference_params;
 
     double training_error = 0;
-    double inference_error = 0;
 
     enum ObjectiveT: uint8_t {byte_hit_rate=0, object_hit_rate=1};
     ObjectiveT objective = byte_hit_rate;
@@ -234,6 +233,9 @@ public:
             }
         }
 
+        GDBT::s_forget_table = GDBT::forget_window+1;
+        forget_table.resize(GDBT::s_forget_table);
+        pending_training_data.resize(GDBT::s_forget_table);
         GDBT::max_n_past_distances = GDBT::max_n_past_timestamps-1;
         //init
         GDBT::edwt_windows = vector<uint32_t >(GDBT::n_edwt_feature);
