@@ -13,7 +13,6 @@
 #include <cmath>
 #include <LightGBM/c_api.h>
 #include <assert.h>
-#include <forward_list>
 
 using namespace std;
 
@@ -33,8 +32,9 @@ class GDBTMeta {
 public:
     uint64_t _key;
     uint64_t _size;
+    uint8_t _past_distance_idx;
     uint64_t _past_timestamp;
-    forward_list<uint64_t> _past_distances;
+    vector<uint64_t> _past_distances;
     vector<uint64_t> _extra_features;
     vector<double > _edwt;
 
@@ -43,6 +43,8 @@ public:
         _key = key;
         _size = size;
         _past_timestamp = past_timestamp;
+        _past_distances = vector<uint64_t >(GDBT::max_n_past_timestamps-1);
+        _past_distance_idx = (uint8_t) 0;
         _extra_features = extra_features;
         _edwt = vector<double >(GDBT::n_edwt_feature, 1);
     }
@@ -50,24 +52,10 @@ public:
     inline void update(const uint64_t &past_timestamp) {
         //distance
         uint64_t _distance = past_timestamp - _past_timestamp;
-        _past_distances.emplace_front(_distance);
-        int counter = 1;
-        uint64_t current_distance = _distance;
-        for (auto it = _past_distances.begin(); it != _past_distances.end(); ++it) {
-            //restrict length
-            if (counter == GDBT::max_n_past_timestamps-1 && next(it) != _past_distances.end()) {
-                _past_distances.erase_after(it, _past_distances.end());
-                break;
-            }
-            if (next(it) != _past_distances.end()) {
-                if (*next(it)+current_distance > GDBT::forget_window) {
-                    _past_distances.erase_after(it, _past_distances.end());
-                    break;
-                }
-                current_distance += *next(it);
-            }
-            ++counter;
-        }
+        _past_distances[_past_distance_idx%GDBT::max_n_past_timestamps] = _distance;
+        _past_distance_idx = _past_distance_idx + (uint8_t) 1;
+        if (_past_distance_idx >= GDBT::max_n_past_timestamps * 2)
+            _past_distance_idx -= GDBT::max_n_past_timestamps;
         //timestamp
         _past_timestamp = past_timestamp;
         for (uint8_t i = 0; i < GDBT::n_edwt_feature; ++i) {
@@ -79,14 +67,24 @@ public:
 
 class GDBTPendingTrainingData {
 public:
-    forward_list<uint64_t > past_distances;
+    vector<uint64_t > past_distances;
     uint64_t size;
     vector<uint64_t > extra_features;
     vector<double > edwt;
     GDBTPendingTrainingData(const GDBTMeta& meta, const uint64_t & t) {
         size = meta._size;
-        past_distances = meta._past_distances;
-        past_distances.emplace_front(t - meta._past_timestamp);
+        past_distances.reserve(GDBT::max_n_past_timestamps);
+        past_distances.emplace_back(t - meta._past_timestamp);
+        uint64_t this_past_distance = 0;
+        for (int j = 0; j < meta._past_distance_idx && j < GDBT::max_n_past_timestamps-1; ++j) {
+            uint8_t past_distance_idx = (meta._past_distance_idx - 1 - j) % GDBT::max_n_past_timestamps;
+            const uint64_t & past_distance = meta._past_distances[past_distance_idx];
+            this_past_distance += past_distance;
+            if (this_past_distance < GDBT::forget_window) {
+                past_distances.emplace_back(past_distance);
+            } else
+                break;
+        }
         extra_features = meta._extra_features;
         for (int k = 0; k < GDBT::n_edwt_feature; ++k) {
             uint32_t _distance_idx = min(uint32_t (t-meta._past_timestamp) / GDBT::edwt_windows[k],
@@ -104,12 +102,14 @@ public:
     vector<double> data;
     void append(const GDBTPendingTrainingData& pending, float & future_distance) {
         int32_t counter = indptr.back();
-        int i = 0;
-        for (auto it = pending.past_distances.begin(); it != pending.past_distances.end(); ++it) {
-            indices.emplace_back(i++);
-            data.emplace_back(*it);
+        auto this_data_size = pending.past_distances.size();
+        indices.reserve(indices.size() + this_data_size);
+        data.reserve(data.size() + this_data_size);
+        for (int i = 0; i < this_data_size; ++i) {
+            indices.emplace_back(i);
+            data.emplace_back(pending.past_distances[i]);
         }
-        counter += i;
+        counter += this_data_size;
 
         indices.emplace_back(GDBT::max_n_past_timestamps);
         data.push_back(pending.size);
@@ -122,7 +122,7 @@ public:
         counter += GDBT::n_extra_fields;
 
         indices.push_back(GDBT::max_n_past_timestamps+GDBT::n_extra_fields+1);
-        data.push_back(i);
+        data.push_back(this_data_size);
         ++counter;
 
         for (int k = 0; k < GDBT::n_edwt_feature; ++k) {

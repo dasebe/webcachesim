@@ -348,10 +348,17 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
         ++counter;
         past_timestamps.emplace_back(meta._past_timestamp);
 
-        int j = 0;
-        for (auto it = meta._past_distances.begin(); it != meta._past_distances.end(); ++it) {
-            indices.push_back(++j);
-            data.push_back(*it);
+        uint8_t j = 0;
+        uint64_t this_past_distance = 0;
+        for (j = 0; j < meta._past_distance_idx && j < GDBT::max_n_past_timestamps-1; ++j) {
+            uint8_t past_distance_idx = (meta._past_distance_idx - 1 - j) % GDBT::max_n_past_timestamps;
+            uint64_t & past_distance = meta._past_distances[past_distance_idx];
+            this_past_distance += past_distance;
+            if (this_past_distance < GDBT::forget_window) {
+                indices.push_back(j+1);
+                data.push_back(past_distance);
+                ++counter;
+            }
         }
         counter += j;
 
@@ -359,6 +366,7 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
         data.push_back(meta._size);
         sizes.push_back(meta._size);
         ++counter;
+
 
         for (uint k = 0; k < GDBT::n_extra_fields; ++k) {
             indices.push_back(GDBT::max_n_past_timestamps + k + 1);
@@ -380,6 +388,7 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
 
         //remove future t
         indptr.push_back(counter);
+
     }
     int64_t len;
     vector<double> result(n_sample);
