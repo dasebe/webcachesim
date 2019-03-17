@@ -16,6 +16,7 @@ public:
     IdType _id; // request object id
     uint64_t _size; // request size in bytes
     u_int64_t _t;
+    vector<uint64_t > _extra_features;
 
     SimpleRequest()
     {
@@ -26,22 +27,26 @@ public:
 
     // Create request
     SimpleRequest(IdType id, uint64_t size)
-        : _id(id),
-          _size(size)
-    {
+        : _id(id), _size(size) {
     }
 
-    SimpleRequest(IdType id, uint64_t size, uint64_t t): _id(id), _size(size), _t(t) {};
+    SimpleRequest(IdType id, uint64_t size, uint64_t t, vector<uint64_t >* extra_features = nullptr)
+        : _id(id), _size(size), _t(t) {
+        if (extra_features)
+            _extra_features = *extra_features;
+    };
 
     inline void reinit(IdType id, uint64_t size) {
         _id = id;
         _size = size;
     }
 
-    inline void reinit(IdType id, uint64_t size, uint64_t t) {
+    inline void reinit(IdType id, uint64_t size, uint64_t t, vector<uint64_t >* extra_features = nullptr) {
         _id = id;
         _size = size;
         _t = t;
+        if (extra_features)
+            _extra_features = *extra_features;
     }
 
     // Print request to stdout
@@ -66,7 +71,6 @@ class AnnotatedRequest: public SimpleRequest
 {
 public:
     u_int64_t _next_seq;
-    vector<uint64_t > _extra_features;
 
     // Create request
     AnnotatedRequest(IdType id, uint64_t size, uint64_t t, uint64_t next_seq,

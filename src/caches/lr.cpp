@@ -9,6 +9,7 @@ void LRCache::train() {
         weights = vector<double >(LR::max_n_past_timestamps);
     auto gradient_weights = vector<double >(LR::max_n_past_timestamps);
     double gradient_bias = 0;
+    double se = 0;
     for (auto & training: training_data) {
         double score = 0;
         int i = 0;
@@ -17,6 +18,7 @@ void LRCache::train() {
         for (; i < LR::max_n_past_timestamps; ++i)
             score += weights[i] * LR::log1p_forget_window;
         double diff = score + bias - training.future_distance;
+        se += diff*diff;
         i = 0;
         for (; i < training.past_distances.size(); ++i)
             gradient_weights[i] += diff * training.past_distances[i];
@@ -27,6 +29,8 @@ void LRCache::train() {
     for (int i = 0; i < LR::max_n_past_timestamps; ++i)
         weights[i] -= learning_rate / batch_size * gradient_weights[i];
     bias -= learning_rate / batch_size * gradient_bias;
+
+    training_loss = training_loss*0.99 + (se/batch_size)*0.01;
 }
 
 void LRCache::sample(uint64_t &t) {
@@ -76,7 +80,7 @@ bool LRCache::lookup(SimpleRequest &req) {
         assert(key_map.size() == forget_table.size());
         cerr << "n_pending: "<< pending_training_data.size() <<endl;
         cerr << "n_training: "<<training_data.size()<<endl;
-        cerr << "mean diff: " << mean_diff << endl;
+        cerr << "training loss: " << training_loss << endl;
         for (int j = 0; j < weights.size() ; ++j)
             cerr << "weight " << j << ": " << weights[j] << endl;
         cerr << "bias: " << bias << endl;
@@ -123,6 +127,7 @@ bool LRCache::lookup(SimpleRequest &req) {
     } else {
         ret = false;
     }
+
     forget(req._t);
     //sampling
     if (!(req._t % training_sample_interval))

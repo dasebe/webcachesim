@@ -101,7 +101,7 @@ public:
 
     vector<double > weights;
     double bias = 0;
-    double mean_diff=0;
+    double training_loss = 0;
 
     uint64_t batch_size = 10000;
 
@@ -150,17 +150,15 @@ public:
     }
 
     bool lookup(SimpleRequest& req);
-//    bool lookup_without_update(SimpleRequest &_req);
     void admit(SimpleRequest& req);
 
     /*
      * rank and evict from cache
      */
     void evict(const uint64_t & t);
-
-    void forget(uint64_t & t);
     void evict(SimpleRequest & req) {};
     void evict() {};
+    void forget(uint64_t & t);
     //sample, rank the 1st and return
     pair<uint64_t, uint32_t > rank(const uint64_t & t);
     void train();

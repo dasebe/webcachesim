@@ -45,7 +45,7 @@ wc200m.tr:
 #      - 768
 #      - 1024
   GDBT:
-    threshold:
+    forget_window:
       - 40000000
 #      - 60000000
 #      - 80000000

@@ -107,8 +107,8 @@ GDBT:
     - 64
   sample_rate:
     - 64
-  threshold: 10000000
-  gradient_window:
+  forget_window: 10000000
+  batch_size:
 #    - 50000
     - 100000
 #    - 200000
@@ -135,12 +135,12 @@ GDBT:
 #    - 0.01
   objective:
     - byte_hit_rate
-    - object_hit_rate
+#    - object_hit_rate
   n_edwt_feature:
     - 10
 #    - 12
 #    - 16
-  version: hashed_pow_lru
+  version: without_future
 Hyperbolic:
   sample_rate: 64
 LeCaR:
