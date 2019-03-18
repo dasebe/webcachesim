@@ -5,6 +5,87 @@ test.tr:
   LRUK:
     k: 3
 
+traceHK200m.tr:
+  cache_sizes:
+    - 536870912000
+  n_extra_fields: 0
+  n_warmup: 80000000
+  uni_size: 0
+  BeladySample:
+    threshold:
+      - 10000000
+      - 20000000
+      - 40000000
+      - 60000000
+      - 80000000
+      - 100000000
+    sample_rate:
+      - 64
+  GDBT:
+    forget_window:
+      - 40000000
+      - 60000000
+      - 80000000
+      - 100000000
+      - 120000000
+      - 140000000
+      - 160000000
+    batch_size:
+      - 50000
+      - 100000
+      - 200000
+      - 400000
+      - 1000000
+      - 2000000
+      - 4000000
+    sample_rate:
+      - 256
+#      - 512
+  LR:
+    forget_window: 40000000
+    sample_rate: 256
+
+traceUS200m.tr:
+  cache_sizes:
+    - 536870912000
+  n_extra_fields: 1
+  n_warmup: 80000000
+  uni_size: 0
+  BeladySample:
+    threshold:
+      - 10000000
+      - 20000000
+      - 40000000
+      - 60000000
+      - 80000000
+      - 100000000
+    sample_rate:
+      - 64
+  GDBT:
+    forget_window:
+      - 40000000
+      - 60000000
+      - 80000000
+      - 100000000
+      - 120000000
+      - 140000000
+      - 160000000
+    batch_size:
+      - 50000
+      - 100000
+      - 200000
+      - 400000
+      - 1000000
+      - 2000000
+      - 4000000
+    sample_rate:
+      - 256
+#      - 512
+  LR:
+    forget_window: 40000000
+    sample_rate: 256
+
+
 wc200m.tr:
   cache_sizes:
 #    - 24000000000
