@@ -131,25 +131,17 @@ void GDBTCache::sample(uint64_t &t) {
     auto n_sample_l1 = min(max(uint32_t (training_sample_interval - n_sample_l0), (uint32_t) 1), n_l1);
 
     //sample list 0
-    {
-        for (uint32_t i = 0; i < n_sample_l0; i++) {
-            uint32_t pos = (uint32_t) (i + rand_idx) % n_l0;
-            auto &meta = meta_holder[0][pos];
-            uint64_t last_timestamp = meta._past_timestamp;
-            uint64_t forget_timestamp = last_timestamp + GDBT::forget_window;
-            pending_training_data[forget_timestamp%GDBT::s_forget_table].emplace_back(t);
-        }
+    for (uint32_t i = 0; i < n_sample_l0; i++) {
+        uint32_t pos = (uint32_t) (i + rand_idx) % n_l0;
+        auto &meta = meta_holder[0][pos];
+        meta._sample_times.emplace_back(t);
     }
 
     //sample list 1
-    {
-        for (uint32_t i = 0; i < n_sample_l1; i++) {
-            uint32_t pos = (uint32_t) (i + rand_idx) % n_l1;
-            auto &meta = meta_holder[1][pos];
-            uint64_t last_timestamp = meta._past_timestamp;
-            uint64_t forget_timestamp = last_timestamp + GDBT::forget_window;
-            pending_training_data[forget_timestamp%GDBT::s_forget_table].emplace_back(t);
-        }
+    for (uint32_t i = 0; i < n_sample_l1; i++) {
+        uint32_t pos = (uint32_t) (i + rand_idx) % n_l1;
+        auto &meta = meta_holder[1][pos];
+        meta._sample_times.emplace_back(t);
     }
 }
 
@@ -179,20 +171,19 @@ bool GDBTCache::lookup(SimpleRequest &req) {
         auto &forget_key = forget_table[forget_timestamp % GDBT::s_forget_table];
         assert(forget_key);
         //re-request
-        auto &pending = pending_training_data[forget_timestamp % GDBT::s_forget_table];
-        if (!pending.empty()) {
+        if (!meta._sample_times.empty()) {
             //mature
             uint64_t future_distance = req._t - last_timestamp;
-            for (auto & pending_it: pending) {
+            for (auto & sample_time: meta._sample_times) {
                 //don't use label within the first forget window because the data is not static
-                training_data.emplace_back(meta, pending_it, future_distance);
+                training_data.emplace_back(meta, sample_time, future_distance);
                 //training
                 if (training_data.labels.size() == GDBT::batch_size) {
                     train();
                     training_data.clear();
                 }
             }
-            pending.clear();
+            meta._sample_times.clear();
         }
         //remove this entry
         forget_table[forget_timestamp%GDBT::s_forget_table] = 0;
@@ -225,20 +216,19 @@ void GDBTCache::forget(uint64_t &t) {
         auto &meta = meta_holder[meta_id][pos];
 
         //timeout mature
-        auto &pending = pending_training_data[t % GDBT::s_forget_table];
-        if (!pending.empty()) {
+        if (!meta._sample_times.empty()) {
             //mature
             uint64_t& future_distance = GDBT::forget_window;
-            for (auto & pending_it: pending) {
+            for (auto & sample_time: meta._sample_times) {
                 //don't use label within the first forget window because the data is not static
-                training_data.emplace_back(meta, pending_it, future_distance);
+                training_data.emplace_back(meta, sample_time, future_distance);
                 //training
                 if (training_data.labels.size() == GDBT::batch_size) {
                     train();
                     training_data.clear();
                 }
             }
-            pending.clear();
+            meta._sample_times.clear();
         }
 
         if (booster && !meta_id && t > GDBT::forget_window*1.5)

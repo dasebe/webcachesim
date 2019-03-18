@@ -41,6 +41,7 @@ public:
     vector<uint64_t> _past_distances;
     vector<uint64_t> _extra_features;
     vector<double > _edwt;
+    vector<uint64_t> _sample_times;
 
     GDBTMeta(const uint64_t & key, const uint64_t & size, const uint64_t & past_timestamp,
             const vector<uint64_t> & extra_features) {
@@ -147,8 +148,6 @@ public:
     vector<GDBTMeta> meta_holder[2];
 
     vector<uint64_t> forget_table;
-    //one object can be sample multiple times
-    vector<vector<uint64_t>> pending_training_data;
     GDBTTrainingData training_data;
 
     // sample_size
@@ -224,7 +223,6 @@ public:
 
         GDBT::s_forget_table = GDBT::forget_window+1;
         forget_table.resize(GDBT::s_forget_table);
-        pending_training_data.resize(GDBT::s_forget_table);
         GDBT::max_n_past_distances = GDBT::max_n_past_timestamps-1;
         //init
         GDBT::edwt_windows = vector<uint32_t >(GDBT::n_edwt_feature);
