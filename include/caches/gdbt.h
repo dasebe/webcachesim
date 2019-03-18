@@ -27,6 +27,8 @@ namespace GDBT {
     uint64_t forget_window = 10000000;
     uint64_t s_forget_table = forget_window + 1;
     uint64_t n_extra_fields = 0;
+    uint64_t batch_size = 100000;
+    uint64_t n_feature;
 }
 
 
@@ -67,73 +69,64 @@ public:
     }
 };
 
-class GDBTPendingTrainingData {
+class GDBTTrainingData {
 public:
-    vector<uint64_t > past_distances;
-    uint64_t size;
-    vector<uint64_t > extra_features;
-    vector<double > edwt;
-    GDBTPendingTrainingData(const GDBTMeta& meta, const uint64_t & t) {
-        size = meta._size;
-        past_distances.reserve(GDBT::max_n_past_timestamps);
-        past_distances.emplace_back(t - meta._past_timestamp);
+    vector<float> labels;
+    vector<int32_t> indptr;
+    vector<int32_t> indices;
+    vector<double> data;
+    GDBTTrainingData() {
+        labels.reserve(GDBT::batch_size);
+        indptr.reserve(GDBT::batch_size+1);
+        indptr.emplace_back(1);
+        indices.reserve(GDBT::batch_size*GDBT::n_feature);
+        data.reserve(GDBT::batch_size*GDBT::n_feature);
+    }
+
+    void emplace_back(const GDBTMeta &meta, uint64_t & sample_timestamp, uint64_t & future_interval) {
+        int32_t counter = indptr.back();
+
+        indices.emplace_back(0);
+        data.emplace_back(sample_timestamp-meta._past_timestamp);
+        ++counter;
+
         uint64_t this_past_distance = 0;
-        for (int j = 0; j < meta._past_distance_idx && j < GDBT::max_n_past_distances; ++j) {
+        int j = 0;
+        for (; j < meta._past_distance_idx && j < GDBT::max_n_past_distances; ++j) {
             uint8_t past_distance_idx = (meta._past_distance_idx - 1 - j) % GDBT::max_n_past_distances;
             const uint64_t & past_distance = meta._past_distances[past_distance_idx];
             this_past_distance += past_distance;
             if (this_past_distance < GDBT::forget_window) {
-                past_distances.emplace_back(past_distance);
+                indices.emplace_back(j+1);
+                data.emplace_back(past_distance);
             } else
                 break;
         }
-        extra_features = meta._extra_features;
-        for (int k = 0; k < GDBT::n_edwt_feature; ++k) {
-            uint32_t _distance_idx = min(uint32_t (t-meta._past_timestamp) / GDBT::edwt_windows[k],
-                                         GDBT::max_hash_edwt_idx);
-            edwt.emplace_back(meta._edwt[k]*GDBT::hash_edwt[_distance_idx]);
-        }
-    }
-};
-
-class GDBTTrainingData {
-public:
-    vector<float> labels;
-    vector<int32_t> indptr = {0};
-    vector<int32_t> indices;
-    vector<double> data;
-    void append(const GDBTPendingTrainingData& pending, float & future_distance) {
-        int32_t counter = indptr.back();
-        auto this_data_size = pending.past_distances.size();
-        indices.reserve(indices.size() + this_data_size);
-        data.reserve(data.size() + this_data_size);
-        for (int i = 0; i < this_data_size; ++i) {
-            indices.emplace_back(i);
-            data.emplace_back(pending.past_distances[i]);
-        }
-        counter += this_data_size;
+        counter += j;
 
         indices.emplace_back(GDBT::max_n_past_timestamps);
-        data.push_back(pending.size);
+        data.push_back(meta._size);
         ++counter;
 
         for (int k = 0; k < GDBT::n_extra_fields; ++k) {
             indices.push_back(GDBT::max_n_past_timestamps + k + 1);
-            data.push_back(pending.extra_features[k]);
+            data.push_back(meta._extra_features[k]);
         }
         counter += GDBT::n_extra_fields;
 
         indices.push_back(GDBT::max_n_past_timestamps+GDBT::n_extra_fields+1);
-        data.push_back(this_data_size);
+        data.push_back(j);
         ++counter;
 
         for (int k = 0; k < GDBT::n_edwt_feature; ++k) {
             indices.push_back(GDBT::max_n_past_timestamps + GDBT::n_extra_fields + 2 + k);
-            data.push_back(pending.edwt[k]);
+            uint32_t _distance_idx = min(uint32_t (sample_timestamp-meta._past_timestamp) / GDBT::edwt_windows[k],
+                                         GDBT::max_hash_edwt_idx);
+            data.push_back(meta._edwt[k]*GDBT::hash_edwt[_distance_idx]);
         }
-        counter += pending.edwt.size();
+        counter += GDBT::n_edwt_feature;
 
-        labels.push_back(future_distance);
+        labels.push_back(future_interval);
         indptr.push_back(counter);
     }
 
@@ -155,15 +148,13 @@ public:
 
     vector<uint64_t> forget_table;
     //one object can be sample multiple times
-    vector<vector<GDBTPendingTrainingData>> pending_training_data;
+    vector<vector<uint64_t>> pending_training_data;
     GDBTTrainingData training_data;
 
     // sample_size
     uint sample_rate = 32;
     uint64_t training_sample_interval = 1;
 
-    uint64_t batch_size = 100000;
-    uint64_t n_feature;
     double training_loss = 0;
 
     BoosterHandle booster = nullptr;
@@ -204,7 +195,7 @@ public:
             } else if (it.first == "max_n_past_timestamps") {
                 GDBT::max_n_past_timestamps = (uint8_t) stoi(it.second);
             } else if (it.first == "batch_size") {
-                batch_size = stoull(it.second);
+                GDBT::batch_size = stoull(it.second);
             } else if (it.first == "n_extra_fields") {
                 GDBT::n_extra_fields = stoull(it.second);
             } else if (it.first == "num_iterations") {
@@ -246,7 +237,7 @@ public:
             GDBT::hash_edwt[i] = pow(0.5, i);
 
         //interval, distances, size, extra_features, n_past_intervals, edwt
-        n_feature = GDBT::max_n_past_timestamps + GDBT::n_extra_fields + 2 + GDBT::n_edwt_feature;
+        GDBT::n_feature = GDBT::max_n_past_timestamps + GDBT::n_extra_fields + 2 + GDBT::n_edwt_feature;
         if (GDBT::n_extra_fields) {
             string categorical_feature = to_string(GDBT::max_n_past_timestamps+1);
             for (uint i = 0; i < GDBT::n_extra_fields-1; ++i) {
