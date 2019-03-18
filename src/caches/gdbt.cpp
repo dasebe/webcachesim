@@ -24,7 +24,7 @@ void GDBTCache::train() {
             C_API_DTYPE_FLOAT64,
             training_data.indptr.size(),
             training_data.data.size(),
-            n_feature,  //remove future t
+            GDBT::n_feature,  //remove future t
             GDBT_train_params,
             nullptr,
             &trainData);
@@ -56,7 +56,7 @@ void GDBTCache::train() {
                               C_API_DTYPE_FLOAT64,
                               training_data.indptr.size(),
                               training_data.data.size(),
-                              n_feature,  //remove future t
+                              GDBT::n_feature,  //remove future t
                               C_API_PREDICT_NORMAL,
                               0,
                               GDBT_train_params,
@@ -67,9 +67,9 @@ void GDBTCache::train() {
         auto diff = result[i] - training_data.labels[i];
         se += diff * diff;
     }
-    training_error = training_error * 0.99 + se/batch_size*0.01;
+    training_error = training_error * 0.99 + se/GDBT::batch_size*0.01;
 
-//    vector<double > importance(n_feature);
+//    vector<double > importance(GDBT::n_feature);
 //    LGBM_BoosterFeatureImportance(booster,
 //            0,
 //            0,
@@ -137,7 +137,7 @@ void GDBTCache::sample(uint64_t &t) {
             auto &meta = meta_holder[0][pos];
             uint64_t last_timestamp = meta._past_timestamp;
             uint64_t forget_timestamp = last_timestamp + GDBT::forget_window;
-            pending_training_data[forget_timestamp%GDBT::s_forget_table].emplace_back(GDBTPendingTrainingData(meta, t));
+            pending_training_data[forget_timestamp%GDBT::s_forget_table].emplace_back(t);
         }
     }
 
@@ -148,7 +148,7 @@ void GDBTCache::sample(uint64_t &t) {
             auto &meta = meta_holder[1][pos];
             uint64_t last_timestamp = meta._past_timestamp;
             uint64_t forget_timestamp = last_timestamp + GDBT::forget_window;
-            pending_training_data[forget_timestamp%GDBT::s_forget_table].emplace_back(GDBTPendingTrainingData(meta, t));
+            pending_training_data[forget_timestamp%GDBT::s_forget_table].emplace_back(t);
         }
     }
 }
@@ -159,7 +159,6 @@ bool GDBTCache::lookup(SimpleRequest &req) {
     if (!(req._t%1000000)) {
         cerr << "cache size: "<<_currentSize<<"/"<<_cacheSize<<endl;
         cerr << "n_metadata: "<<key_map.size()<<endl;
-        cerr << "n_pending: "<< pending_training_data.size() <<endl;
         cerr << "n_training: "<<training_data.labels.size()<<endl;
         cerr << "training loss: " << training_loss << endl;
     }
@@ -183,13 +182,13 @@ bool GDBTCache::lookup(SimpleRequest &req) {
         auto &pending = pending_training_data[forget_timestamp % GDBT::s_forget_table];
         if (!pending.empty()) {
             //mature
-            float future_distance = req._t - last_timestamp;
+            uint64_t future_distance = req._t - last_timestamp;
             if (req._t > GDBT::forget_window) {
                 for (auto & pending_it: pending) {
                     //don't use label within the first forget window because the data is not static
-                    training_data.append(pending_it, future_distance);
+                    training_data.emplace_back(meta, pending_it, future_distance);
                     //training
-                    if (training_data.labels.size() == batch_size) {
+                    if (training_data.labels.size() == GDBT::batch_size) {
                         train();
                         training_data.clear();
                     }
@@ -223,53 +222,42 @@ void GDBTCache::forget(uint64_t &t) {
     if (_forget_key) {
         auto key = _forget_key - 1;
         auto meta_it = key_map.find(key);
-        if (!meta_it->second.first) {
-            if (booster && t > GDBT::forget_window*1.5)
-                cerr << "warning: force evicting object passing forget window" << endl;
-            auto &pos = meta_it->second.second;
-            auto &meta = meta_holder[0][pos];
-            assert(meta._key == key);
-            key_map.erase(key);
-            _currentSize -= meta._size;
-            //evict
-            uint32_t tail0_pos = meta_holder[0].size()-1;
-            if (pos !=  tail0_pos) {
-                //swap tail
-                meta_holder[0][pos] = meta_holder[0][tail0_pos];
-                key_map.find(meta_holder[0][tail0_pos]._key)->second.second = pos;
-            }
-            meta_holder[0].pop_back();
-        } else {
-            auto &pos = meta_it->second.second;
-            auto &meta = meta_holder[1][pos];
-            assert(meta._key == key);
-            key_map.erase(key);
-            //evict
-            uint32_t tail1_pos = meta_holder[1].size() - 1;
-            if (pos != tail1_pos) {
-                //swap tail
-                meta_holder[1][pos] = meta_holder[1][tail1_pos];
-                key_map.find(meta_holder[1][tail1_pos]._key)->second.second = pos;
-            }
-            meta_holder[1].pop_back();
-        }
-        forget_table[t%GDBT::s_forget_table] = 0;
+        auto &pos = meta_it->second.second;
+        bool &meta_id = meta_it->second.first;
+        auto &meta = meta_holder[meta_id][pos];
+
         //timeout mature
         auto &pending = pending_training_data[t % GDBT::s_forget_table];
         if (!pending.empty()) {
             //mature
-            float future_distance = GDBT::forget_window;
+            uint64_t& future_distance = GDBT::forget_window;
             for (auto & pending_it: pending) {
                 //don't use label within the first forget window because the data is not static
-                training_data.append(pending_it, future_distance);
+                training_data.emplace_back(meta, pending_it, future_distance);
                 //training
-                if (training_data.labels.size() == batch_size) {
+                if (training_data.labels.size() == GDBT::batch_size) {
                     train();
                     training_data.clear();
                 }
             }
             pending.clear();
         }
+
+        if (booster && !meta_id && t > GDBT::forget_window*1.5)
+            cerr << "warning: force evicting object passing forget window" << endl;
+        assert(meta._key == key);
+        key_map.erase(key);
+        if (!meta_id)
+            _currentSize -= meta._size;
+        //evict
+        uint32_t tail_pos = meta_holder[meta_id].size() - 1;
+        if (pos != tail_pos) {
+            //swap tail
+            meta_holder[meta_id][pos] = meta_holder[meta_id][tail_pos];
+            key_map.find(meta_holder[meta_id][tail_pos]._key)->second.second = pos;
+        }
+        meta_holder[meta_id].pop_back();
+        forget_table[t%GDBT::s_forget_table] = 0;
     }
 }
 
@@ -399,7 +387,7 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
                               C_API_DTYPE_FLOAT64,
                               indptr.size(),
                               data.size(),
-                              n_feature,  //remove future t
+                              GDBT::n_feature,  //remove future t
                               C_API_PREDICT_NORMAL,
                               0,
                               GDBT_inference_params,
