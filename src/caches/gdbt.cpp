@@ -234,7 +234,6 @@ void GDBTCache::forget(uint64_t &t) {
         if (booster && !meta_id && t > GDBT::forget_window*1.5)
             cerr << "warning: force evicting object passing forget window" << endl;
         assert(meta._key == key);
-        key_map.erase(key);
         if (!meta_id)
             _currentSize -= meta._size;
         //evict
@@ -245,6 +244,7 @@ void GDBTCache::forget(uint64_t &t) {
             key_map.find(meta_holder[meta_id][tail_pos]._key)->second.second = pos;
         }
         meta_holder[meta_id].pop_back();
+        key_map.erase(key);
         forget_table[t%GDBT::s_forget_table] = 0;
     }
 }
