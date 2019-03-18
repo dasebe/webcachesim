@@ -67,7 +67,7 @@ void GDBTCache::train() {
         auto diff = result[i] - training_data.labels[i];
         se += diff * diff;
     }
-    training_loss = training_loss * 0.99 + se/batch_size*0.01;
+    training_loss = training_loss * 0.99 + se/GDBT::batch_size*0.01;
 
 //    vector<double > importance(GDBT::n_feature);
 //    LGBM_BoosterFeatureImportance(booster,
