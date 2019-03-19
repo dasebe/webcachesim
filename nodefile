@@ -1,5 +1,5 @@
 #7/ec2-3-82-193-15.compute-1.amazonaws.com
-#13/fat
+16/fat
 #:
 #80/fat
 #5/sns59
@@ -11,5 +11,6 @@
 #32/sns59
 #32/sns60
 #32/sns61
-18/ec2-52-91-68-209.compute-1.amazonaws.com
-18/ec2-52-207-229-200.compute-1.amazonaws.com
+18/ec2-34-201-17-74.compute-1.amazonaws.com
+18/ec2-100-26-150-128.compute-1.amazonaws.com
+18/ec2-18-207-148-179.compute-1.amazonaws.com
