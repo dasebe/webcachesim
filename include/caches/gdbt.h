@@ -154,7 +154,6 @@ public:
     uint sample_rate = 32;
     uint64_t current_rank_pos = 0;
     uint64_t training_sample_interval = 1;
-    uint8_t forget_penalty_factor = 2;
 
     double training_loss = 0;
 
@@ -209,8 +208,6 @@ public:
                 training_sample_interval = stoull(it.second);
             } else if (it.first == "n_edwt_feature") {
                 GDBT::n_edwt_feature = stoull(it.second);
-            } else if (it.first == "forget_penalty_factor") {
-                forget_penalty_factor = stoul(it.second);
             } else if (it.first == "objective") {
                 if (it.second == "byte_hit_rate")
                     objective = byte_hit_rate;
