@@ -14,7 +14,7 @@ set(LIB_SOURCE
         simulation_truncate.cpp
         caches/annotate.cpp
         caches/ucb.cpp
-#        caches/belady_sample.cpp
+        caches/belady_sample.cpp
 #        caches/lruk_sample.cpp
 #        caches/lfu_sample.cpp
 #        simulation_lr_belady.cpp
