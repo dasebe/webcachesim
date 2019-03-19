@@ -140,7 +140,7 @@ GDBT:
     - 10
 #    - 12
 #    - 16
-  version: lazy_pending
+  version: linear_scan
 Hyperbolic:
   sample_rate: 64
 LeCaR:
