@@ -43,6 +43,7 @@ public:
 
     // sample_size
     uint sample_rate = 32;
+    uint64_t current_rank_pos = 0;
     // threshold
     uint64_t threshold = 10000000;
 
