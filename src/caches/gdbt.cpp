@@ -299,9 +299,9 @@ void GDBTCache::admit(SimpleRequest &req) {
 
 
 pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
-    uint32_t rand_idx = _distribution(_generator) % meta_holder[0].size();
     //if not trained yet, use random
     if (booster == nullptr) {
+        uint32_t rand_idx = current_rank_pos % meta_holder[0].size();
         return {meta_holder[0][rand_idx]._key, rand_idx};
     }
 
@@ -315,7 +315,7 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
 
     uint64_t counter = 0;
     for (int i = 0; i < n_sample; i++) {
-        uint32_t pos = (i+rand_idx)%meta_holder[0].size();
+        uint32_t pos = (i+current_rank_pos)%meta_holder[0].size();
         auto & meta = meta_holder[0][pos];
         //fill in past_interval
         indices.push_back(0);
@@ -397,10 +397,10 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
             worst_pos = i;
             min_past_timestamp = past_timestamps[i];
         }
-    worst_pos = (worst_pos+rand_idx)%meta_holder[0].size();
+    worst_pos = (worst_pos+current_rank_pos)%meta_holder[0].size();
     auto & meta = meta_holder[0][worst_pos];
     auto & worst_key = meta._key;
-
+    current_rank_pos += n_sample;
     return {worst_key, worst_pos};
 }
 

@@ -128,14 +128,14 @@ GDBT:
 #    - 64
   num_threads:
 #    - 1
-    - 2
+    - 8
   learning_rate:
     - 0.1
 #    - 0.2
 #    - 0.01
   objective:
     - byte_hit_rate
-    - object_hit_rate
+#    - object_hit_rate
   n_edwt_feature:
     - 10
 #    - 12
