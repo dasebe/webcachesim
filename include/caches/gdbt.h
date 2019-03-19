@@ -152,6 +152,7 @@ public:
 
     // sample_size
     uint sample_rate = 32;
+    uint64_t current_rank_pos = 0;
     uint64_t training_sample_interval = 1;
 
     double training_loss = 0;
