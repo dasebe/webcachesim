@@ -9,18 +9,18 @@ traceHK200m.tr:
   cache_sizes:
     - 536870912000
   n_extra_fields: 0
-  n_warmup: 80000000
+  n_warmup: 40000000
   uni_size: 0
   BeladySample:
     threshold:
-      - 10000000
-      - 20000000
       - 40000000
       - 60000000
       - 80000000
-      - 100000000
     sample_rate:
       - 64
+      - 128
+      - 192
+      - 256
   GDBT:
     forget_window:
       - 40000000
@@ -49,18 +49,17 @@ traceUS200m.tr:
   cache_sizes:
     - 536870912000
   n_extra_fields: 1
-  n_warmup: 80000000
+  n_warmup: 40000000
   uni_size: 0
   BeladySample:
     threshold:
-      - 10000000
-      - 20000000
-      - 40000000
-      - 60000000
       - 80000000
       - 100000000
     sample_rate:
       - 64
+      - 128
+      - 192
+      - 256
   GDBT:
     forget_window:
       - 40000000
