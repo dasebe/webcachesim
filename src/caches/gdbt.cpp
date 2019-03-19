@@ -218,7 +218,7 @@ void GDBTCache::forget(uint64_t &t) {
         //timeout mature
         if (!meta._sample_times.empty()) {
             //mature
-            uint64_t& future_distance = GDBT::forget_window;
+            uint64_t future_distance = GDBT::forget_window * forget_penalty_factor;
             for (auto & sample_time: meta._sample_times) {
                 //don't use label within the first forget window because the data is not static
                 training_data.emplace_back(meta, sample_time, future_distance);

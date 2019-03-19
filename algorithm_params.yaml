@@ -128,19 +128,30 @@ GDBT:
 #    - 64
   num_threads:
 #    - 1
-    - 8
+    - 4
   learning_rate:
     - 0.1
 #    - 0.2
 #    - 0.01
   objective:
     - byte_hit_rate
-#    - object_hit_rate
+    - object_hit_rate
+  forget_penalty_factor:
+    - 1
+    - 2
+    - 4
+    - 5
+    - 10
+    - 20
+    - 40
+    - 50
+    - 100
+    - 200
   n_edwt_feature:
     - 10
 #    - 12
 #    - 16
-  version: linear_scan
+  version: forget_penalty
 Hyperbolic:
   sample_rate: 64
 LeCaR:
