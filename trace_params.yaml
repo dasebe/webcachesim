@@ -9,86 +9,36 @@ traceHK200m.tr:
   cache_sizes:
     - 536870912000
   n_extra_fields: 0
-  n_warmup: 40000000
+  n_warmup: 80000000
   uni_size: 0
   BeladySample:
     threshold:
       - 40000000
-      - 60000000
-      - 80000000
-      - 100000000
-      - 120000000
-      - 140000000
     sample_rate:
-      - 64
       - 128
-      - 192
-      - 256
   GDBT:
     forget_window:
       - 40000000
-      - 60000000
-      - 80000000
-      - 100000000
-      - 120000000
-      - 140000000
-      - 160000000
-    batch_size:
-      - 50000
-      - 100000
-      - 200000
-      - 400000
-      - 1000000
-      - 2000000
-      - 4000000
     sample_rate:
-      - 256
-#      - 512
+      - 128
   LR:
     forget_window: 40000000
-    sample_rate: 256
+    sample_rate: 128
 
 traceUS200m.tr:
   cache_sizes:
     - 536870912000
   n_extra_fields: 1
-  n_warmup: 40000000
+  n_warmup: 100000000
   uni_size: 0
   BeladySample:
     threshold:
       - 80000000
-      - 100000000
-      - 120000000
-      - 140000000
-
-    sample_rate:
-      - 64
-      - 128
-      - 192
-      - 256
   GDBT:
     forget_window:
-      - 40000000
-      - 60000000
       - 80000000
-      - 100000000
-      - 120000000
-      - 140000000
-      - 160000000
-    batch_size:
-      - 50000
-      - 100000
-      - 200000
-      - 400000
-      - 1000000
-      - 2000000
-      - 4000000
-    sample_rate:
-      - 256
-#      - 512
   LR:
-    forget_window: 40000000
-    sample_rate: 256
+    forget_window: 80000000
 
 
 wc200m.tr:
@@ -109,24 +59,12 @@ wc200m.tr:
   BeladySample:
     threshold:
       - 40000000
-      - 60000000
-      - 80000000
-      - 100000000
-      - 120000000
-      - 140000000
-    sample_rate:
-      - 64
-      - 128
-      - 192
-      - 256
-#    threshold:
-#      - 40000000
 #      - 60000000
 #      - 80000000
 #      - 100000000
 #      - 120000000
-#    sample_rate:
-#      - 64
+    sample_rate:
+      - 64
 #      - 128
 #      - 256
 #      - 512
