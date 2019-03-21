@@ -1,10 +1,18 @@
 # webcachesim:
 
+## steps to set up Zhenyu's simulation environment
 ```bash
 
 sudo apt-get update
 
-sudo apt install cmake build-essential
+sudo apt install cmake build-essential libboost-all-dev python3-pip parallel
+
+# install openjdk 1.8
+sudo add-apt-repository ppa:openjdk-r/ppa
+sudo apt-get update
+sudo apt-get install openjdk-8-jdk
+java -version  # shuold be 1.8
+
 
 git clone https://github.com/sunnyszy/webcachesim
 cd webcachesim
@@ -13,6 +21,9 @@ git checkout akamai
 cd webcachesim/lib/LightGBM-eloiseh/build
 cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=~/LightGBM ..
 make && make install
+
+# dependency for mongo c driver
+sudo apt-get install cmake libssl-dev libsasl2-dev
 
 cd webcachesim/lib/mongo-c-driver-1.13.1/cmake-build/
 cmake -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON -DCMAKE_INSTALL_PREFIX=~/mongo-c-driver ..
@@ -26,56 +37,21 @@ cd webcachesim/build
 cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="~/mongo-cxx-driver;~/mongo-c-driver;~/LightGBM" ..
 make
 
+# install pywebcachesim
+cd webcachesim
+pip3 install -e .
+
 # add binary and trace dir to path
+# set based on where you put your pin and trace
 # append to .bash_profile
 export PATH=$PATH:/data/zhenyus/webcachesim/build/bin
 export WEBCACHESIM_TRACE_DIR=/data/zhenyus/webcachesim/trace
 
+# run the code
+cd webcachesim
+python3 pywebcachesim/runner/runner.py --config_file job/job_dev.yaml --algorithm_param_file algorithm_params.yaml --trace_param_file trace_params.yaml
+
 ```
-
-
-## Steps For pywebcachsim:
-* `WEBCACHESIM_ROOT` is the dir of your github repo
-
-* Install [anaconda3](https://www.anaconda.com/download/) and add to your path
-
-* Install virtual env
-
-```bash
-conda create -n webcachesim_env python=3.6
-```
-
-* Install `pywebcachesim` library
-
-```bash
-source activate webcachesim_env
-cd ${WEBCACHESIM_ROOT}
-pip install -e .
-```
-
-* To check help:
-
-```bash
-pywebcachesim --help
-```
-
-* To run a example configuration. Check the yaml file to see the detail configuration:
-
-```bash
-pywebcachesim --config_file ${WEBCACHESIM_ROOT}/test/job_simple.yaml --write_dir ${WEBCACHESIM_ROOT}/log --trace_dir ${WEBCACHESIM_ROOT}/test --debug True
-```
-
-* Install `jupyterlab`
-```bash
-pip install jupyterlab
-```
-
-* Open jupyterlab:
-```bash
-jupyter lab
-```
-
-* Open `notebook/evaluation.ipynb` in jupyterlab to check result
 
 ## A simulator for CDN caching and web caching policies.
 
