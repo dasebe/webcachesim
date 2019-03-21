@@ -11,7 +11,7 @@ sudo apt install cmake build-essential libboost-all-dev python3-pip parallel
 sudo add-apt-repository ppa:openjdk-r/ppa
 sudo apt-get update
 sudo apt-get install openjdk-8-jdk
-java -version  # shuold be 1.8
+java -version  # should be 1.8
 
 
 git clone https://github.com/sunnyszy/webcachesim
