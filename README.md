@@ -2,16 +2,23 @@
 
 ```bash
 
+sudo apt-get update
 
-cd LightGBM-LightGBM-eloiseh/build
+sudo apt install cmake build-essential
+
+git clone https://github.com/sunnyszy/webcachesim
+cd webcachesim
+git checkout akamai
+
+cd webcachesim/lib/LightGBM-eloiseh/build
 cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=~/LightGBM ..
 make && make install
 
-cd mongo-c-driver-1.13.1/cmake-build/
+cd webcachesim/lib/mongo-c-driver-1.13.1/cmake-build/
 cmake -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON -DCMAKE_INSTALL_PREFIX=~/mongo-c-driver ..
 make && make install
 
-cd mongo-cxx-driver-r3.4.0/build
+cd webcachesim/lib/mongo-cxx-driver-r3.4.0/build
 cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=~/mongo-cxx-driver -DCMAKE_PREFIX_PATH=~/mongo-c-driver  ..
 make && make install
 
