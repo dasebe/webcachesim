@@ -21,7 +21,7 @@ public:
 
     void update(uint32_t & snapshot_id, uint32_t& n_total_request, uint64_t size) {
         auto bucket_id = static_cast<uint32_t >(log2(n_total_request));
-        pair<uint32_t, uint32_t > key = make_pair(snapshot_id, n_total_request);
+        pair<uint32_t, uint32_t > key = make_pair(snapshot_id, bucket_id);
         auto it = cache_size_map.find(key);
         if (it == cache_size_map.end()) {
             cache_size_map.insert({key, size});
