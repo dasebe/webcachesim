@@ -38,6 +38,7 @@ public:
         //no need to use it
     };
     virtual void evict();
+    bool has(const uint64_t& id) {return _cacheMap.find(id) != _cacheMap.end();}
 };
 
 static Factory<BeladyCache> factoryBelady("Belady");
