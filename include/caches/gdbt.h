@@ -257,6 +257,12 @@ public:
     pair<uint64_t, uint32_t > rank(const uint64_t & t);
     void train();
     void sample(uint64_t &t);
+    bool has(const uint64_t& id) {
+        auto it = key_map.find(id);
+        if (it == key_map.end())
+            return false;
+        return !it->second.first;
+    }
 };
 
 static Factory<GDBTCache> factoryGBDT("GDBT");

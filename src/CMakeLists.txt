@@ -34,6 +34,7 @@ find_path(LIGHTGBM_PATH LightGBM)
 
 add_library(webcachesim SHARED ${LIB_SOURCE})
 
+target_include_directories(webcachesim PUBLIC ../lib)
 target_include_directories(webcachesim PUBLIC include)
 target_include_directories(webcachesim PUBLIC ${LIGHTGBM_PATH})
 

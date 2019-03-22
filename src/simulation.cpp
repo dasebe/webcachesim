@@ -16,6 +16,9 @@
 #include "simulation_truncate.h"
 #include <chrono>
 #include "utils.h"
+#include <unordered_map>
+#include "miss_decouple.h"
+#include "cache_size_decouple.h"
 
 using namespace std;
 using namespace chrono;
@@ -78,6 +81,16 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     SimpleRequest req(0, 0, 0);
     uint64_t seq = 0;
     auto t_now = system_clock::now();
+
+#ifdef MISS_DECOUPLE
+    unordered_map<uint64_t , uint32_t > total_request_map;
+    MissStatistics miss_stat;
+#endif
+#ifdef CACHE_SIZE_DECOUPLE
+    unordered_map<uint64_t, uint64_t> size_map;
+    CacheSizeStatistics size_stat;
+#endif
+
     while (infile >> tmp >> id >> size) {
         for (int i = 0; i < n_extra_fields; ++i)
             infile>>extra_features[i];
@@ -91,8 +104,22 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
             update_metric_req(byte_req, obj_req, size);
         update_metric_req(seg_byte_req, seg_obj_req, size);
 
+#ifdef MISS_DECOUPLE
+        //count total request
+        auto it = total_request_map.find(id);
+        if (it == total_request_map.end())
+            total_request_map.insert({id, 1});
+        else
+            ++it->second;
+#endif
+#ifdef CACHE_SIZE_DECOUPLE
+        auto it_size = size_map.find(id);
+        if (it_size == size_map.end())
+            size_map.insert({id, size});
+#endif
         req.reinit(id, size, seq+1, &extra_features);
-        if (webcache->lookup(req)) {
+        bool if_hit = webcache->lookup(req);
+        if (if_hit) {
             if (seq >= n_warmup)
                 update_metric_req(byte_hit, obj_hit, size);
             update_metric_req(seg_byte_hit, seg_obj_hit, size);
@@ -100,9 +127,27 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
             webcache->admit(req);
         }
 
+#ifdef MISS_DECOUPLE
+        if (seq >= n_warmup) {
+            auto &n_total_request = total_request_map[id];
+            miss_stat.update(n_total_request, if_hit);
+        }
+#endif
+
         ++seq;
 
         if (!(seq%segment_window)) {
+#ifdef CACHE_SIZE_DECOUPLE
+            if (seq >= n_warmup) {
+                uint32_t snapshot_id = seq/segment_window;
+                cerr<<"snapshoting cache size decoupling at id: "<<snapshot_id<<endl;
+                for (auto &kv: total_request_map) {
+                    if (webcache->has(kv.first)) {
+                        size_stat.update(snapshot_id, kv.second, size_map[kv.first]);
+                    }
+                }
+            }
+#endif
             auto _t_now = chrono::system_clock::now();
             cerr<<"delta t: "<<chrono::duration_cast<std::chrono::milliseconds>(_t_now - t_now).count()/1000.<<endl;
             cerr<<"seq: " << seq << endl;
@@ -124,6 +169,12 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
             {"object_hit_rate", to_string(double(obj_hit) / obj_req)},
             {"segment_byte_hit_rate", seg_bhr},
             {"segment_object_hit_rate", seg_ohr},
+#ifdef MISS_DECOUPLE
+            {"miss_decouple", miss_stat.dump()},
+#endif
+#ifdef CACHE_SIZE_DECOUPLE
+            {"cache_size_decouple", size_stat.dump()},
+#endif
     };
     return res;
 }
