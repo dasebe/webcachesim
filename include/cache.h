@@ -42,6 +42,7 @@ public:
         }
     }
     virtual void init_with_params(std::map<std::string, std::string> params) {}
+    virtual bool has(const uint64_t& id) {return true;}
 
 
     uint64_t getCurrentSize() const {

@@ -18,6 +18,7 @@
 #include "utils.h"
 #include <unordered_map>
 #include "miss_decouple.h"
+#include "cache_size_decouple.h"
 
 using namespace std;
 using namespace chrono;
@@ -85,6 +86,10 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     unordered_map<uint64_t , uint32_t > total_request_map;
     MissStatistics miss_stat;
 #endif
+#ifdef CACHE_SIZE_DECOUPLE
+    unordered_map<uint64_t, uint64_t> size_map;
+    CacheSizeStatistics size_stat;
+#endif
 
     while (infile >> tmp >> id >> size) {
         for (int i = 0; i < n_extra_fields; ++i)
@@ -107,7 +112,11 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
         else
             ++it->second;
 #endif
-
+#ifdef CACHE_SIZE_DECOUPLE
+        auto it_size = size_map.find(id);
+        if (it_size == size_map.end())
+            size_map.insert({id, size});
+#endif
         req.reinit(id, size, seq+1, &extra_features);
         bool if_hit = webcache->lookup(req);
         if (if_hit) {
@@ -128,6 +137,16 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
         ++seq;
 
         if (!(seq%segment_window)) {
+#ifdef CACHE_SIZE_DECOUPLE
+            if (seq >= n_warmup) {
+                for (auto &kv: total_request_map) {
+                    if (webcache->has(kv.first)) {
+                        uint32_t snapshot_id = seq/segment_window;
+                        size_stat.update(snapshot_id, kv.second, size_map[kv.first]);
+                    }
+                }
+            }
+#endif
             auto _t_now = chrono::system_clock::now();
             cerr<<"delta t: "<<chrono::duration_cast<std::chrono::milliseconds>(_t_now - t_now).count()/1000.<<endl;
             cerr<<"seq: " << seq << endl;
@@ -150,7 +169,10 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
             {"segment_byte_hit_rate", seg_bhr},
             {"segment_object_hit_rate", seg_ohr},
 #ifdef MISS_DECOUPLE
-            {"miss_decouple", miss_stat.yaml_dump()},
+            {"miss_decouple", miss_stat.dump()},
+#endif
+#ifdef CACHE_SIZE_DECOUPLE
+            {"cache_size_decouple", size_stat.dump()},
 #endif
     };
     return res;
