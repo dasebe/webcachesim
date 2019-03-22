@@ -139,9 +139,10 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
         if (!(seq%segment_window)) {
 #ifdef CACHE_SIZE_DECOUPLE
             if (seq >= n_warmup) {
+                uint32_t snapshot_id = seq/segment_window;
+                cerr<<"snapshoting cache size decoupling at id: "<<snapshot_id<<endl;
                 for (auto &kv: total_request_map) {
                     if (webcache->has(kv.first)) {
-                        uint32_t snapshot_id = seq/segment_window;
                         size_stat.update(snapshot_id, kv.second, size_map[kv.first]);
                     }
                 }
