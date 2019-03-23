@@ -46,6 +46,7 @@ pip3 install -e .
 # append to .bash_profile
 export PATH=$PATH:/data/zhenyus/webcachesim/build/bin
 export WEBCACHESIM_TRACE_DIR=/data/zhenyus/webcachesim/trace
+export WEBCACHESIM_ROOT=/home/zhenyus/webcachesim
 
 # run the code
 cd webcachesim

@@ -34,7 +34,7 @@ using namespace std;
 map<string, string> _simulation_tinylfu(string trace_file, string cache_type, uint64_t cache_size,
                                        map<string, string> params) {
 
-    string cmd = "java -jar ${WEBCACHESIM_TRACE_DIR}/../lib/tinylfu/tinylfu.jar " + trace_file + " Adaptive-TinyLFU " \
+    string cmd = "java -jar ${WEBCACHESIM_ROOT}/lib/tinylfu/tinylfu.jar " + trace_file + " Adaptive-TinyLFU " \
             + to_string(cache_size);
     for (auto k: params) {
         cmd += " "+k.first+" "+k.second;
