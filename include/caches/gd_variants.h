@@ -31,6 +31,7 @@ protected:
 
     virtual long double ageValue(SimpleRequest& req);
     virtual void hit(SimpleRequest& req);
+    bool has(const uint64_t& id) {return _cacheMap.find(id) != _cacheMap.end();}
 
 public:
     GreedyDualBase()
