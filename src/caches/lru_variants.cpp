@@ -24,12 +24,13 @@ static inline double oP2(double T, double l, double p) {
 */
 bool LRUCache::lookup(SimpleRequest& req)
 {
-    CacheObject obj(req);
+    uint64_t & obj = req._id;
     auto it = _cacheMap.find(obj);
     if (it != _cacheMap.end()) {
         // log hit
+        auto & size = _size_map[obj];
         LOG("h", 0, obj.id, obj.size);
-        hit(it, obj.size);
+        hit(it, size);
         return true;
     }
     return false;
@@ -48,10 +49,11 @@ void LRUCache::admit(SimpleRequest& req)
         evict();
     }
     // admit new object
-    CacheObject obj(req);
+    uint64_t & obj = req._id;
     _cacheList.push_front(obj);
     _cacheMap[obj] = _cacheList.begin();
     _currentSize += size;
+    _size_map[obj] = size;
     LOG("a", _currentSize, obj.id, obj.size);
 }
 
@@ -73,12 +75,14 @@ void InfCache::admit(SimpleRequest& req)
 
 void LRUCache::evict(SimpleRequest& req)
 {
-    CacheObject obj(req);
+    uint64_t & obj = req._id;
     auto it = _cacheMap.find(obj);
     if (it != _cacheMap.end()) {
         ListIteratorType lit = it->second;
         LOG("e", _currentSize, obj.id, obj.size);
-        _currentSize -= obj.size;
+        auto & size = _size_map[obj];
+        _currentSize -= size;
+        _size_map.erase(obj);
         _cacheMap.erase(obj);
         _cacheList.erase(lit);
     }
@@ -90,9 +94,11 @@ void LRUCache::evict()
     if (_cacheList.size() > 0) {
         ListIteratorType lit = _cacheList.end();
         lit--;
-        CacheObject obj = *lit;
+        uint64_t obj = *lit;
         LOG("e", _currentSize, obj.id, obj.size);
-        _currentSize -= obj.size;
+        auto & size = _size_map[obj];
+        _currentSize -= size;
+        _size_map.erase(obj);
         _cacheMap.erase(obj);
         _cacheList.erase(lit);
     }
@@ -108,10 +114,12 @@ const SimpleRequest & LRUCache::evict_return()
     // evict least popular (i.e. last element)
     ListIteratorType lit = _cacheList.end();
     lit--;
-    CacheObject obj = *lit;
-    LOG("e", _currentSize, obj.id, obj.size);
-    SimpleRequest req(obj.id, obj.size);
-    _currentSize -= obj.size;
+    uint64_t obj = *lit;
+    auto size = _size_map[obj];
+    LOG("e", _currentSize, obj, size);
+    SimpleRequest req(obj, size);
+    _currentSize -= size;
+    _size_map.erase(obj);
     _cacheMap.erase(obj);
     _cacheList.erase(lit);
     return req;
@@ -190,11 +198,12 @@ bool AdaptSizeCache::lookup(SimpleRequest& req)
 {
     reconfigure();
 
-    CacheObject tmpCacheObject0(req);
+    uint64_t tmpCacheObject0 = req._id;
+    auto size = _size_map[tmpCacheObject0];
     if(_intervalMetadata.count(tmpCacheObject0)==0
        && _longTermMetadata.count(tmpCacheObject0)==0) {
         // new object
-        statSize += tmpCacheObject0.size;
+        statSize += size;
     }
     // the else block is not necessary as webcachesim treats an object
     // with size changed as a new object
@@ -218,7 +227,7 @@ bool AdaptSizeCache::lookup(SimpleRequest& req)
     // record stats
     auto& info = _intervalMetadata[tmpCacheObject0];
     info.requestCount += 1.0;
-    info.objSize = tmpCacheObject0.size;
+    info.objSize = size;
 
     return LRUCache::lookup(req);
 }

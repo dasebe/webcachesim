@@ -6,7 +6,6 @@
 #define WEBCACHESIM_RANDOM_VARIANTS_H
 
 #include "cache.h"
-#include "cache_object.h"
 #include "pickset.h"
 #include <unordered_map>
 #include <list>

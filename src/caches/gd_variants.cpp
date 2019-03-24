@@ -14,7 +14,7 @@ using namespace std;
 */
 bool GreedyDualBase::lookup(SimpleRequest& req)
 {
-    CacheObject obj(req);
+    uint64_t& obj = req._id;
     auto it = _cacheMap.find(obj);
     if (it != _cacheMap.end()) {
         // log hit
@@ -47,9 +47,10 @@ void GreedyDualBase::admit(SimpleRequest& req)
     }
     // admit new object with new GF value
     long double ageVal = ageValue(req);
-    CacheObject obj(req);
+    uint64_t& obj = req._id;
     LOG("a", ageVal, obj.id, obj.size);
     _cacheMap[obj] = _valueMap.emplace(ageVal, obj);
+    _sizemap[obj] = size;
     _currentSize += size;
 //    LOG("csize", _currentSize, 0, 0);
     // check eviction needed
@@ -94,10 +95,12 @@ void GreedyDualBase::evict()
             std::cerr << "underun: " << _currentSize << ' ' << _cacheSize << std::endl;
         }
         assert(lit != _valueMap.end()); // bug if this happens
-        CacheObject toDelObj = lit->second;
+        uint64_t toDelObj = lit->second;
         LOG("e", lit->first, toDelObj.id, toDelObj.size);
-        _currentSize -= toDelObj.size;
+        auto size = _sizemap[toDelObj];
+        _currentSize -= size;
         _cacheMap.erase(toDelObj);
+        _sizemap.erase(toDelObj);
 //        LOG("csize", _currentSize, 0, 0);
         // update L
         _currentL = lit->first;
@@ -112,11 +115,11 @@ long double GreedyDualBase::ageValue(SimpleRequest& req)
 
 void GreedyDualBase::hit(SimpleRequest& req)
 {
-    CacheObject obj(req);
+    uint64_t& obj = req._id;
     // get iterator for the old position
     auto it = _cacheMap.find(obj);
     assert(it != _cacheMap.end());
-    CacheObject cachedObj = it->first;
+    uint64_t cachedObj = it->first;
     ValueMapIteratorType si = it->second;
     // update current req's value to hval:
     _valueMap.erase(si);
@@ -139,7 +142,7 @@ void GreedyDualBase::hit(SimpleRequest& req)
 bool GDSFCache::lookup(SimpleRequest& req)
 {
     bool hit = GreedyDualBase::lookup(req);
-    CacheObject obj(req);
+    uint64_t & obj = req._id;
     if (!hit) {
         _reqsMap[obj] = 1; //reset bec. reqs_map not updated when element removed
     } else {
@@ -150,8 +153,9 @@ bool GDSFCache::lookup(SimpleRequest& req)
 
 long double GDSFCache::ageValue(SimpleRequest& req)
 {
-    CacheObject obj(req);
-    return _currentL + static_cast<double>(_reqsMap[obj]) / static_cast<double>(obj.size);
+    uint64_t & obj = req._id;
+    uint64_t & size = _sizemap[obj];
+    return _currentL + static_cast<double>(_reqsMap[obj]) / static_cast<double>(size);
 }
 
 /*
@@ -169,7 +173,7 @@ LRUKCache::LRUKCache()
 
 bool LRUKCache::lookup(SimpleRequest& req)
 {
-    CacheObject obj(req);
+    uint64_t & obj = req._id;
     _curTime++;
     _refsMap[obj].push(_curTime);
     bool hit = GreedyDualBase::lookup(req);
@@ -178,7 +182,7 @@ bool LRUKCache::lookup(SimpleRequest& req)
 
 void LRUKCache::evict(SimpleRequest& req)
 {
-    CacheObject obj(req);
+    uint64_t & obj = req._id;
     _refsMap.erase(obj); // delete LRU-K info
     GreedyDualBase::evict(req);
 }
@@ -192,7 +196,7 @@ void LRUKCache::evict()
             std::cerr << "underun: " << _currentSize << ' ' << _cacheSize << std::endl;
         }
         assert(lit != _valueMap.end()); // bug if this happens
-        CacheObject obj = lit->second;
+        uint64_t obj = lit->second;
         _refsMap.erase(obj); // delete LRU-K info
         GreedyDualBase::evict();
     }
@@ -200,7 +204,7 @@ void LRUKCache::evict()
 
 long double LRUKCache::ageValue(SimpleRequest& req)
 {
-    CacheObject obj(req);
+    uint64_t & obj = req._id;
     long double newVal = 0.0L;
     if(_refsMap[obj].size() >= _tk) {
         newVal = _refsMap[obj].front();
@@ -216,7 +220,7 @@ long double LRUKCache::ageValue(SimpleRequest& req)
 bool LFUDACache::lookup(SimpleRequest& req)
 {
     bool hit = GreedyDualBase::lookup(req);
-    CacheObject obj(req);
+    uint64_t & obj = req._id;
     if (!hit) {
         _reqsMap[obj] = 1; //reset bec. reqs_map not updated when element removed
     } else {
@@ -227,7 +231,7 @@ bool LFUDACache::lookup(SimpleRequest& req)
 
 long double LFUDACache::ageValue(SimpleRequest& req)
 {
-    CacheObject obj(req);
+    uint64_t & obj = req._id;
     return _currentL + _reqsMap[obj];
 }
 

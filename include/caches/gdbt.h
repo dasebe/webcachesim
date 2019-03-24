@@ -6,7 +6,6 @@
 #define WEBCACHESIM_GDBT_H
 
 #include "cache.h"
-#include "cache_object.h"
 #include <unordered_map>
 #include <vector>
 #include <random>

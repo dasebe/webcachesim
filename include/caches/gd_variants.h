@@ -6,12 +6,11 @@
 #include <map>
 #include <queue>
 #include "cache.h"
-#include "cache_object.h"
 
-typedef std::multimap<long double, CacheObject> ValueMapType;
+typedef std::multimap<long double, uint64_t> ValueMapType;
 typedef ValueMapType::iterator ValueMapIteratorType;
-typedef std::unordered_map<CacheObject, ValueMapIteratorType> GdCacheMapType;
-typedef std::unordered_map<CacheObject, uint64_t> CacheStatsMapType;
+typedef std::unordered_map<uint64_t, ValueMapIteratorType> GdCacheMapType;
+typedef std::unordered_map<uint64_t, uint64_t> CacheStatsMapType;
 
 /*
   GD: greedy dual eviction (base class)
@@ -27,6 +26,8 @@ protected:
     ValueMapType _valueMap;
     // find objects via unordered_map
     GdCacheMapType _cacheMap;
+    unordered_map<uint64_t , uint64_t > _sizemap;
+
 
     virtual long double ageValue(SimpleRequest& req);
     virtual void hit(SimpleRequest& req);
@@ -96,7 +97,7 @@ static Factory<GDSFCache> factoryGDSF("GDSF");
 /*
   LRU-K policy
 */
-typedef std::unordered_map<CacheObject, std::queue<uint64_t>> lrukMapType;
+typedef std::unordered_map<uint64_t , std::queue<uint64_t>> lrukMapType;
 
 class LRUKCache : public GreedyDualBase
 {

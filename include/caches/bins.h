@@ -6,7 +6,6 @@
 #define WEBCACHESIM_BINS_H
 
 #include "cache.h"
-#include "cache_object.h"
 #include <vector>
 #include <unordered_map>
 #include <random>

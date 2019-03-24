@@ -5,11 +5,10 @@
 #include <list>
 #include <random>
 #include "cache.h"
-#include "cache_object.h"
 #include "adaptsize_const.h" /* AdaptSize constants */
 
-typedef std::list<CacheObject>::iterator ListIteratorType;
-typedef std::unordered_map<CacheObject, ListIteratorType> lruCacheMapType;
+typedef std::list<uint64_t >::iterator ListIteratorType;
+typedef std::unordered_map<uint64_t , ListIteratorType> lruCacheMapType;
 
 
 using namespace std;
@@ -20,9 +19,10 @@ class LRUCache : public Cache
 {
 protected:
     // list for recency order
-    std::list<CacheObject> _cacheList;
+    std::list<uint64_t > _cacheList;
     // map to find objects in list
     lruCacheMapType _cacheMap;
+    unordered_map<uint64_t , uint64_t > _size_map;
 
     virtual void hit(lruCacheMapType::const_iterator it, uint64_t size);
 
@@ -142,8 +142,8 @@ private:
 
         ObjInfo() : requestCount(0.0), objSize(0) { }
     };
-    std::unordered_map<CacheObject, ObjInfo> _longTermMetadata;
-    std::unordered_map<CacheObject, ObjInfo> _intervalMetadata;
+    std::unordered_map<uint64_t , ObjInfo> _longTermMetadata;
+    std::unordered_map<uint64_t , ObjInfo> _intervalMetadata;
 
     void reconfigure();
     double modelHitRate(double c);

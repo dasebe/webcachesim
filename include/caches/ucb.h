@@ -9,7 +9,6 @@
 #include <unordered_map>
 #include <list>
 #include "cache.h"
-#include "cache_object.h"
 #include <boost/bimap.hpp>
 #include <boost/bimap/multiset_of.hpp>
 
