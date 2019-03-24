@@ -54,6 +54,7 @@ public:
     virtual void evict(SimpleRequest& req){};
     virtual void evict(){};
     void evict(uint64_t & t, uint64_t & counter);
+    bool has(const uint64_t& id) {return size_map.find(id) != size_map.end();}
 };
 
 static Factory<LeCaRCache> factoryLeCaR("LeCaR");
