@@ -12,7 +12,9 @@
 #include <boost/bimap.hpp>
 #include <boost/bimap/multiset_of.hpp>
 
-typedef std::pair<uint64_t, uint64_t> KeyT;
+typedef uint64_t KeyT;
+
+using namespace std;
 
 class UCBCache : public Cache
 {
@@ -20,7 +22,7 @@ public:
     // from id to intervals
     boost::bimap<boost::bimaps::set_of<KeyT>, boost::bimaps::multiset_of<double , std::greater<double >>> mlcache_score;
     std::unordered_map<KeyT, uint64_t> mlcache_plays;
-
+    unordered_map<uint64_t, uint64_t> size_map;
     uint64_t t = 0;
 
     UCBCache()

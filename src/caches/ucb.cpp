@@ -11,7 +11,7 @@ double upper_bound(int step, int num_plays) {
 }
 
 bool UCBCache::lookup(SimpleRequest &req) {
-    KeyT key = {req._id, req._size};
+    KeyT key = req._id;
     ++t;
     //update plays
     auto it = mlcache_plays.find(key);
@@ -43,8 +43,9 @@ void UCBCache::admit(SimpleRequest& req) {
     }
 
     // admit new object
-    KeyT key = {req._id, req._size};
+    KeyT key = req._id;
     _currentSize += size;
+    size_map[key] = size;
     double score = - upper_bound(t, mlcache_plays.find(key)->second);
     mlcache_score.insert({key, score});
 
@@ -57,7 +58,9 @@ void UCBCache::admit(SimpleRequest& req) {
 void UCBCache::evict() {
     auto right_iter = mlcache_score.right.begin();
     auto key = right_iter->second;
-    _currentSize -= key.second;
+    auto size = size_map[key];
+    _currentSize -= size;
+    size_map.erase(key);
     mlcache_score.right.erase(right_iter);
 
 }
