@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <math.h>
 #include "nlohmann/json.hpp"
+#include <tuple>
 
 using namespace std;
 using json = nlohmann::json;
@@ -18,16 +19,18 @@ class MissStatistics {
  * statistics of the misses by different #request
  */
 public:
-    //format <#requests including current, <#requests after warmup, #hits after warmup>>
-    unordered_map<uint32_t, pair<uint32_t, uint32_t>> n_request_hit;
-    void update(uint32_t& n_total_request, bool if_hit) {
+    //format <#requests including current, <n_req, byte_req, n_hit, byte_hit> after warmup>
+    unordered_map<uint32_t, tuple<uint32_t, uint64_t, uint32_t, uint64_t>> n_request_hit;
+    void update(uint32_t& n_total_request, uint64_t & size, bool if_hit) {
         auto bucket_id = static_cast<uint32_t >(log2(n_total_request));
         auto it = n_request_hit.find(bucket_id);
         if (it == n_request_hit.end()) {
-            n_request_hit.insert({bucket_id, {1, if_hit}});
+            n_request_hit.insert({bucket_id, {1, size, static_cast<uint32_t >(if_hit), if_hit*size}});
         } else {
-            it->second.first += 1;
-            it->second.second += if_hit;
+            get<0>(it->second) += 1;
+            get<1>(it->second) += size;
+            get<2>(it->second) += if_hit;
+            get<3>(it->second) += if_hit*size;
         }
     }
 

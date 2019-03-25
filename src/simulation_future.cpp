@@ -131,7 +131,7 @@ map<string, string> _simulation_future(string trace_file, string cache_type, uin
 #ifdef MISS_DECOUPLE
         if (seq >= n_warmup) {
             auto &n_total_request = total_request_map[id];
-            miss_stat.update(n_total_request, if_hit);
+            miss_stat.update(n_total_request, size, if_hit);
         }
 #endif
 
