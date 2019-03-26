@@ -25,7 +25,7 @@ public:
         auto bucket_id = static_cast<uint32_t >(log2(n_total_request));
         auto it = n_request_hit.find(bucket_id);
         if (it == n_request_hit.end()) {
-            n_request_hit.insert({bucket_id, {1, size, static_cast<uint32_t >(if_hit), if_hit*size}});
+            n_request_hit.insert({bucket_id, make_tuple(1, size, static_cast<uint32_t >(if_hit), if_hit*size)});
         } else {
             get<0>(it->second) += 1;
             get<1>(it->second) += size;
