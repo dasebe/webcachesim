@@ -155,6 +155,7 @@ public:
     uint64_t training_sample_interval = 1;
 
     double training_loss = 0;
+    uint64_t n_force_eviction = 0;
 
     BoosterHandle booster = nullptr;
 

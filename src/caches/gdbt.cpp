@@ -153,6 +153,7 @@ bool GDBTCache::lookup(SimpleRequest &req) {
         cerr << "n_metadata: "<<key_map.size()<<endl;
         cerr << "n_training: "<<training_data.labels.size()<<endl;
         cerr << "training loss: " << training_loss << endl;
+        cerr << "n_force_eviction: " << n_force_eviction <<endl;
     }
 
 
@@ -232,7 +233,7 @@ void GDBTCache::forget(uint64_t &t) {
         }
 
         if (booster && !meta_id && t > GDBT::forget_window*1.5)
-            cerr << "warning: force evicting object passing forget window" << endl;
+            ++n_force_eviction;
         assert(meta._key == key);
         if (!meta_id)
             _currentSize -= meta._size;
