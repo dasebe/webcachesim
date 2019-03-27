@@ -78,7 +78,7 @@ public:
     GDBTTrainingData() {
         labels.reserve(GDBT::batch_size);
         indptr.reserve(GDBT::batch_size+1);
-        indptr.emplace_back(1);
+        indptr.emplace_back(0);
         indices.reserve(GDBT::batch_size*GDBT::n_feature);
         data.reserve(GDBT::batch_size*GDBT::n_feature);
     }
