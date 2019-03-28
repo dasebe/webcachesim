@@ -109,9 +109,9 @@ GDBT:
     - 64
   forget_window: 10000000
   batch_size:
-    - 50000
+#    - 50000
     - 100000
-    - 200000
+#    - 200000
   max_n_past_timestamps:
 #    - 4
 #    - 8
@@ -128,7 +128,7 @@ GDBT:
 #    - 64
   num_threads:
 #    - 1
-    - 2
+    - 1
   learning_rate:
     - 0.1
 #    - 0.2
