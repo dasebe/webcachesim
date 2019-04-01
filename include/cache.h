@@ -43,9 +43,10 @@ public:
     }
     virtual void init_with_params(std::map<std::string, std::string> params) {}
     virtual bool has(const uint64_t& id) {
-        cerr<<"has() interface is not implemented for this cache algorithm, "
-              "do not compile with DECOUPLE_CACHE_SIZE flag"<<endl;
-        abort();
+//        cerr<<"has() interface is not implemented for this cache algorithm, "
+//              "do not compile with DECOUPLE_CACHE_SIZE flag"<<endl;
+//        abort();
+        return false;
     }
 
 
