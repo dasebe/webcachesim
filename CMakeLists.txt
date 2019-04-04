@@ -18,6 +18,8 @@ add_definitions(-DCACHE_SIZE_DECOUPLE)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffast-math")
 
+set(CMAKE_VERBOSE_MAKEFILE ON)
+
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
@@ -26,3 +28,4 @@ include_directories(${CMAKE_SOURCE_DIR}/include/caches)
 add_subdirectory(src)
 add_subdirectory(test)
 add_subdirectory(integration)
+add_subdirectory(tmp)
