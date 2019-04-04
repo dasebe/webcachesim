@@ -6,6 +6,7 @@
 #include <string>
 #include <regex>
 #include "lru_variants.h"
+#include "lru2.h"
 #include "gd_variants.h"
 #include "request.h"
 #include "simulation.h"

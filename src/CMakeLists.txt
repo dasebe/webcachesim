@@ -1,5 +1,7 @@
 set(LIB_SOURCE
         caches/lru_variants.cpp
+        ../include/caches/lru_variants.h
+        ../include/caches/lru2.h
         caches/gd_variants.cpp
         caches/random_variants.cpp
         caches/belady.cpp
