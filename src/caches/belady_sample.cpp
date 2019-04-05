@@ -78,10 +78,11 @@ pair<uint64_t, uint32_t> BeladySampleCache::rank(const uint64_t & t) {
     uint64_t max_key;
     uint32_t max_pos;
 
+    uint32_t rand_idx = _distribution(_generator) % meta_holder[0].size();
     uint n_sample = min(sample_rate, (uint32_t) meta_holder[0].size());
 
     for (uint32_t i = 0; i < n_sample; i++) {
-        uint32_t pos = (i+current_rank_pos)%meta_holder[0].size();
+        uint32_t pos = (i+rand_idx)%meta_holder[0].size();
         auto & meta = meta_holder[0][pos];
         //fill in past_interval
         uint64_t &past_timestamp = meta._past_timestamp;
@@ -100,7 +101,6 @@ pair<uint64_t, uint32_t> BeladySampleCache::rank(const uint64_t & t) {
             max_pos = pos;
         }
     }
-    current_rank_pos += n_sample;
     return {max_key, max_pos};
 }
 
