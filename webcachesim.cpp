@@ -29,6 +29,8 @@ int main (int argc, char* argv[])
   const uint64_t cache_size  = std::stoull(argv[3]);
   webcache->setSize(cache_size);
 
+  const uint64_t SKIPREQS = 100000000;
+
   // parse cache parameters
   regex opexp ("(.*)=(.*)");
   cmatch opmatch;
@@ -44,8 +46,9 @@ int main (int argc, char* argv[])
   }
 
   ifstream infile;
-  long long reqs = 0, hits = 0;
+  uint64_t total_reqs = 0, reqs = 0, hits = 0, bytes = 0, hitbytes = 0;
   long long t, id, size;
+  
 
   cerr << "running..." << endl;
 
@@ -53,11 +56,18 @@ int main (int argc, char* argv[])
   SimpleRequest* req = new SimpleRequest(0, 0);
   while (infile >> t >> id >> size)
     {
-        reqs++;
+        total_reqs++;
+        if(total_reqs>SKIPREQS) {
+            reqs++;
+            bytes+=size;
+        }
         
         req->reinit(id,size);
         if(webcache->lookup(req)) {
-            hits++;
+            if(total_reqs>SKIPREQS) {
+                hits++;
+                hitbytes+=size;
+            }
         } else {
             webcache->admit(req);
         }
@@ -66,9 +76,7 @@ int main (int argc, char* argv[])
   delete req;
 
   infile.close();
-  cout << cacheType << " " << cache_size << " " << paramSummary << " "
-       << reqs << " " << hits << " "
-       << double(hits)/reqs << endl;
-
+  cout << path << " " << cacheType << " " << cache_size << " " << paramSummary << " "
+       << hits/double(reqs) << " " << hitbytes/double(bytes) << endl;
   return 0;
 }
