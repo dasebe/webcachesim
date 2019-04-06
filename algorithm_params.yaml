@@ -29,6 +29,10 @@ BeladySample:
     - 64
   threshold:
     - 40000000
+ThLRU:
+  t: 1073741824
+ThS4LRU:
+  t: 1073741824
 LRBelady:
   sample_rate:
     - 32
