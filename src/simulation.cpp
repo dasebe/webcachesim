@@ -68,7 +68,22 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
         cerr << "Exception opening/reading file"<<endl;
         exit(-1);
     }
-
+    //get whether file is in a correct format
+    {
+        std::string line;
+        getline(infile, line);
+        istringstream iss(line);
+        int64_t tmp;
+        int counter = 0;
+        while (iss>>tmp) {++counter;}
+        //format: t id size [extra]
+        if (counter != 3+n_extra_fields) {
+            cerr<<"error: input file column should be 3+n_extra_fields"<<endl;
+            abort();
+        }
+        infile.clear();
+        infile.seekg(0, ios::beg);
+    }
     uint64_t byte_req = 0, byte_hit = 0, obj_req = 0, obj_hit = 0;
     //don't use real timestamp, use relative seq starting from 1
     uint64_t tmp, id, size;

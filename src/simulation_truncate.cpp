@@ -6,6 +6,7 @@
 #include "simulation_truncate.h"
 #include "belady_truncate.h"
 #include <fstream>
+#include <sstream>
 #include "request.h"
 #include "annotate.h"
 #include "utils.h"
@@ -67,6 +68,22 @@ map<string, string> _simulation_truncate(string trace_file, string cache_type, u
     if (!infile) {
         cerr << "exception opening/reading file" << endl;
         return {};
+    }
+    //get whether file is in a correct format
+    {
+        std::string line;
+        getline(infile, line);
+        istringstream iss(line);
+        int64_t tmp;
+        int counter = 0;
+        while (iss>>tmp) {++counter;}
+        //format: n_seq t id size [extra]
+        if (counter != 4+n_extra_fields) {
+            cerr<<"error: input file column should be 3+n_extra_fields"<<endl;
+            abort();
+        }
+        infile.clear();
+        infile.seekg(0, ios::beg);
     }
     //suppose already annotated
     uint64_t byte_req = 0, byte_hit = 0, obj_req = 0, obj_hit = 0;
