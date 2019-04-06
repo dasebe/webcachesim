@@ -192,30 +192,60 @@ public:
 static Factory<S4LRUCache> factoryS4LRU("S4LRU");
 
 
+class ThS4LRUCache : public S4LRUCache
+{
+protected:
+    uint64_t _sizeThreshold;
+
+public:
+    void init_with_params(map<string, string> params) override {
+        //set params
+        for (auto& it: params) {
+            if (it.first == "t") {
+                _sizeThreshold = stoul(it.second);
+            } else {
+                cerr << "unrecognized parameter: " << it.first << endl;
+            }
+        }
+    }
+    virtual void admit(SimpleRequest& req);
+};
+
+static Factory<ThS4LRUCache> factoryThS4LRU("ThS4LRU");
 
 
 
 
-///*
-//  ThLRU: LRU eviction with a size admission threshold
-//*/
-//class ThLRUCache : public LRUCache
-//{
-//protected:
-//    uint64_t _sizeThreshold;
-//
-//public:
-//    ThLRUCache();
-//    virtual ~ThLRUCache()
-//    {
-//    }
-//
-//    virtual void setPar(std::string parName, std::string parValue);
-//    virtual void admit(SimpleRequest* req);
-//};
-//
-//static Factory<ThLRUCache> factoryThLRU("ThLRU");
-//
+
+
+/*
+  ThLRU: LRU eviction with a size admission threshold
+*/
+class ThLRUCache : public LRUCache
+{
+protected:
+    uint64_t _sizeThreshold;
+
+public:
+    ThLRUCache();
+    virtual ~ThLRUCache()
+    {
+    }
+    void init_with_params(map<string, string> params) override {
+        //set params
+        for (auto& it: params) {
+            if (it.first == "t") {
+                _sizeThreshold = stoul(it.second);
+            } else {
+                cerr << "unrecognized parameter: " << it.first << endl;
+            }
+        }
+    }
+    virtual void admit(SimpleRequest& req);
+};
+
+static Factory<ThLRUCache> factoryThLRU("ThLRU");
+
 ///*
 //  ExpLRU: LRU eviction with size-aware probabilistic cache admission
 //*/

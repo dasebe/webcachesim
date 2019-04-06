@@ -509,36 +509,32 @@ void S4LRUCache::evict()
     segments[0].evict();
 }
 
-///*
-//  ThLRU: LRU eviction with a size admission threshold
-//*/
-//ThLRUCache::ThLRUCache()
-//    : LRUCache(),
-//      _sizeThreshold(524288)
-//{
-//}
-//
-//void ThLRUCache::setPar(std::string parName, std::string parValue) {
-//    if(parName.compare("t") == 0) {
-//        const double t = stof(parValue);
-//        assert(t>0);
-//        _sizeThreshold = pow(2.0,t);
-//    } else {
-//        std::cerr << "unrecognized parameter: " << parName << std::endl;
-//    }
-//}
-//
-//
-//void ThLRUCache::admit(SimpleRequest* req)
-//{
-//    const uint64_t size = req->getSize();
-//    // admit if size < threshold
-//    if (size < _sizeThreshold) {
-//        LRUCache::admit(req);
-//    }
-//}
-//
-//
+/*
+  ThLRU: LRU eviction with a size admission threshold
+*/
+ThLRUCache::ThLRUCache()
+    : LRUCache(),
+      _sizeThreshold(524288)
+{
+}
+
+void ThLRUCache::admit(SimpleRequest& req)
+{
+    const uint64_t size = req.get_size();
+    // admit if size < threshold
+    if (size < _sizeThreshold) {
+        LRUCache::admit(req);
+    }
+}
+
+void ThS4LRUCache::admit(SimpleRequest& req)
+{
+    const uint64_t size = req.get_size();
+    // admit if size < threshold
+    if (size < _sizeThreshold) {
+        S4LRUCache::admit(req);
+    }
+}
 ///*
 //  ExpLRU: LRU eviction with size-aware probabilistic cache admission
 //*/
