@@ -45,12 +45,12 @@ void GreedyDualBase::admit(SimpleRequest& req)
         LOG("L", _cacheSize, req.get_id(), size);
         return;
     }
+    uint64_t& obj = req._id;
+    _sizemap[obj] = size;
     // admit new object with new GF value
     long double ageVal = ageValue(req);
-    uint64_t& obj = req._id;
     LOG("a", ageVal, obj.id, obj.size);
     _cacheMap[obj] = _valueMap.emplace(ageVal, obj);
-    _sizemap[obj] = size;
     _currentSize += size;
 //    LOG("csize", _currentSize, 0, 0);
     // check eviction needed
@@ -155,6 +155,7 @@ long double GDSFCache::ageValue(SimpleRequest& req)
 {
     uint64_t & obj = req._id;
     uint64_t & size = _sizemap[obj];
+    assert(_sizemap.find(obj) != _sizemap.end());
     return _currentL + static_cast<double>(_reqsMap[obj]) / static_cast<double>(size);
 }
 
