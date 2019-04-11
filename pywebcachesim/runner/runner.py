@@ -37,7 +37,7 @@ def runner_run(args: dict, tasks: list):
                 print(f'first task: {task_str}')
             f.write(task_str)
     with open(f'/tmp/{ts}.job') as f:
-        subprocess.run(['parallel', '-v', '--sshloginfile', 'nodefile', '--sshdelay', '0.1'], stdin=f)
+        subprocess.run(['parallel', '-v', '--eta', '--sshloginfile', 'nodefile', '--sshdelay', '0.1'], stdin=f)
 
 
 def main():
