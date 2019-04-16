@@ -17,13 +17,13 @@ void GDBTCache::train() {
     // create training dataset
     DatasetHandle trainData;
     LGBM_DatasetCreateFromCSR(
-            static_cast<void *>(training_data.indptr.data()),
+            static_cast<void *>(training_data->indptr.data()),
             C_API_DTYPE_INT32,
-            training_data.indices.data(),
-            static_cast<void *>(training_data.data.data()),
+            training_data->indices.data(),
+            static_cast<void *>(training_data->data.data()),
             C_API_DTYPE_FLOAT64,
-            training_data.indptr.size(),
-            training_data.data.size(),
+            training_data->indptr.size(),
+            training_data->data.size(),
             GDBT::n_feature,  //remove future t
             GDBT_train_params,
             nullptr,
@@ -31,8 +31,8 @@ void GDBTCache::train() {
 
     LGBM_DatasetSetField(trainData,
                          "label",
-                         static_cast<void *>(training_data.labels.data()),
-                         training_data.labels.size(),
+                         static_cast<void *>(training_data->labels.data()),
+                         training_data->labels.size(),
                          C_API_DTYPE_FLOAT32);
 
     // init booster
@@ -47,15 +47,15 @@ void GDBTCache::train() {
     }
 
     int64_t len;
-    vector<double > result(training_data.indptr.size()-1);
+    vector<double > result(training_data->indptr.size()-1);
     LGBM_BoosterPredictForCSR(booster,
-                              static_cast<void *>(training_data.indptr.data()),
+                              static_cast<void *>(training_data->indptr.data()),
                               C_API_DTYPE_INT32,
-                              training_data.indices.data(),
-                              static_cast<void *>(training_data.data.data()),
+                              training_data->indices.data(),
+                              static_cast<void *>(training_data->data.data()),
                               C_API_DTYPE_FLOAT64,
-                              training_data.indptr.size(),
-                              training_data.data.size(),
+                              training_data->indptr.size(),
+                              training_data->data.size(),
                               GDBT::n_feature,  //remove future t
                               C_API_PREDICT_NORMAL,
                               0,
@@ -64,7 +64,7 @@ void GDBTCache::train() {
                               result.data());
     double se = 0;
     for (int i = 0; i < result.size(); ++i) {
-        auto diff = result[i] - training_data.labels[i];
+        auto diff = result[i] - training_data->labels[i];
         se += diff * diff;
     }
     training_loss = training_loss * 0.99 + se/GDBT::batch_size*0.01;
@@ -151,7 +151,7 @@ bool GDBTCache::lookup(SimpleRequest &req) {
     if (!(req._t%1000000)) {
         cerr << "cache size: "<<_currentSize<<"/"<<_cacheSize<<endl;
         cerr << "n_metadata: "<<key_map.size()<<endl;
-        cerr << "n_training: "<<training_data.labels.size()<<endl;
+        cerr << "n_training: "<<training_data->labels.size()<<endl;
         cerr << "training loss: " << training_loss << endl;
         cerr << "n_force_eviction: " << n_force_eviction <<endl;
     }
@@ -177,11 +177,11 @@ bool GDBTCache::lookup(SimpleRequest &req) {
             uint64_t future_distance = req._t - last_timestamp;
             for (auto & sample_time: meta._sample_times) {
                 //don't use label within the first forget window because the data is not static
-                training_data.emplace_back(meta, sample_time, future_distance);
+                training_data->emplace_back(meta, sample_time, future_distance);
                 //training
-                if (training_data.labels.size() == GDBT::batch_size) {
+                if (training_data->labels.size() == GDBT::batch_size) {
                     train();
-                    training_data.clear();
+                    training_data->clear();
                 }
             }
             meta._sample_times.clear();
@@ -222,11 +222,11 @@ void GDBTCache::forget(uint64_t &t) {
             uint64_t future_distance = GDBT::forget_window * 2;
             for (auto & sample_time: meta._sample_times) {
                 //don't use label within the first forget window because the data is not static
-                training_data.emplace_back(meta, sample_time, future_distance);
+                training_data->emplace_back(meta, sample_time, future_distance);
                 //training
-                if (training_data.labels.size() == GDBT::batch_size) {
+                if (training_data->labels.size() == GDBT::batch_size) {
                     train();
-                    training_data.clear();
+                    training_data->clear();
                 }
             }
             meta._sample_times.clear();

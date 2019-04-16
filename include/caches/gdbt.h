@@ -147,7 +147,7 @@ public:
     vector<GDBTMeta> meta_holder[2];
 
     vector<uint64_t> forget_table;
-    GDBTTrainingData training_data;
+    GDBTTrainingData * training_data;
 
     // sample_size
     uint sample_rate = 32;
@@ -244,6 +244,7 @@ public:
             GDBT_train_params["categorical_feature"] = categorical_feature;
         }
         GDBT_inference_params = GDBT_train_params;
+        training_data = new GDBTTrainingData();
     }
 
     bool lookup(SimpleRequest& req);
