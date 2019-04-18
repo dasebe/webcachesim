@@ -20,6 +20,7 @@
 #define HISTFEATURES 50
 
 using namespace std;
+using namespace chrono;
 
 // from boost hash combine: hashing of pairs for unordered_maps
 template<class T>
@@ -98,8 +99,8 @@ namespace LFO {
     vector<trEntry> windowTrace;
     uint64_t windowByteSum = 0;
 
-    ofstream resultFile;
-
+//    ofstream resultFile;
+//
     void calculateOPT() {
       auto timeBegin = chrono::system_clock::now();
 
@@ -122,10 +123,10 @@ namespace LFO {
           currentVolume += it.volume;
         }
       }
-      resultFile << cacheSize << " " << windowSize << " " << double(hitc) / windowSize << " "
+      cerr << cacheSize << " " << windowSize << " " << double(hitc) / windowSize << " "
                  << double(bytehitc) / windowByteSum << endl;
 
-      resultFile << "Calculate OPT: "
+      cerr << "Calculate OPT: "
                  << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - timeBegin).count()
                  << " ms"
                  << endl;
@@ -213,10 +214,10 @@ namespace LFO {
       }
 
       if (negCacheSize > 0) {
-        resultFile << "Negative cache size: " << negCacheSize << endl;
+        cerr << "Negative cache size: " << negCacheSize << endl;
       }
 
-      resultFile << "Derive features: "
+      cerr << "Derive features: "
                  << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - timeBegin).count()
                  << " ms"
                  << endl;
@@ -229,7 +230,7 @@ namespace LFO {
       vector<int32_t> indices;
       vector<double> data;
       deriveFeatures(labels, indptr, indices, data, 0);
-      resultFile << "Data size for evaluation: " << labels.size() << endl;
+      cerr << "Data size for evaluation: " << labels.size() << endl;
 
       auto timeBegin = chrono::system_clock::now();
       int64_t len;
@@ -250,9 +251,9 @@ namespace LFO {
         }
       }
 
-      resultFile << cacheSize << " " << windowSize << " " << sampleSize << " " << cutoff << " " << sampling << " "
+      cerr << cacheSize << " " << windowSize << " " << sampleSize << " " << cutoff << " " << sampling << " "
                  << (double) fp / labels.size() << " " << (double) fn / labels.size() << endl;
-      resultFile << "Evaluate model: "
+      cerr << "Evaluate model: "
                  << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - timeBegin).count()
                  << " ms"
                  << endl;
@@ -300,7 +301,7 @@ namespace LFO {
 //    LGBM_BoosterRefit(newBooster, predLeaf.data(), indptr.size() - 1, predLeaf.size() / (indptr.size() - 1));
 
         // alternative: train a new booster
-        resultFile << "Train a new booster" << endl;
+        cerr << "Train a new booster" << endl;
         for (int i = 0; i < stoi(trainParams["num_iterations"]); i++) {
           int isFinished;
           LGBM_BoosterUpdateOneIter(newBooster, &isFinished);
@@ -313,7 +314,7 @@ namespace LFO {
       }
       LGBM_DatasetFree(trainData);
 
-      resultFile << "Train model: "
+      cerr << "Train model: "
                  << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - timeBegin).count()
                  << " ms"
                  << endl;
@@ -335,158 +336,204 @@ namespace LFO {
 
     map<string, string> _simulation_lfo(string trace_file, string cache_type, uint64_t cache_size,
                                         map<string, string> params) {
-      // create cache
-      unique_ptr<Cache> webcache = move(Cache::create_unique(cache_type));
-      if (webcache == nullptr) {
-        cerr << "cache type not implemented" << endl;
-        return {};
-      }
+    // create cache
+    unique_ptr<Cache> webcache = move(Cache::create_unique(cache_type));
+    if(webcache == nullptr) {
+        cerr<<"cache type not implemented"<<endl;
+        exit(-2);
+    }
 
-      // configure cache size
-      webcache->setSize(cache_size);
-      cacheSize = cache_size;
+    // configure cache size
+    webcache->setSize(cache_size);
+    cacheSize = cache_size;
 
-      bool uni_size = false;
-      for (auto &kv: params) {
-        webcache->setPar(kv.first, kv.second);
-        if (kv.first == "window")
-          windowSize = stoull(kv.second);
-        if (kv.first == "sample_size")
-          sampleSize = stoull(kv.second);
-        if (kv.first == "sample_type")
-          sampling = stoi(kv.second);
-        if (kv.first == "cutoff")
-          cutoff = stod(kv.second);
-        if (kv.first == "uni_size")
-          uni_size = static_cast<bool>(stoi(kv.second));
-      }
+    uint64_t n_warmup = 0;
+    bool uni_size = false;
+    uint64_t segment_window = 1000000;
+    uint n_extra_fields = 0;
 
-      auto timenow = chrono::system_clock::to_time_t(chrono::system_clock::now());
-      resultFile.open("/tmp/" + to_string(timenow));
-      resultFile << "Start: " << ctime(&timenow) << trace_file << " " << cacheSize << " " << windowSize << " "
-                 << sampleSize
-                 << " " << cutoff << " " << sampling << endl << endl;
+    for (auto it = params.cbegin(); it != params.cend();) {
+    if (it->first == "n_warmup") {
+        n_warmup = stoull(it->second);
+        it = params.erase(it);
+    } else if (it->first == "uni_size") {
+        uni_size = static_cast<bool>(stoi(it->second));
+        it = params.erase(it);
+    } else if (it->first == "segment_window") {
+        segment_window = stoull((it->second));
+        it = params.erase(it);
+    } else if (it->first == "n_extra_fields") {
+        n_extra_fields = stoull(it->second);
+        ++it;
+    } else if (it->first == "window") {
+        windowSize = stoull(it->second);
+        it = params.erase(it);
+    } else if (it->first == "sample_size") {
+        sampleSize = stoull(it->second);
+        it = params.erase(it);
+    } else if (it->first == "sample_type") {
+        sampling = stoi(it->second);
+        it = params.erase(it);
+    } else if (it->first == "cutoff") {
+        cutoff = stod(it->second);
+        it = params.erase(it);
+    } else {
+        ++it;
+    }
+    }
 
-      //suppose already annotated
-      ifstream infile;
-      uint64_t byte_req = 0, byte_hit = 0, obj_req = 0, obj_hit = 0;
-      uint64_t t, id, size;
+    webcache->init_with_params(params);
 
-      infile.open(trace_file);
-      if (!infile) {
+//    auto timenow = chrono::system_clock::to_time_t(chrono::system_clock::now());
+//    resultFile.open("/tmp/" + to_string(timenow));
+//    resultFile << "Start: " << ctime(&timenow) << trace_file << " " << cacheSize << " " << windowSize << " "
+//             << sampleSize
+//             << " " << cutoff << " " << sampling << endl << endl;
+
+    //suppose already annotated
+    ifstream infile;
+    infile.open(trace_file);
+    if (!infile) {
         cerr << "exception opening/reading file" << endl;
-        return {};
+        exit(-1);
+    }
+    //get whether file is in a correct format
+    {
+        std::string line;
+        getline(infile, line);
+        istringstream iss(line);
+        int64_t tmp;
+        int counter = 0;
+        while (iss>>tmp) {++counter;}
+        //format: t id size [extra]
+        if (counter != 3+n_extra_fields) {
+            cerr<<"error: input file column should be 3+n_extra_fields"<<endl;
+            abort();
+        }
+        infile.clear();
+        infile.seekg(0, ios::beg);
+    }
+    uint64_t byte_req = 0, byte_hit = 0, obj_req = 0, obj_hit = 0;
+    //don't use real timestamp, use relative seq starting from 1
+    uint64_t tmp, id, size;
+    uint64_t seg_byte_req = 0, seg_byte_hit = 0, seg_obj_req = 0, seg_obj_hit = 0;
+    string seg_bhr;
+    string seg_ohr;
+
+    uint64_t tmp2;
+
+//    cerr << "simulating" << endl;
+    ClassifiedRequest req(0, 0, 0);
+    uint64_t seq = 0;
+    auto t_now = system_clock::now();
+    while (infile >> tmp >> id >> size) {
+        for (int i = 0; i < n_extra_fields; ++i)
+            infile>>tmp2;
+
+    if (uni_size) {
+      size = 1;
+    }
+
+    if (seq && seq % windowSize == 0) {
+      //train
+      auto timeBegin = chrono::system_clock::now();
+      auto timenow = chrono::system_clock::to_time_t(timeBegin);
+      cerr << "Start processing window " << seq / windowSize << ": " << ctime(&timenow);
+      calculateOPT();
+      vector<float> labels;
+      vector<int32_t> indptr;
+      vector<int32_t> indices;
+      vector<double> data;
+      deriveFeatures(labels, indptr, indices, data, sampling);
+      cerr << "Data size for training: " << labels.size() << endl;
+      trainModel(labels, indptr, indices, data);
+
+      windowByteSum = 0;
+      windowLastSeen.clear();
+      windowOpt.clear();
+      windowTrace.clear();
+
+      auto timeEnd = chrono::system_clock::now();
+      timenow = chrono::system_clock::to_time_t(timeEnd);
+      cerr << "Finish processing window " << seq / windowSize << ": " << ctime(&timenow);
+      cerr << "Process window: " << chrono::duration_cast<chrono::milliseconds>(timeEnd - timeBegin).count()
+                 << " ms" << endl << endl;
+    }
+
+    seq++;
+
+    annotate(seq, id, size, size);
+
+    if (!init && seq % windowSize == 0) {
+      //the end of a window
+      //skip evaluation on first window
+      vector<double> windowResult;
+      evaluateModel(windowResult);
+
+      // simulate cache
+      auto begin = chrono::system_clock::now();
+      auto rit = windowResult.begin();
+      auto tit = windowTrace.begin();
+      for (; rit != windowResult.end() && tit != windowTrace.end(); ++rit, ++tit) {
+        //for each window request
+        byte_req += tit->size;
+        obj_req++;
+
+        req.reinit(tit->id, tit->size, *rit);
+        if (webcache->lookup(req)) {
+          byte_hit += tit->size;
+          obj_hit++;
+        } else {
+          webcache->admit(req);
+        }
       }
+      cerr << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
+      cerr << "Simulate cache: "
+                 << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - begin).count()
+                 << " ms"
+                 << endl;
+      cout << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
+      windowResult.clear();
+    }
+    }
 
-      cerr << "simulating" << endl;
-      ClassifiedRequest req(0, 0, 0);
-      uint64_t seq = 0;
-      while (infile >> t >> id >> size) {
+    if (seq % windowSize != 0) {
+    //the not mod part
+    vector<double> windowResult;
+    evaluateModel(windowResult);
 
-        if (uni_size) {
-          size = 1;
-        }
+    // simulate cache
+    auto begin = chrono::system_clock::now();
+    auto rit = windowResult.begin();
+    auto tit = windowTrace.begin();
+    for (; rit != windowResult.end() && tit != windowTrace.end(); ++rit, ++tit) {
+      //for each window request
+      byte_req += tit->size;
+      obj_req++;
 
-        if (seq && seq % windowSize == 0) {
-          //train
-          auto timeBegin = chrono::system_clock::now();
-          auto timenow = chrono::system_clock::to_time_t(timeBegin);
-          resultFile << "Start processing window " << seq / windowSize << ": " << ctime(&timenow);
-          calculateOPT();
-          vector<float> labels;
-          vector<int32_t> indptr;
-          vector<int32_t> indices;
-          vector<double> data;
-          deriveFeatures(labels, indptr, indices, data, sampling);
-          resultFile << "Data size for training: " << labels.size() << endl;
-          trainModel(labels, indptr, indices, data);
-
-          windowByteSum = 0;
-          windowLastSeen.clear();
-          windowOpt.clear();
-          windowTrace.clear();
-
-          auto timeEnd = chrono::system_clock::now();
-          timenow = chrono::system_clock::to_time_t(timeEnd);
-          resultFile << "Finish processing window " << seq / windowSize << ": " << ctime(&timenow);
-          resultFile << "Process window: " << chrono::duration_cast<chrono::milliseconds>(timeEnd - timeBegin).count()
-                     << " ms" << endl << endl;
-        }
-
-        seq++;
-
-        annotate(seq, id, size, size);
-
-        if (!init && seq % windowSize == 0) {
-          //the end of a window
-          //skip evaluation on first window
-          vector<double> windowResult;
-          evaluateModel(windowResult);
-
-          // simulate cache
-          auto begin = chrono::system_clock::now();
-          auto rit = windowResult.begin();
-          auto tit = windowTrace.begin();
-          for (; rit != windowResult.end() && tit != windowTrace.end(); ++rit, ++tit) {
-            //for each window request
-            byte_req += tit->size;
-            obj_req++;
-
-            req.reinit(tit->id, tit->size, *rit);
-            if (webcache->lookup(req)) {
-              byte_hit += tit->size;
-              obj_hit++;
-            } else {
-              webcache->admit(req);
-            }
-          }
-          resultFile << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
-          resultFile << "Simulate cache: "
-                     << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - begin).count()
-                     << " ms"
-                     << endl;
-          cout << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
-          windowResult.clear();
-        }
+      req.reinit(tit->id, tit->size, *rit);
+      if (webcache->lookup(req)) {
+        byte_hit += tit->size;
+        obj_hit++;
+      } else {
+        webcache->admit(req);
       }
+    }
+    cerr << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
+    cerr << "Simulate cache: "
+               << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - begin).count() << " ms"
+               << endl;
+    cout << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
+    windowResult.clear();
+    }
 
-      if (seq % windowSize != 0) {
-        //the not mod part
-        vector<double> windowResult;
-        evaluateModel(windowResult);
+    LGBM_BoosterFree(booster);
+    infile.close();
 
-        // simulate cache
-        auto begin = chrono::system_clock::now();
-        auto rit = windowResult.begin();
-        auto tit = windowTrace.begin();
-        for (; rit != windowResult.end() && tit != windowTrace.end(); ++rit, ++tit) {
-          //for each window request
-          byte_req += tit->size;
-          obj_req++;
-
-          req.reinit(tit->id, tit->size, *rit);
-          if (webcache->lookup(req)) {
-            byte_hit += tit->size;
-            obj_hit++;
-          } else {
-            webcache->admit(req);
-          }
-        }
-        resultFile << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
-        resultFile << "Simulate cache: "
-                   << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - begin).count() << " ms"
-                   << endl;
-        cout << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
-        windowResult.clear();
-      }
-
-      LGBM_BoosterFree(booster);
-      infile.close();
-
-      map<string, string> res = {
-              {"byte_hit_rate",   to_string(double(byte_hit) / byte_req)},
-              {"object_hit_rate", to_string(double(obj_hit) / obj_req)},
-      };
-      return res;
+    map<string, string> res = {
+          {"byte_hit_rate",   to_string(double(byte_hit) / byte_req)},
+          {"object_hit_rate", to_string(double(obj_hit) / obj_req)},
+    };
+    return res;
     }
 }

@@ -17,6 +17,7 @@
 #include <chrono>
 #include "utils.h"
 #include <unordered_map>
+#include "simulation_lfo.h"
 #include "miss_decouple.h"
 #include "cache_size_decouple.h"
 
@@ -201,8 +202,8 @@ map<string, string> simulation(string trace_file, string cache_type,
         return _simulation_future(trace_file, cache_type, cache_size, params);
     else if (cache_type == "Adaptive-TinyLFU")
         return _simulation_tinylfu(trace_file, cache_type, cache_size, params);
-//    else if (cache_type == "LFO")
-//        return LFO::_simulation_lfo(trace_file, cache_type, cache_size, params);
+    else if (cache_type == "LFO")
+        return LFO::_simulation_lfo(trace_file, cache_type, cache_size, params);
 //    else if (cache_type == "LFO2")
 //        return _simulation_lfo2(trace_file, cache_type, cache_size, params);
 //    else if (cache_type == "LRBelady")

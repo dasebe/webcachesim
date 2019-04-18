@@ -10,13 +10,14 @@ set(LIB_SOURCE
         caches/lhd/lhd.cpp
         random_helper.cpp
         simulation.cpp
-#        simulation_lfo.cpp
+        simulation_lfo.cpp
 #        simulation_lfo2.cpp
         simulation_future.cpp
         simulation_truncate.cpp
         caches/annotate.cpp
         caches/ucb.cpp
         caches/belady_sample.cpp
+        caches/lfo.cpp
 #        caches/lruk_sample.cpp
 #        caches/lfu_sample.cpp
 #        simulation_lr_belady.cpp

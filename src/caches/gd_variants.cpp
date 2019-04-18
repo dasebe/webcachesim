@@ -236,3 +236,24 @@ long double LFUDACache::ageValue(SimpleRequest& req)
     return _currentL + _reqsMap[obj];
 }
 
+/*
+  LFU
+*/
+bool LFUCache::lookup(SimpleRequest& req)
+{
+    bool hit = GreedyDualBase::lookup(req);
+    uint64_t & obj = req._id;
+    if (!hit) {
+        _reqsMap[obj] = 1; //reset bec. reqs_map not updated when element removed
+    } else {
+        _reqsMap[obj]++;
+    }
+    return hit;
+}
+
+long double LFUCache::ageValue(SimpleRequest& req)
+{
+    uint64_t & obj = req._id;
+    return _reqsMap[obj];
+}
+

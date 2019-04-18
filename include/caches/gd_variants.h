@@ -157,4 +157,28 @@ public:
 
 static Factory<LFUDACache> factoryLFUDA("LFUDA");
 
+
+/*
+  LFU
+*/
+class LFUCache : public GreedyDualBase
+{
+protected:
+    CacheStatsMapType _reqsMap;
+
+    virtual long double ageValue(SimpleRequest& req);
+
+public:
+    LFUCache()
+        : GreedyDualBase()
+    {
+    }
+    virtual ~LFUCache()
+    {
+    }
+
+    virtual bool lookup(SimpleRequest& req);
+};
+
+static Factory<LFUCache> factoryLFU("LFU");
 #endif /* GD_VARIANTS_H */
