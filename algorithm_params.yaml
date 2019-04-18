@@ -1,6 +1,8 @@
 LRUK:
   k:
-    - 4
+    - 2
+    - 3
+#    - 4
 LFO:
   cutoff: 0.5
   window: 10000000
