@@ -123,19 +123,19 @@ namespace LFO {
           currentVolume += it.volume;
         }
       }
-      cerr << cacheSize << " " << windowSize << " " << double(hitc) / windowSize << " "
-                 << double(bytehitc) / windowByteSum << endl;
-
-      cerr << "Calculate OPT: "
-                 << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - timeBegin).count()
-                 << " ms"
-                 << endl;
+//      cerr << cacheSize << " " << windowSize << " " << double(hitc) / windowSize << " "
+//                 << double(bytehitc) / windowByteSum << endl;
+//
+//      cerr << "Calculate OPT: "
+//                 << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - timeBegin).count()
+//                 << " ms"
+//                 << endl;
     }
 
 // purpose: derive features and count how many features are inconsistent
     void deriveFeatures(vector<float> &labels, vector<int32_t> &indptr, vector<int32_t> &indices, vector<double> &data,
                         int sampling) {
-      auto timeBegin = chrono::system_clock::now();
+//      auto timeBegin = chrono::system_clock::now();
 
       int64_t cacheAvailBytes = cacheSize;
       // from id to intervals
@@ -217,10 +217,10 @@ namespace LFO {
         cerr << "Negative cache size: " << negCacheSize << endl;
       }
 
-      cerr << "Derive features: "
-                 << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - timeBegin).count()
-                 << " ms"
-                 << endl;
+//      cerr << "Derive features: "
+//                 << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - timeBegin).count()
+//                 << " ms"
+//                 << endl;
     }
 
     void evaluateModel(vector<double> &result) {
@@ -230,9 +230,9 @@ namespace LFO {
       vector<int32_t> indices;
       vector<double> data;
       deriveFeatures(labels, indptr, indices, data, 0);
-      cerr << "Data size for evaluation: " << labels.size() << endl;
+//      cerr << "Data size for evaluation: " << labels.size() << endl;
 
-      auto timeBegin = chrono::system_clock::now();
+//      auto timeBegin = chrono::system_clock::now();
       int64_t len;
       result.resize(indptr.size() - 1);
       LGBM_BoosterPredictForCSR(booster, static_cast<void *>(indptr.data()), C_API_DTYPE_INT32, indices.data(),
@@ -251,16 +251,16 @@ namespace LFO {
         }
       }
 
-      cerr << cacheSize << " " << windowSize << " " << sampleSize << " " << cutoff << " " << sampling << " "
-                 << (double) fp / labels.size() << " " << (double) fn / labels.size() << endl;
-      cerr << "Evaluate model: "
-                 << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - timeBegin).count()
-                 << " ms"
-                 << endl;
+//      cerr << cacheSize << " " << windowSize << " " << sampleSize << " " << cutoff << " " << sampling << " "
+//                 << (double) fp / labels.size() << " " << (double) fn / labels.size() << endl;
+//      cerr << "Evaluate model: "
+//                 << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - timeBegin).count()
+//                 << " ms"
+//                 << endl;
     }
 
     void trainModel(vector<float> &labels, vector<int32_t> &indptr, vector<int32_t> &indices, vector<double> &data) {
-      auto timeBegin = chrono::system_clock::now();
+//      auto timeBegin = chrono::system_clock::now();
 
       // create training dataset
       DatasetHandle trainData;
@@ -301,7 +301,7 @@ namespace LFO {
 //    LGBM_BoosterRefit(newBooster, predLeaf.data(), indptr.size() - 1, predLeaf.size() / (indptr.size() - 1));
 
         // alternative: train a new booster
-        cerr << "Train a new booster" << endl;
+//        cerr << "Train a new booster" << endl;
         for (int i = 0; i < stoi(trainParams["num_iterations"]); i++) {
           int isFinished;
           LGBM_BoosterUpdateOneIter(newBooster, &isFinished);
@@ -314,10 +314,10 @@ namespace LFO {
       }
       LGBM_DatasetFree(trainData);
 
-      cerr << "Train model: "
-                 << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - timeBegin).count()
-                 << " ms"
-                 << endl;
+//      cerr << "Train model: "
+//                 << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - timeBegin).count()
+//                 << " ms"
+//                 << endl;
     }
 
     void annotate(uint64_t seq, uint64_t id, uint64_t size, double cost) {
@@ -430,22 +430,22 @@ namespace LFO {
         for (int i = 0; i < n_extra_fields; ++i)
             infile>>tmp2;
 
-    if (uni_size) {
-      size = 1;
-    }
+        if (uni_size) {
+          size = 1;
+        }
 
     if (seq && seq % windowSize == 0) {
       //train
-      auto timeBegin = chrono::system_clock::now();
-      auto timenow = chrono::system_clock::to_time_t(timeBegin);
-      cerr << "Start processing window " << seq / windowSize << ": " << ctime(&timenow);
+//      auto timeBegin = chrono::system_clock::now();
+//      auto timenow = chrono::system_clock::to_time_t(timeBegin);
+      cerr << "Start processing window " << seq / windowSize <<endl; //<< ": " << ctime(&timenow);
       calculateOPT();
       vector<float> labels;
       vector<int32_t> indptr;
       vector<int32_t> indices;
       vector<double> data;
       deriveFeatures(labels, indptr, indices, data, sampling);
-      cerr << "Data size for training: " << labels.size() << endl;
+//      cerr << "Data size for training: " << labels.size() << endl;
       trainModel(labels, indptr, indices, data);
 
       windowByteSum = 0;
@@ -453,11 +453,11 @@ namespace LFO {
       windowOpt.clear();
       windowTrace.clear();
 
-      auto timeEnd = chrono::system_clock::now();
-      timenow = chrono::system_clock::to_time_t(timeEnd);
-      cerr << "Finish processing window " << seq / windowSize << ": " << ctime(&timenow);
-      cerr << "Process window: " << chrono::duration_cast<chrono::milliseconds>(timeEnd - timeBegin).count()
-                 << " ms" << endl << endl;
+//      auto timeEnd = chrono::system_clock::now();
+//      timenow = chrono::system_clock::to_time_t(timeEnd);
+//      cerr << "Finish processing window " << seq / windowSize << ": " << ctime(&timenow);
+//      cerr << "Process window: " << chrono::duration_cast<chrono::milliseconds>(timeEnd - timeBegin).count()
+//                 << " ms" << endl << endl;
     }
 
     seq++;
@@ -471,7 +471,7 @@ namespace LFO {
       evaluateModel(windowResult);
 
       // simulate cache
-      auto begin = chrono::system_clock::now();
+//      auto begin = chrono::system_clock::now();
       auto rit = windowResult.begin();
       auto tit = windowTrace.begin();
       for (; rit != windowResult.end() && tit != windowTrace.end(); ++rit, ++tit) {
@@ -488,11 +488,11 @@ namespace LFO {
         }
       }
       cerr << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
-      cerr << "Simulate cache: "
-                 << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - begin).count()
-                 << " ms"
-                 << endl;
-      cout << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
+//      cerr << "Simulate cache: "
+//                 << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - begin).count()
+//                 << " ms"
+//                 << endl;
+//      cout << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
       windowResult.clear();
     }
     }
@@ -503,7 +503,7 @@ namespace LFO {
     evaluateModel(windowResult);
 
     // simulate cache
-    auto begin = chrono::system_clock::now();
+//    auto begin = chrono::system_clock::now();
     auto rit = windowResult.begin();
     auto tit = windowTrace.begin();
     for (; rit != windowResult.end() && tit != windowTrace.end(); ++rit, ++tit) {
@@ -520,10 +520,10 @@ namespace LFO {
       }
     }
     cerr << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
-    cerr << "Simulate cache: "
-               << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - begin).count() << " ms"
-               << endl;
-    cout << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
+//    cerr << "Simulate cache: "
+//               << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - begin).count() << " ms"
+//               << endl;
+//    cout << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
     windowResult.clear();
     }
 
