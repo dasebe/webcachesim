@@ -13,6 +13,7 @@
 #include <vector>
 #include <LightGBM/application.h>
 #include <LightGBM/c_api.h>
+#include <utils.h>
 #include "lfo.h"
 #include "request.h"
 #include "simulation_lfo.h"
@@ -21,25 +22,6 @@
 
 using namespace std;
 using namespace chrono;
-
-// from boost hash combine: hashing of pairs for unordered_maps
-template<class T>
-inline void hash_combine(size_t &seed, const T &v) {
-  hash<T> hasher;
-  seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-}
-
-namespace std {
-  template<typename S, typename T>
-  struct hash<pair<S, T>> {
-    inline size_t operator()(const pair<S, T> &v) const {
-      size_t seed = 0;
-      hash_combine(seed, v.first);
-      hash_combine(seed, v.second);
-      return seed;
-    }
-  };
-}
 
 struct optEntry {
   uint64_t idx;
@@ -82,7 +64,7 @@ namespace LFO {
             {"learning_rate",              "0.1"},
             {"num_leaves",                 "31"},
             {"tree_learner",               "serial"},
-            {"num_threads",                "40"},
+            {"num_threads",                "4"},
             {"feature_fraction",           "0.8"},
             {"bagging_freq",               "5"},
             {"bagging_fraction",           "0.8"},
@@ -240,16 +222,16 @@ namespace LFO {
                                 indptr.size(), data.size(), HISTFEATURES + 3,
                                 C_API_PREDICT_NORMAL, 0, trainParams, &len, result.data());
 
-      uint64_t fp = 0, fn = 0;
-
-      for (size_t i = 0; i < labels.size(); i++) {
-        if (labels[i] < cutoff && result[i] >= cutoff) {
-          fp++;
-        }
-        if (labels[i] >= cutoff && result[i] < cutoff) {
-          fn++;
-        }
-      }
+//      uint64_t fp = 0, fn = 0;
+//
+//      for (size_t i = 0; i < labels.size(); i++) {
+//        if (labels[i] < cutoff && result[i] >= cutoff) {
+//          fp++;
+//        }
+//        if (labels[i] >= cutoff && result[i] < cutoff) {
+//          fn++;
+//        }
+//      }
 
 //      cerr << cacheSize << " " << windowSize << " " << sampleSize << " " << cutoff << " " << sampling << " "
 //                 << (double) fp / labels.size() << " " << (double) fn / labels.size() << endl;
@@ -424,6 +406,7 @@ namespace LFO {
 
 //    cerr << "simulating" << endl;
     ClassifiedRequest req(0, 0, 0);
+    uint64_t train_seq = 0;
     uint64_t seq = 0;
     auto t_now = system_clock::now();
     while (infile >> tmp >> id >> size) {
@@ -434,11 +417,11 @@ namespace LFO {
           size = 1;
         }
 
-    if (seq && seq % windowSize == 0) {
+    if (train_seq && train_seq % windowSize == 0) {
       //train
 //      auto timeBegin = chrono::system_clock::now();
 //      auto timenow = chrono::system_clock::to_time_t(timeBegin);
-      cerr << "Start processing window " << seq / windowSize <<endl; //<< ": " << ctime(&timenow);
+      cerr << "Start processing window " << train_seq / windowSize <<endl; //<< ": " << ctime(&timenow);
       calculateOPT();
       vector<float> labels;
       vector<int32_t> indptr;
@@ -460,80 +443,116 @@ namespace LFO {
 //                 << " ms" << endl << endl;
     }
 
-    seq++;
+    train_seq++;
 
-    annotate(seq, id, size, size);
+    annotate(train_seq, id, size, size);
 
-    if (!init && seq % windowSize == 0) {
-      //the end of a window
-      //skip evaluation on first window
-      vector<double> windowResult;
-      evaluateModel(windowResult);
+    if (!init && train_seq % windowSize == 0) {
+        //the end of a window
+        //skip evaluation on first window
+        vector<double> windowResult;
+        evaluateModel(windowResult);
 
-      // simulate cache
-//      auto begin = chrono::system_clock::now();
-      auto rit = windowResult.begin();
-      auto tit = windowTrace.begin();
-      for (; rit != windowResult.end() && tit != windowTrace.end(); ++rit, ++tit) {
-        //for each window request
-        byte_req += tit->size;
-        obj_req++;
+        // simulate cache
+        //      auto begin = chrono::system_clock::now();
+        auto rit = windowResult.begin();
+        auto tit = windowTrace.begin();
+        for (; rit != windowResult.end() && tit != windowTrace.end(); ++rit, ++tit) {
+            //for each window request
+            if (seq >= n_warmup)
+                update_metric_req(byte_req, obj_req, tit->size);
+            update_metric_req(seg_byte_req, seg_obj_req, tit->size);
 
-        req.reinit(tit->id, tit->size, *rit);
-        if (webcache->lookup(req)) {
-          byte_hit += tit->size;
-          obj_hit++;
-        } else {
-          webcache->admit(req);
+            req.reinit(tit->id, tit->size, *rit);
+            if (webcache->lookup(req)) {
+                if (seq >= n_warmup)
+                    update_metric_req(byte_hit, obj_hit, tit->size);
+                update_metric_req(seg_byte_hit, seg_obj_hit, tit->size);
+            } else {
+              webcache->admit(req);
+            }
+
+            ++seq;
+            if (!(seq%segment_window)) {
+                auto _t_now = chrono::system_clock::now();
+                cerr<<"delta t: "<<chrono::duration_cast<std::chrono::milliseconds>(_t_now - t_now).count()/1000.<<endl;
+                cerr<<"seq: " << seq << endl;
+                double _seg_bhr = double(seg_byte_hit) / seg_byte_req;
+                double _seg_ohr = double(seg_obj_hit) / seg_obj_req;
+                cerr<<"accu bhr: " << double(byte_hit) / byte_req << endl;
+                cerr<<"seg bhr: " << _seg_bhr << endl;
+                seg_bhr+=to_string(_seg_bhr)+"\t";
+                seg_ohr+=to_string(_seg_ohr)+"\t";
+                seg_byte_hit=seg_obj_hit=seg_byte_req=seg_obj_req=0;
+                t_now = _t_now;
+            }
         }
-      }
-      cerr << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
-//      cerr << "Simulate cache: "
-//                 << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - begin).count()
-//                 << " ms"
-//                 << endl;
-//      cout << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
-      windowResult.clear();
-    }
+        cerr << "Window " << train_seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
+        //      cerr << "Simulate cache: "
+        //                 << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - begin).count()
+        //                 << " ms"
+        //                 << endl;
+        //      cout << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
+        windowResult.clear();
+        }
     }
 
-    if (seq % windowSize != 0) {
-    //the not mod part
-    vector<double> windowResult;
-    evaluateModel(windowResult);
+    if (train_seq % windowSize != 0) {
+        //the not mod part
+        vector<double> windowResult;
+        evaluateModel(windowResult);
 
-    // simulate cache
-//    auto begin = chrono::system_clock::now();
-    auto rit = windowResult.begin();
-    auto tit = windowTrace.begin();
-    for (; rit != windowResult.end() && tit != windowTrace.end(); ++rit, ++tit) {
-      //for each window request
-      byte_req += tit->size;
-      obj_req++;
+        // simulate cache
+    //    auto begin = chrono::system_clock::now();
+        auto rit = windowResult.begin();
+        auto tit = windowTrace.begin();
+        for (; rit != windowResult.end() && tit != windowTrace.end(); ++rit, ++tit) {
+            //for each window request
+            if (seq >= n_warmup)
+                update_metric_req(byte_req, obj_req, tit->size);
+            update_metric_req(seg_byte_req, seg_obj_req, tit->size);
 
-      req.reinit(tit->id, tit->size, *rit);
-      if (webcache->lookup(req)) {
-        byte_hit += tit->size;
-        obj_hit++;
-      } else {
-        webcache->admit(req);
-      }
-    }
-    cerr << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
-//    cerr << "Simulate cache: "
-//               << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - begin).count() << " ms"
-//               << endl;
-//    cout << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
-    windowResult.clear();
+            req.reinit(tit->id, tit->size, *rit);
+            if (webcache->lookup(req)) {
+            if (seq >= n_warmup)
+                update_metric_req(byte_hit, obj_hit, tit->size);
+            update_metric_req(seg_byte_hit, seg_obj_hit, tit->size);
+            } else {
+            webcache->admit(req);
+            }
+
+            ++seq;
+            if (!(seq%segment_window)) {
+                auto _t_now = chrono::system_clock::now();
+                cerr<<"delta t: "<<chrono::duration_cast<std::chrono::milliseconds>(_t_now - t_now).count()/1000.<<endl;
+                cerr<<"seq: " << seq << endl;
+                double _seg_bhr = double(seg_byte_hit) / seg_byte_req;
+                double _seg_ohr = double(seg_obj_hit) / seg_obj_req;
+                cerr<<"accu bhr: " << double(byte_hit) / byte_req << endl;
+                cerr<<"seg bhr: " << _seg_bhr << endl;
+                seg_bhr+=to_string(_seg_bhr)+"\t";
+                seg_ohr+=to_string(_seg_ohr)+"\t";
+                seg_byte_hit=seg_obj_hit=seg_byte_req=seg_obj_req=0;
+                t_now = _t_now;
+            }
+        }
+        cerr << "Window " << train_seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
+    //    cerr << "Simulate cache: "
+    //               << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - begin).count() << " ms"
+    //               << endl;
+    //    cout << "Window " << seq / windowSize << " byte hit rate: " << double(byte_hit) / byte_req << endl;
+        windowResult.clear();
     }
 
     LGBM_BoosterFree(booster);
     infile.close();
 
-    map<string, string> res = {
-          {"byte_hit_rate",   to_string(double(byte_hit) / byte_req)},
-          {"object_hit_rate", to_string(double(obj_hit) / obj_req)},
-    };
+        map<string, string> res = {
+                {"byte_hit_rate", to_string(double(byte_hit) / byte_req)},
+                {"object_hit_rate", to_string(double(obj_hit) / obj_req)},
+                {"segment_byte_hit_rate", seg_bhr},
+                {"segment_object_hit_rate", seg_ohr},
+        };
     return res;
     }
 }
