@@ -142,7 +142,7 @@ GDBT:
 #    - 0.01
   objective:
     - byte_hit_rate
-    - object_hit_rate
+#    - object_hit_rate
   n_edwt_feature:
     - 10
 #    - 12
