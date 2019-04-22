@@ -117,7 +117,9 @@ GDBT:
   forget_window: 10000000
   batch_size:
 #    - 50000
+#    - 10000
     - 100000
+#    - 1000000
 #    - 200000
   max_n_past_timestamps:
 #    - 4
@@ -147,7 +149,7 @@ GDBT:
     - 10
 #    - 12
 #    - 16
-  version: revert_to_random
+  version: sensitivity
 Hyperbolic:
   sample_rate: 64
 LeCaR:
