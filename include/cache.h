@@ -49,6 +49,9 @@ public:
         return false;
     }
 
+    virtual void update_stat(std::map<std::string, std::string> &res) {
+    }
+
 
     uint64_t getCurrentSize() const {
         return(_currentSize);

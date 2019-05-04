@@ -11,8 +11,14 @@
 #include "utils.h"
 #include <unordered_map>
 #include <sstream>
+
+#ifdef MISS_DECOUPLE
 #include "miss_decouple.h"
+#endif
+
+#ifdef CACHE_SIZE_DECOUPLE
 #include "cache_size_decouple.h"
+#endif
 
 using namespace std;
 using namespace chrono;
@@ -93,7 +99,6 @@ map<string, string> _simulation_future(string trace_file, string cache_type, uin
     string seg_bhr;
     string seg_ohr;
 
-    //todo: read extra fields
     vector<uint64_t > extra_features(n_extra_fields, 0);
 
     cerr<<"simulating"<<endl;
@@ -105,15 +110,15 @@ map<string, string> _simulation_future(string trace_file, string cache_type, uin
     unordered_map<uint64_t , uint32_t > total_request_map;
     MissStatistics miss_stat;
 #endif
+
 #ifdef CACHE_SIZE_DECOUPLE
     unordered_map<uint64_t, uint64_t> size_map;
     CacheSizeStatistics size_stat;
 #endif
 
     while (infile >> next_seq >> tmp >> id >> size) {
-        for (int j = 0; j < n_extra_fields; ++j)
-            infile>>extra_features[j];
-        //todo: currently real timestamp t is not used. Only relative seq is used
+        for (int i = 0; i < n_extra_fields; ++i)
+            infile>>extra_features[i];
         if (uni_size)
             size = 1;
 
@@ -122,6 +127,7 @@ map<string, string> _simulation_future(string trace_file, string cache_type, uin
         if (seq >= n_warmup)
             update_metric_req(byte_req, obj_req, size);
         update_metric_req(seg_byte_req, seg_obj_req, size);
+
 #ifdef MISS_DECOUPLE
         //count total request
         auto it = total_request_map.find(id);
@@ -194,5 +200,7 @@ map<string, string> _simulation_future(string trace_file, string cache_type, uin
             {"cache_size_decouple", size_stat.dump()},
 #endif
     };
+
+    webcache->update_stat(res);
     return res;
 }

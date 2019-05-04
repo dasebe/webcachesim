@@ -18,8 +18,14 @@
 #include "utils.h"
 #include <unordered_map>
 #include "simulation_lfo.h"
+
+#ifdef MISS_DECOUPLE
 #include "miss_decouple.h"
+#endif
+
+#ifdef CACHE_SIZE_DECOUPLE
 #include "cache_size_decouple.h"
+#endif
 
 using namespace std;
 using namespace chrono;
@@ -86,7 +92,7 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
         infile.seekg(0, ios::beg);
     }
     uint64_t byte_req = 0, byte_hit = 0, obj_req = 0, obj_hit = 0;
-    //don't use real timestamp, use relative seq starting from 1
+    //don't use real timestamp, use relative seq starting from 0
     uint64_t tmp, id, size;
     uint64_t seg_byte_req = 0, seg_byte_hit = 0, seg_obj_req = 0, seg_obj_hit = 0;
     string seg_bhr;
@@ -102,6 +108,7 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     unordered_map<uint64_t , uint32_t > total_request_map;
     MissStatistics miss_stat;
 #endif
+
 #ifdef CACHE_SIZE_DECOUPLE
     unordered_map<uint64_t, uint64_t> size_map;
     CacheSizeStatistics size_stat;
@@ -110,7 +117,6 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     while (infile >> tmp >> id >> size) {
         for (int i = 0; i < n_extra_fields; ++i)
             infile>>extra_features[i];
-        //todo: currently real timestamp t is not used. Only relative seq is used
         if (uni_size)
             size = 1;
 
@@ -192,6 +198,8 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
             {"cache_size_decouple", size_stat.dump()},
 #endif
     };
+
+    webcache->update_stat(res);
     return res;
 }
 
