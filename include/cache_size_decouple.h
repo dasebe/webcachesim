@@ -5,7 +5,7 @@
 #ifndef WEBCACHESIM_CACHE_SIZE_DECOUPLE_H
 #define WEBCACHESIM_CACHE_SIZE_DECOUPLE_H
 
-
+#ifdef CACHE_SIZE_DECOUPLE
 #include <cstdint>
 #include <unordered_map>
 #include <math.h>
@@ -35,4 +35,5 @@ public:
         return json(cache_size_map).dump();
     }
 };
+#endif
 #endif //WEBCACHESIM_CACHE_SIZE_DECOUPLE_H

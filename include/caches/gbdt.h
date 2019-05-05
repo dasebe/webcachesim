@@ -320,6 +320,25 @@ public:
             return false;
         return !it->second.first;
     }
+
+    void update_stat(std::map<std::string, std::string> &res) override {
+        uint64_t feature_overhead = 0;
+        uint64_t sample_overhead = 0;
+        for (auto &m: meta_holder[0]) {
+            feature_overhead += m.feature_overhead();
+            sample_overhead += m.sample_overhead();
+        }
+        for (auto &m: meta_holder[1]) {
+            feature_overhead += m.feature_overhead();
+            sample_overhead += m.sample_overhead();
+        }
+        
+        res["n_metadata"] = to_string(key_map.size());
+        res["feature_overhead"] = to_string(feature_overhead);
+        res["sample overhead"] = to_string(sample_overhead);
+        res["n_force_eviction"] = to_string(n_force_eviction);
+    }
+
 };
 
 static Factory<GDBTCache> factoryGBDT("GDBT");

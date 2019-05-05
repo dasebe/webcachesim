@@ -5,6 +5,7 @@
 #ifndef WEBCACHESIM_MISS_DECOUPLE_H
 #define WEBCACHESIM_MISS_DECOUPLE_H
 
+#ifdef MISS_DECOUPLE
 #include <cstdint>
 #include <unordered_map>
 #include <math.h>
@@ -39,5 +40,5 @@ public:
     }
 };
 
-
+#endif
 #endif //WEBCACHESIM_MISS_DECOUPLE_H

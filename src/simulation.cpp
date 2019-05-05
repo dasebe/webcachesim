@@ -19,17 +19,13 @@
 #include <unordered_map>
 #include "simulation_lfo.h"
 
-#ifdef MISS_DECOUPLE
 #include "miss_decouple.h"
-#endif
-
-#ifdef CACHE_SIZE_DECOUPLE
 #include "cache_size_decouple.h"
-#endif
+#include "nlohmann/json.hpp"
 
 using namespace std;
 using namespace chrono;
-
+using json = nlohmann::json;
 
 map<string, string> _simulation(string trace_file, string cache_type, uint64_t cache_size,
                                 map<string, string> params){
@@ -95,8 +91,8 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     //don't use real timestamp, use relative seq starting from 0
     uint64_t tmp, id, size;
     uint64_t seg_byte_req = 0, seg_byte_hit = 0, seg_obj_req = 0, seg_obj_hit = 0;
-    string seg_bhr;
-    string seg_ohr;
+    vector<double> seg_bhr;
+    vector<double> seg_ohr;
 
     vector<uint16_t > extra_features(n_extra_fields, 0);
 
@@ -177,8 +173,8 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
             double _seg_ohr = double(seg_obj_hit) / seg_obj_req;
             cerr<<"accu bhr: " << double(byte_hit) / byte_req << endl;
             cerr<<"seg bhr: " << _seg_bhr << endl;
-            seg_bhr+=to_string(_seg_bhr)+"\t";
-            seg_ohr+=to_string(_seg_ohr)+"\t";
+            seg_bhr.emplace_back(_seg_bhr);
+            seg_ohr.emplace_back(_seg_ohr);
             seg_byte_hit=seg_obj_hit=seg_byte_req=seg_obj_req=0;
             t_now = _t_now;
         }
@@ -189,8 +185,8 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     map<string, string> res = {
             {"byte_hit_rate", to_string(double(byte_hit) / byte_req)},
             {"object_hit_rate", to_string(double(obj_hit) / obj_req)},
-            {"segment_byte_hit_rate", seg_bhr},
-            {"segment_object_hit_rate", seg_ohr},
+            {"segment_byte_hit_rate", json(seg_bhr).dump()},
+            {"segment_object_hit_rate", json(seg_ohr).dump()},
 #ifdef MISS_DECOUPLE
             {"miss_decouple", miss_stat.dump()},
 #endif
