@@ -149,20 +149,22 @@ void GDBTCache::sample(uint32_t t) {
 bool GDBTCache::lookup(SimpleRequest &req) {
     bool ret;
     if (!(req._t%1000000)) {
-//        uint64_t overhead = 0;
-//        uint64_t n_meta_holder;
-//        for (auto &m: meta_holder[0]) {
-//            overhead += m.overhead();
-//        }
-//        for (auto &m: meta_holder[1]) {
-//            overhead += m.overhead();
-//        }
-//        n_meta_holder = meta_holder[0].size() + meta_holder[1].size();
-//        cerr << "overhead: "<<overhead<<endl;
-//        cerr << "n_meta_holder: "<<n_meta_holder<<endl;
-//        cerr << "overhead per entry: "<<overhead/n_meta_holder<<endl;
-        cerr << "cache size: "<<_currentSize<<"/"<<_cacheSize<<endl;
+        uint64_t feature_overhead = 0;
+        uint64_t sample_overhead = 0;
+        for (auto &m: meta_holder[0]) {
+            feature_overhead += m.feature_overhead();
+            sample_overhead += m.sample_overhead();
+        }
+        for (auto &m: meta_holder[1]) {
+            feature_overhead += m.feature_overhead();
+            sample_overhead += m.sample_overhead();
+        }
+        cerr << "cache size: "<<_currentSize <<"/"<<_cacheSize << " ("<<((double)_currentSize)/_cacheSize<<")"<<endl;
         cerr << "n_metadata: "<<key_map.size()<<endl;
+        cerr << "feature overhead: "<<feature_overhead<<endl;
+        cerr << "feature overhead per entry: "<<feature_overhead/key_map.size()<<endl;
+        cerr << "sample overhead: "<<sample_overhead<<endl;
+        cerr << "sample overhead per entry: "<<sample_overhead/key_map.size()<<endl;
         cerr << "n_training: "<<training_data->labels.size()<<endl;
         cerr << "training loss: " << training_loss << endl;
         cerr << "n_force_eviction: " << n_force_eviction <<endl<<endl;

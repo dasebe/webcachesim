@@ -97,13 +97,18 @@ public:
         }
     }
 
-    uint64_t overhead() {
-        uint64_t ret = sizeof(GDBTMeta);
+    int feature_overhead() {
+        int ret = sizeof(GDBTMeta);
         if (_extra)
-            ret += sizeof(GDBTMetaExtra::_edwt) + sizeof(uint32_t) * _extra->_past_distances.size();
-        if (_sample_times)
-            ret += sizeof(uint32_t) * _sample_times->size();
+            ret += sizeof(GDBTMetaExtra) + sizeof(uint32_t) * _extra->_past_distances.size();
         return ret;
+    }
+
+    int sample_overhead() {
+        if (_sample_times)
+            return sizeof(uint32_t) * _sample_times->size();
+        else
+            return 0;
     }
 };
 
