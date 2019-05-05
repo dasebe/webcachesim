@@ -175,9 +175,7 @@ bool GDBTCache::lookup(SimpleRequest &req) {
     auto it = key_map.find(req._id);
     if (it != key_map.end()) {
         //update past timestamps
-        bool &list_idx = it->second.first;
-        uint32_t &pos_idx = it->second.second;
-        GDBTMeta &meta = meta_holder[list_idx][pos_idx];
+        GDBTMeta &meta = meta_holder[it->second.list_idx][it->second.list_pos];
         assert(meta._key == req._id);
         uint64_t last_timestamp = meta._past_timestamp;
         uint64_t forget_timestamp = last_timestamp + GDBT::forget_window;
@@ -207,7 +205,7 @@ bool GDBTCache::lookup(SimpleRequest &req) {
         //make this update after update training, otherwise the last timestamp will change
         meta.update(req._t);
         //update forget_table
-        ret = !list_idx;
+        ret = !it->second.list_idx;
     } else {
         ret = false;
     }
@@ -226,8 +224,8 @@ void GDBTCache::forget(uint32_t t) {
     if (_forget_key) {
         auto key = _forget_key - 1;
         auto meta_it = key_map.find(key);
-        auto &pos = meta_it->second.second;
-        bool &meta_id = meta_it->second.first;
+        auto pos = meta_it->second.list_pos;
+        bool meta_id = meta_it->second.list_idx;
         auto &meta = meta_holder[meta_id][pos];
 
         //timeout mature
@@ -246,8 +244,7 @@ void GDBTCache::forget(uint32_t t) {
             meta._sample_times->clear();
         }
 
-        if (booster && !meta_id && t > GDBT::forget_window*1.5)
-            ++n_force_eviction;
+        ++n_force_eviction;
         assert(meta._key == key);
         if (!meta_id)
             _currentSize -= meta._size;
@@ -258,7 +255,7 @@ void GDBTCache::forget(uint32_t t) {
         if (pos != tail_pos) {
             //swap tail
             meta_holder[meta_id][pos] = meta_holder[meta_id][tail_pos];
-            key_map.find(meta_holder[meta_id][tail_pos]._key)->second.second = pos;
+            key_map.find(meta_holder[meta_id][tail_pos]._key)->second.list_pos= pos;
         }
         meta_holder[meta_id].pop_back();
         key_map.erase(key);
@@ -287,12 +284,12 @@ void GDBTCache::admit(SimpleRequest &req) {
         //bring list 1 to list 0
         //first move meta data, then modify hash table
         uint32_t tail0_pos = meta_holder[0].size();
-        meta_holder[0].emplace_back(meta_holder[1][it->second.second]);
+        meta_holder[0].emplace_back(meta_holder[1][it->second.list_pos]);
         uint32_t tail1_pos = meta_holder[1].size()-1;
-        if (it->second.second !=  tail1_pos) {
+        if (it->second.list_pos !=  tail1_pos) {
             //swap tail
-            meta_holder[1][it->second.second] = meta_holder[1][tail1_pos];
-            key_map.find(meta_holder[1][tail1_pos]._key)->second.second = it->second.second;
+            meta_holder[1][it->second.list_pos] = meta_holder[1][tail1_pos];
+            key_map.find(meta_holder[1][tail1_pos]._key)->second.list_pos = it->second.list_pos;
         }
         meta_holder[1].pop_back();
         it->second = {0, tail0_pos};
@@ -303,9 +300,8 @@ void GDBTCache::admit(SimpleRequest &req) {
         auto epair = rank(req._t);
         auto & key0 = epair.first;
         auto & pos0 = epair.second;
-        auto & pos1 = it->second.second;
         _currentSize = _currentSize - meta_holder[0][pos0]._size + req._size;
-        swap(meta_holder[0][pos0], meta_holder[1][pos1]);
+        swap(meta_holder[0][pos0], meta_holder[1][it->second.list_pos]);
         swap(it->second, key_map.find(key0)->second);
     }
     // check more eviction needed?
@@ -433,13 +429,13 @@ void GDBTCache::evict(const uint32_t t) {
     if (old_pos !=  activate_tail_idx) {
         //move tail
         meta_holder[0][old_pos] = meta_holder[0][activate_tail_idx];
-        key_map.find(meta_holder[0][activate_tail_idx]._key)->second.second = old_pos;
+        key_map.find(meta_holder[0][activate_tail_idx]._key)->second.list_pos = old_pos;
     }
     meta_holder[0].pop_back();
 
     auto it = key_map.find(key);
-    it->second.first = 1;
-    it->second.second = new_pos;
+    it->second.list_idx = 1;
+    it->second.list_pos = new_pos;
     _currentSize -= meta_holder[1][new_pos]._size;
 }
 

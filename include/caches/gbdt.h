@@ -196,11 +196,17 @@ public:
     }
 };
 
+
+struct KeyMapEntryT {
+    unsigned int list_idx: 1;
+    unsigned int list_pos: 31;
+};
+
 class GDBTCache : public Cache
 {
 public:
     //key -> (0/1 list, idx)
-    unordered_map<uint64_t, pair<bool, uint32_t>> key_map;
+    unordered_map<uint64_t, KeyMapEntryT> key_map;
     vector<GDBTMeta> meta_holder[2];
 
     vector<uint64_t> forget_table;
@@ -318,7 +324,7 @@ public:
         auto it = key_map.find(id);
         if (it == key_map.end())
             return false;
-        return !it->second.first;
+        return !it->second.list_idx;
     }
 
     void update_stat(std::map<std::string, std::string> &res) override {
@@ -332,7 +338,7 @@ public:
             feature_overhead += m.feature_overhead();
             sample_overhead += m.sample_overhead();
         }
-        
+
         res["n_metadata"] = to_string(key_map.size());
         res["feature_overhead"] = to_string(feature_overhead);
         res["sample overhead"] = to_string(sample_overhead);
