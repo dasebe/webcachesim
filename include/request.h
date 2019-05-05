@@ -16,7 +16,8 @@ public:
     IdType _id; // request object id
     uint64_t _size; // request size in bytes
     u_int64_t _t;
-    vector<uint64_t > _extra_features;
+    //category feature. unsigned int. ideally not exceed 2k
+    vector<uint16_t > _extra_features;
 
     SimpleRequest()
     {
@@ -30,7 +31,7 @@ public:
         : _id(id), _size(size) {
     }
 
-    SimpleRequest(IdType id, uint64_t size, uint64_t t, vector<uint64_t >* extra_features = nullptr)
+    SimpleRequest(IdType id, uint64_t size, uint64_t t, vector<uint16_t >* extra_features = nullptr)
         : _id(id), _size(size), _t(t) {
         if (extra_features)
             _extra_features = *extra_features;
@@ -41,7 +42,7 @@ public:
         _size = size;
     }
 
-    inline void reinit(IdType id, uint64_t size, uint64_t t, vector<uint64_t >* extra_features = nullptr) {
+    inline void reinit(IdType id, uint64_t size, uint64_t t, vector<uint16_t >* extra_features = nullptr) {
         _id = id;
         _size = size;
         _t = t;
@@ -74,7 +75,7 @@ public:
 
     // Create request
     AnnotatedRequest(IdType id, uint64_t size, uint64_t t, uint64_t next_seq,
-            vector<uint64_t >* extra_features = nullptr)
+            vector<uint16_t >* extra_features = nullptr)
             : SimpleRequest(id, size),
               _next_seq(next_seq) {
         _t = t;
@@ -83,7 +84,7 @@ public:
     }
 
     inline void reinit(IdType id, uint64_t size, uint64_t t, uint64_t next_seq,
-                       vector<uint64_t >* extra_features = nullptr) {
+                       vector<uint16_t >* extra_features = nullptr) {
         SimpleRequest::reinit(id, size);
         _t = t;
         _next_seq = next_seq;

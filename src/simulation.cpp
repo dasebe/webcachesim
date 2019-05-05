@@ -98,7 +98,7 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     string seg_bhr;
     string seg_ohr;
 
-    vector<uint64_t > extra_features(n_extra_fields, 0);
+    vector<uint16_t > extra_features(n_extra_fields, 0);
 
     SimpleRequest req(0, 0, 0);
     uint64_t seq = 0;

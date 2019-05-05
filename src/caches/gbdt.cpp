@@ -2,7 +2,7 @@
 // Created by zhenyus on 1/16/19.
 //
 
-#include "gdbt.h"
+#include "gbdt.h"
 #include <algorithm>
 #include "utils.h"
 #include <chrono>
@@ -116,7 +116,7 @@ void GDBTCache::train() {
                << endl;
 }
 
-void GDBTCache::sample(uint64_t &t) {
+void GDBTCache::sample(uint32_t t) {
     // warmup not finish
     if (meta_holder[0].empty() || meta_holder[1].empty())
         return;
@@ -134,14 +134,14 @@ void GDBTCache::sample(uint64_t &t) {
     for (uint32_t i = 0; i < n_sample_l0; i++) {
         uint32_t pos = (uint32_t) (i + rand_idx) % n_l0;
         auto &meta = meta_holder[0][pos];
-        meta._sample_times.emplace_back(t);
+        meta.emplace_sample(t);
     }
 
     //sample list 1
     for (uint32_t i = 0; i < n_sample_l1; i++) {
         uint32_t pos = (uint32_t) (i + rand_idx) % n_l1;
         auto &meta = meta_holder[1][pos];
-        meta._sample_times.emplace_back(t);
+        meta.emplace_sample(t);
     }
 }
 
@@ -149,11 +149,23 @@ void GDBTCache::sample(uint64_t &t) {
 bool GDBTCache::lookup(SimpleRequest &req) {
     bool ret;
     if (!(req._t%1000000)) {
+//        uint64_t overhead = 0;
+//        uint64_t n_meta_holder;
+//        for (auto &m: meta_holder[0]) {
+//            overhead += m.overhead();
+//        }
+//        for (auto &m: meta_holder[1]) {
+//            overhead += m.overhead();
+//        }
+//        n_meta_holder = meta_holder[0].size() + meta_holder[1].size();
+//        cerr << "overhead: "<<overhead<<endl;
+//        cerr << "n_meta_holder: "<<n_meta_holder<<endl;
+//        cerr << "overhead per entry: "<<overhead/n_meta_holder<<endl;
         cerr << "cache size: "<<_currentSize<<"/"<<_cacheSize<<endl;
         cerr << "n_metadata: "<<key_map.size()<<endl;
         cerr << "n_training: "<<training_data->labels.size()<<endl;
         cerr << "training loss: " << training_loss << endl;
-        cerr << "n_force_eviction: " << n_force_eviction <<endl;
+        cerr << "n_force_eviction: " << n_force_eviction <<endl<<endl;
     }
 
 
@@ -168,14 +180,14 @@ bool GDBTCache::lookup(SimpleRequest &req) {
         uint64_t last_timestamp = meta._past_timestamp;
         uint64_t forget_timestamp = last_timestamp + GDBT::forget_window;
         //if the key in key_map, it must also in forget table
-        //todo: key never 0 because we want to use forget table 0 means None
+        //key never 0 because we want to use forget table 0 means None
         auto &forget_key = forget_table[forget_timestamp % GDBT::s_forget_table];
         assert(forget_key);
         //re-request
-        if (!meta._sample_times.empty()) {
+        if (meta._sample_times) {
             //mature
-            uint64_t future_distance = req._t - last_timestamp;
-            for (auto & sample_time: meta._sample_times) {
+            uint32_t future_distance = req._t - last_timestamp;
+            for (auto & sample_time: *meta._sample_times) {
                 //don't use label within the first forget window because the data is not static
                 training_data->emplace_back(meta, sample_time, future_distance);
                 //training
@@ -184,7 +196,7 @@ bool GDBTCache::lookup(SimpleRequest &req) {
                     training_data->clear();
                 }
             }
-            meta._sample_times.clear();
+            meta._sample_times->clear();
         }
         //remove this entry
         forget_table[forget_timestamp%GDBT::s_forget_table] = 0;
@@ -206,7 +218,7 @@ bool GDBTCache::lookup(SimpleRequest &req) {
 }
 
 
-void GDBTCache::forget(uint64_t &t) {
+void GDBTCache::forget(uint32_t t) {
     //remove item from forget table, which is not going to be affect from update
     auto & _forget_key = forget_table[t%GDBT::s_forget_table];
     if (_forget_key) {
@@ -217,10 +229,10 @@ void GDBTCache::forget(uint64_t &t) {
         auto &meta = meta_holder[meta_id][pos];
 
         //timeout mature
-        if (!meta._sample_times.empty()) {
+        if (meta._sample_times) {
             //mature
-            uint64_t future_distance = GDBT::forget_window * 2;
-            for (auto & sample_time: meta._sample_times) {
+            uint32_t future_distance = GDBT::forget_window * 2;
+            for (auto & sample_time: *meta._sample_times) {
                 //don't use label within the first forget window because the data is not static
                 training_data->emplace_back(meta, sample_time, future_distance);
                 //training
@@ -229,7 +241,7 @@ void GDBTCache::forget(uint64_t &t) {
                     training_data->clear();
                 }
             }
-            meta._sample_times.clear();
+            meta._sample_times->clear();
         }
 
         if (booster && !meta_id && t > GDBT::forget_window*1.5)
@@ -237,6 +249,8 @@ void GDBTCache::forget(uint64_t &t) {
         assert(meta._key == key);
         if (!meta_id)
             _currentSize -= meta._size;
+        //free the actual content
+        meta.free();
         //evict
         uint32_t tail_pos = meta_holder[meta_id].size() - 1;
         if (pos != tail_pos) {
@@ -299,7 +313,7 @@ void GDBTCache::admit(SimpleRequest &req) {
 }
 
 
-pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
+pair<uint64_t, uint32_t> GDBTCache::rank(const uint32_t t) {
     uint32_t rand_idx = _distribution(_generator) % meta_holder[0].size();
     //if not trained yet, use random
     if (booster == nullptr) {
@@ -308,74 +322,73 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
 
     uint n_sample = min(sample_rate, (uint32_t) meta_holder[0].size());
 
-    vector<int32_t> indptr = {0};
-    vector<int32_t> indices;
-    vector<double> data;
-    vector<double> sizes;
-    vector<uint64_t > past_timestamps;
+    int32_t indptr[n_sample+1];
+    indptr[0] = 0;
+    int32_t indices[n_sample*GDBT::n_feature];
+    double data[n_sample*GDBT::n_feature];
+    int32_t past_timestamps[n_sample];
+    uint32_t sizes[n_sample];
+    //next_past_timestamp, next_size = next_indptr - 1
 
-    uint64_t counter = 0;
+    unsigned int idx_feature = 0;
+    unsigned int idx_row = 0;
     for (int i = 0; i < n_sample; i++) {
         uint32_t pos = (i+rand_idx)%meta_holder[0].size();
         auto & meta = meta_holder[0][pos];
         //fill in past_interval
-        indices.push_back(0);
-        data.push_back(t - meta._past_timestamp);
-        ++counter;
-        past_timestamps.emplace_back(meta._past_timestamp);
+        indices[idx_feature] = 0;
+        data[idx_feature++] = t - meta._past_timestamp;
+        past_timestamps[idx_row] = meta._past_timestamp;
 
         uint8_t j = 0;
-        uint64_t this_past_distance = 0;
-        for (j = 0; j < meta._past_distance_idx && j < GDBT::max_n_past_distances; ++j) {
-            uint8_t past_distance_idx = (meta._past_distance_idx - 1 - j) % GDBT::max_n_past_distances;
-            uint64_t & past_distance = meta._past_distances[past_distance_idx];
-            this_past_distance += past_distance;
-            if (this_past_distance < GDBT::forget_window) {
-                indices.push_back(j+1);
-                data.push_back(past_distance);
-                ++counter;
-            } else
-                break;
+        uint32_t this_past_distance = 0;
+        if (meta._extra) {
+            for (j = 0; j < meta._past_distance_idx && j < GDBT::max_n_past_distances; ++j) {
+                uint8_t past_distance_idx = (meta._past_distance_idx - 1 - j) % GDBT::max_n_past_distances;
+                uint32_t & past_distance = meta._extra->_past_distances[past_distance_idx];
+                this_past_distance += past_distance;
+                if (this_past_distance < GDBT::forget_window) {
+                    indices[idx_feature] = j+1;
+                    data[idx_feature++] = past_distance;
+                } else
+                    break;
+            }
         }
 
-        indices.push_back(GDBT::max_n_past_timestamps);
-        data.push_back(meta._size);
-        sizes.push_back(meta._size);
-        ++counter;
-
+        indices[idx_feature] = GDBT::max_n_past_timestamps;
+        data[idx_feature++] = meta._size;
+        sizes[idx_row] = meta._size;
 
         for (uint k = 0; k < GDBT::n_extra_fields; ++k) {
-            indices.push_back(GDBT::max_n_past_timestamps + k + 1);
-            data.push_back(meta._extra_features[k]);
+            indices[idx_feature] = GDBT::max_n_past_timestamps + k + 1;
+            data[idx_feature++] = meta._extra_features[k];
         }
-        counter += GDBT::n_extra_fields;
 
-        indices.push_back(GDBT::max_n_past_timestamps+GDBT::n_extra_fields+1);
-        data.push_back(j);
-        ++counter;
+        indices[idx_feature] = GDBT::max_n_past_timestamps+GDBT::n_extra_fields+1;
+        data[idx_feature++] = j;
 
         for (uint8_t k = 0; k < GDBT::n_edwt_feature; ++k) {
-            indices.push_back(GDBT::max_n_past_timestamps + GDBT::n_extra_fields + 2 + k);
-            uint32_t _distance_idx = min(uint32_t (t-meta._past_timestamp) / GDBT::edwt_windows[k],
+            indices[idx_feature] = GDBT::max_n_past_timestamps + GDBT::n_extra_fields + 2 + k;
+            uint32_t _distance_idx = min(uint32_t(t - meta._past_timestamp) / GDBT::edwt_windows[k],
                                          GDBT::max_hash_edwt_idx);
-            data.push_back(meta._edwt[k]*GDBT::hash_edwt[_distance_idx]);
+            if (meta._extra)
+                data[idx_feature++] = meta._extra->_edwt[k] * GDBT::hash_edwt[_distance_idx];
+            else
+                data[idx_feature++] = GDBT::hash_edwt[_distance_idx];
         }
-        counter += GDBT::n_edwt_feature;
-
         //remove future t
-        indptr.push_back(counter);
-
+        indptr[++idx_row] = idx_feature;
     }
     int64_t len;
     vector<double> result(n_sample);
     LGBM_BoosterPredictForCSR(booster,
-                              static_cast<void *>(indptr.data()),
+                              static_cast<void *>(indptr),
                               C_API_DTYPE_INT32,
-                              indices.data(),
-                              static_cast<void *>(data.data()),
+                              indices,
+                              static_cast<void *>(data),
                               C_API_DTYPE_FLOAT64,
-                              indptr.size(),
-                              data.size(),
+                              idx_row+1,
+                              idx_feature,
                               GDBT::n_feature,  //remove future t
                               C_API_PREDICT_NORMAL,
                               0,
@@ -405,7 +418,7 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint64_t & t) {
     return {worst_key, worst_pos};
 }
 
-void GDBTCache::evict(const uint64_t & t) {
+void GDBTCache::evict(const uint32_t t) {
     auto epair = rank(t);
     uint64_t & key = epair.first;
     uint32_t & old_pos = epair.second;

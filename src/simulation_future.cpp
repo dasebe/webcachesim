@@ -99,7 +99,7 @@ map<string, string> _simulation_future(string trace_file, string cache_type, uin
     string seg_bhr;
     string seg_ohr;
 
-    vector<uint64_t > extra_features(n_extra_fields, 0);
+    vector<uint16_t > extra_features(n_extra_fields, 0);
 
     cerr<<"simulating"<<endl;
     AnnotatedRequest req(0, 0, 0, 0);
