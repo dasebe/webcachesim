@@ -7,6 +7,7 @@
 
 #include "cache.h"
 #include <unordered_map>
+#include "sparsepp/spp.h"
 #include <vector>
 #include <random>
 #include <cmath>
@@ -14,6 +15,7 @@
 #include <assert.h>
 
 using namespace std;
+using spp::sparse_hash_map;
 
 namespace GDBT {
     uint8_t max_n_past_timestamps = 32;
@@ -206,7 +208,7 @@ class GDBTCache : public Cache
 {
 public:
     //key -> (0/1 list, idx)
-    unordered_map<uint64_t, KeyMapEntryT> key_map;
+    sparse_hash_map<uint64_t, KeyMapEntryT> key_map;
     vector<GDBTMeta> meta_holder[2];
 
     vector<uint64_t> forget_table;
