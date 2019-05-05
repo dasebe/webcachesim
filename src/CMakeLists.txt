@@ -25,6 +25,7 @@ set(LIB_SOURCE
 #        simulation_bins.cpp
         caches/bins.cpp
         caches/belady_truncate.cpp
+        ../include/caches/gbdt.h
         caches/gbdt.cpp
         caches/hyperbolic.cpp caches/lecar.cpp simulation_tinylfu.cpp caches/lr.cpp)
 #message(123)
@@ -41,4 +42,4 @@ target_include_directories(webcachesim PUBLIC ../lib)
 target_include_directories(webcachesim PUBLIC include)
 target_include_directories(webcachesim PUBLIC ${LIGHTGBM_PATH})
 
-TARGET_LINK_LIBRARIES(webcachesim LINK_PUBLIC ${Boost_LIBRARIES} ${LIGHTGBM_LIB})
+target_link_libraries(webcachesim LINK_PUBLIC ${Boost_LIBRARIES} ${LIGHTGBM_LIB})
