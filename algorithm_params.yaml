@@ -149,7 +149,7 @@ GDBT:
     - 10
 #    - 12
 #    - 16
-  version: sensitivity
+  version: low_mem
 Hyperbolic:
   sample_rate: 64
 LeCaR:
