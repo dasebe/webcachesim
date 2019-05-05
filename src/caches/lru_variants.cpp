@@ -59,18 +59,13 @@ void LRUCache::admit(SimpleRequest& req)
 
 bool InfCache::lookup(SimpleRequest& req)
 {
-    auto it = _cacheMap.find(req._id);
-    if (it != _cacheMap.end()) {
-        // log hit
-        return true;
-    }
-    return false;
+    return _cacheMap.find(req._id) != _cacheMap.end();
 }
 
 void InfCache::admit(SimpleRequest& req)
 {
     // admit new object
-    _cacheMap[req._id] = 1;
+    _cacheMap.insert(req._id);
 }
 
 void LRUCache::evict(SimpleRequest& req)

@@ -2,6 +2,7 @@
 #define LRU_VARIANTS_H
 
 #include <unordered_map>
+#include <unordered_set>
 #include <list>
 #include <random>
 #include "cache.h"
@@ -48,7 +49,7 @@ class InfCache : public Cache
 {
 protected:
     // map to find objects in list
-    unordered_map<uint64_t, uint64_t> _cacheMap;
+    unordered_set<uint64_t> _cacheMap;
 
 public:
     InfCache()
@@ -63,6 +64,20 @@ public:
     virtual void admit(SimpleRequest& req);
     virtual void evict(SimpleRequest& req){};
     virtual void evict(){};
+    size_t memory_overhead() override {
+        //the estimation of unordered_setq not very accurate
+        size_t count = 0;
+        for (unsigned i = 0; i < _cacheMap.bucket_count(); ++i) {
+            size_t bucket_size = _cacheMap.bucket_size(i);
+            if (bucket_size == 0) {
+                count++;
+            }
+            else {
+                count += bucket_size;
+            }
+        }
+        return count*sizeof(uint64_t) + Cache::memory_overhead();
+    }
 };
 
 static Factory<InfCache> factoryInf("Inf");

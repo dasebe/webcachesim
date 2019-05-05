@@ -52,6 +52,9 @@ public:
     virtual void update_stat(std::map<std::string, std::string> &res) {
     }
 
+    virtual size_t memory_overhead() {
+        return sizeof(Cache);
+    }
 
     uint64_t getCurrentSize() const {
         return(_currentSize);
