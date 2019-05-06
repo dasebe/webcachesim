@@ -26,7 +26,6 @@ namespace GDBT {
     vector<double > hash_edwt;
     uint32_t max_hash_edwt_idx;
     uint32_t forget_window = 80000000;
-    uint32_t s_forget_table = forget_window + 1;
     uint32_t n_extra_fields = 0;
     uint32_t batch_size = 100000;
     uint32_t n_feature;
@@ -211,7 +210,7 @@ public:
     sparse_hash_map<uint64_t, KeyMapEntryT> key_map;
     vector<GDBTMeta> meta_holder[2];
 
-    vector<uint64_t> forget_table;
+    sparse_hash_map<uint32_t, uint64_t> forget_table;
     GDBTTrainingData * training_data;
 
     // sample_size
@@ -286,8 +285,7 @@ public:
             }
         }
 
-        GDBT::s_forget_table = GDBT::forget_window+1;
-        forget_table.resize(GDBT::s_forget_table);
+        forget_table.reserve(GDBT::forget_window);
         GDBT::max_n_past_distances = GDBT::max_n_past_timestamps-1;
         //init
         GDBT::edwt_windows = vector<uint32_t >(GDBT::n_edwt_feature);
@@ -322,6 +320,7 @@ public:
     pair<uint64_t, uint32_t > rank(const uint32_t t);
     void train();
     void sample(uint32_t t);
+    void print_stats();
     bool has(const uint64_t& id) {
         auto it = key_map.find(id);
         if (it == key_map.end())

@@ -69,46 +69,6 @@ void GDBTCache::train() {
     }
     training_loss = training_loss * 0.99 + se/GDBT::batch_size*0.01;
 
-//    vector<double > importance(GDBT::n_feature);
-//    LGBM_BoosterFeatureImportance(booster,
-//            0,
-//            0,
-//            importance.data());
-//    cout<<"i";
-//    for (auto & it: importance)
-//        cout<<" "<<it;
-//    cout<<endl;
-
-////    cerr<<"training l2: "<<msr<<endl;
-//
-////    vector<double > importance(max_n_past_timestamps+1);
-////    int succeed = LGBM_BoosterFeatureImportance(booster,
-////                                                0,
-////                                                1,
-////                                                importance.data());
-////    cerr<<"\nimportance:\n";
-////    for (auto & it: importance) {
-////        cerr<<it<<endl;
-////    }
-////    char *json_model = new char[10000000];
-////    int64_t out_len;
-////    LGBM_BoosterSaveModelToString(booster,
-////            0,
-////            -1,
-////            10000000,
-////            &out_len,
-////            json_model);
-////    cout<<json_model<<endl;
-////
-////    LGBM_BoosterDumpModel(booster,
-////                          0,
-////                          -1,
-////                          10000000,
-////                          &out_len,
-////                          json_model);
-////    cout<<json_model<<endl;
-
-
     LGBM_DatasetFree(trainData);
     cerr << "Training time: "
                << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - timeBegin).count()
@@ -146,43 +106,47 @@ void GDBTCache::sample(uint32_t t) {
 }
 
 
+void GDBTCache::print_stats() {
+    uint64_t feature_overhead = 0;
+    uint64_t sample_overhead = 0;
+    for (auto &m: meta_holder[0]) {
+        feature_overhead += m.feature_overhead();
+        sample_overhead += m.sample_overhead();
+    }
+    for (auto &m: meta_holder[1]) {
+        feature_overhead += m.feature_overhead();
+        sample_overhead += m.sample_overhead();
+    }
+    cerr << "cache size: "<<_currentSize <<"/"<<_cacheSize << " ("<<((double)_currentSize)/_cacheSize<<")"<<endl;
+    cerr << "n_metadata: "<<key_map.size()<<endl;
+    cerr << "feature overhead: "<<feature_overhead<<endl;
+    cerr << "feature overhead per entry: "<<feature_overhead/key_map.size()<<endl;
+    cerr << "sample overhead: "<<sample_overhead<<endl;
+    cerr << "sample overhead per entry: "<<sample_overhead/key_map.size()<<endl;
+    cerr << "n_training: "<<training_data->labels.size()<<endl;
+    cerr << "training loss: " << training_loss << endl;
+    cerr << "n_force_eviction: " << n_force_eviction <<endl<<endl;
+    assert(meta_holder[0].size() + meta_holder[1].size() == key_map.size());
+}
+
+
 bool GDBTCache::lookup(SimpleRequest &req) {
     bool ret;
-    if (!(req._t%1000000)) {
-        uint64_t feature_overhead = 0;
-        uint64_t sample_overhead = 0;
-        for (auto &m: meta_holder[0]) {
-            feature_overhead += m.feature_overhead();
-            sample_overhead += m.sample_overhead();
-        }
-        for (auto &m: meta_holder[1]) {
-            feature_overhead += m.feature_overhead();
-            sample_overhead += m.sample_overhead();
-        }
-        cerr << "cache size: "<<_currentSize <<"/"<<_cacheSize << " ("<<((double)_currentSize)/_cacheSize<<")"<<endl;
-        cerr << "n_metadata: "<<key_map.size()<<endl;
-        cerr << "feature overhead: "<<feature_overhead<<endl;
-        cerr << "feature overhead per entry: "<<feature_overhead/key_map.size()<<endl;
-        cerr << "sample overhead: "<<sample_overhead<<endl;
-        cerr << "sample overhead per entry: "<<sample_overhead/key_map.size()<<endl;
-        cerr << "n_training: "<<training_data->labels.size()<<endl;
-        cerr << "training loss: " << training_loss << endl;
-        cerr << "n_force_eviction: " << n_force_eviction <<endl<<endl;
-    }
-
+    if (!(req._t%1000000))
+        print_stats();
 
     //first update the metadata: insert/update, which can trigger pending data.mature
     auto it = key_map.find(req._id);
     if (it != key_map.end()) {
+        auto list_idx = it->second.list_idx;
+        auto list_pos = it->second.list_pos;
         //update past timestamps
-        GDBTMeta &meta = meta_holder[it->second.list_idx][it->second.list_pos];
+        GDBTMeta &meta = meta_holder[list_idx][list_pos];
         assert(meta._key == req._id);
         uint64_t last_timestamp = meta._past_timestamp;
         uint64_t forget_timestamp = last_timestamp + GDBT::forget_window;
         //if the key in key_map, it must also in forget table
-        //key never 0 because we want to use forget table 0 means None
-        auto &forget_key = forget_table[forget_timestamp % GDBT::s_forget_table];
-        assert(forget_key);
+        assert(forget_table.find(forget_timestamp % GDBT::forget_window) != forget_table.end());
         //re-request
         if (meta._sample_times) {
             //mature
@@ -205,9 +169,10 @@ bool GDBTCache::lookup(SimpleRequest &req) {
         //make this update after update training, otherwise the last timestamp will change
         meta.update(req._t);
         //update forget_table
-        ret = !it->second.list_idx;
+        ret = !list_idx;
     } else {
         ret = false;
+        forget(req._t);
     }
 
     forget(req._t);
@@ -220,10 +185,10 @@ bool GDBTCache::lookup(SimpleRequest &req) {
 
 void GDBTCache::forget(uint32_t t) {
     //remove item from forget table, which is not going to be affect from update
-    auto & _forget_key = forget_table[t%GDBT::s_forget_table];
-    if (_forget_key) {
-        auto key = _forget_key - 1;
-        auto meta_it = key_map.find(key);
+    auto it = forget_table.find(t%GDBT::forget_window);
+    if (it != forget_table.end()) {
+        auto forget_key = it->second;
+        auto meta_it = key_map.find(forget_key);
         auto pos = meta_it->second.list_pos;
         bool meta_id = meta_it->second.list_idx;
         auto &meta = meta_holder[meta_id][pos];
@@ -245,7 +210,7 @@ void GDBTCache::forget(uint32_t t) {
         }
 
         ++n_force_eviction;
-        assert(meta._key == key);
+        assert(meta._key == forget_key);
         if (!meta_id)
             _currentSize -= meta._size;
         //free the actual content
@@ -258,8 +223,8 @@ void GDBTCache::forget(uint32_t t) {
             key_map.find(meta_holder[meta_id][tail_pos]._key)->second.list_pos= pos;
         }
         meta_holder[meta_id].pop_back();
-        key_map.erase(key);
-        forget_table[t%GDBT::s_forget_table] = 0;
+        key_map.erase(forget_key);
+        forget_table.erase(t%GDBT::forget_window);
     }
 }
 
@@ -277,7 +242,8 @@ void GDBTCache::admit(SimpleRequest &req) {
         key_map.insert({req._id, {0, (uint32_t) meta_holder[0].size()}});
         meta_holder[0].emplace_back(req._id, req._size, req._t, req._extra_features);
         _currentSize += size;
-        forget_table[(req._t + GDBT::forget_window)%GDBT::s_forget_table] = req._id+1;
+        //this must be a fresh insert
+        forget_table.insert({(req._t + GDBT::forget_window)%GDBT::forget_window, req._id});
         if (_currentSize <= _cacheSize)
             return;
     } else if (size + _currentSize <= _cacheSize){
@@ -433,9 +399,7 @@ void GDBTCache::evict(const uint32_t t) {
     }
     meta_holder[0].pop_back();
 
-    auto it = key_map.find(key);
-    it->second.list_idx = 1;
-    it->second.list_pos = new_pos;
+    key_map.find(key)->second = {1, new_pos};
     _currentSize -= meta_holder[1][new_pos]._size;
 }
 
