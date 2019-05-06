@@ -21,7 +21,7 @@ namespace GDBT {
     uint8_t max_n_past_timestamps = 32;
     uint8_t max_n_past_distances = 31;
     uint8_t base_edwt_window = 10;
-    uint8_t n_edwt_feature = 10;
+    const uint8_t n_edwt_feature = 10;
     vector<uint32_t > edwt_windows;
     vector<double > hash_edwt;
     uint32_t max_hash_edwt_idx;
@@ -270,7 +270,11 @@ public:
             } else if (it.first == "training_sample_interval") {
                 training_sample_interval = stoull(it.second);
             } else if (it.first == "n_edwt_feature") {
-                GDBT::n_edwt_feature = stoull(it.second);
+                if (stoull(it.second) != GDBT::n_edwt_feature) {
+                    cerr<<"error: cannot change n_edwt_feature because of const"<<endl;
+                    abort();
+                }
+//                GDBT::n_edwt_feature = stoull(it.second);
             } else if (it.first == "objective") {
                 if (it.second == "byte_hit_rate")
                     objective = byte_hit_rate;
@@ -300,6 +304,10 @@ public:
         //interval, distances, size, extra_features, n_past_intervals, edwt
         GDBT::n_feature = GDBT::max_n_past_timestamps + GDBT::n_extra_fields + 2 + GDBT::n_edwt_feature;
         if (GDBT::n_extra_fields) {
+            if (GDBT::n_extra_fields>2) {
+                cerr<<"error: only support <= 2 extra fields because of static allocation"<<endl;
+                abort();
+            }
             string categorical_feature = to_string(GDBT::max_n_past_timestamps+1);
             for (uint i = 0; i < GDBT::n_extra_fields-1; ++i) {
                 categorical_feature += ","+to_string(GDBT::max_n_past_timestamps+2+i);

@@ -83,6 +83,7 @@ void GDBTCache::sample(uint32_t t) {
 #ifdef LOG_SAMPLE_RATE
     bool log_flag = ((double) rand() / (RAND_MAX)) < LOG_SAMPLE_RATE;
 #endif
+    //todo: it is possible to deconstruct edc at sample time
     auto n_l0 = static_cast<uint32_t>(meta_holder[0].size());
     auto n_l1 = static_cast<uint32_t>(meta_holder[1].size());
     auto rand_idx = _distribution(_generator);
