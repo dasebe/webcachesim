@@ -36,80 +36,83 @@ struct GDBTMetaExtra {
     //not 1 hit wonder
     float _edwt[10];
     vector<uint32_t> _past_distances;
-    GDBTMetaExtra(uint32_t & distance) {
+    //the next index to put the distance
+    uint8_t _past_distance_idx = 1;
+
+    GDBTMetaExtra(const uint32_t & distance) {
         _past_distances = vector<uint32_t>(1, distance);
-        for (auto &i: _edwt)
-            i = 1;
+        for (uint8_t i = 0; i < GDBT::n_edwt_feature; ++i) {
+            uint32_t _distance_idx = min(uint32_t (distance/GDBT::edwt_windows[i]), GDBT::max_hash_edwt_idx);
+            _edwt[i] = GDBT::hash_edwt[_distance_idx] + 1;
+        }
     }
+
+    void update(const uint32_t & distance) {
+        uint8_t distance_idx = _past_distance_idx%GDBT::max_n_past_distances;
+        if (_past_distances.size() < GDBT::max_n_past_distances)
+            _past_distances.emplace_back(distance);
+        else
+            _past_distances[distance_idx] = distance;
+        assert(_past_distances.size() <= GDBT::max_n_past_distances);
+        _past_distance_idx = _past_distance_idx + (uint8_t) 1;
+        if (_past_distance_idx >= GDBT::max_n_past_distances * 2)
+            _past_distance_idx -= GDBT::max_n_past_distances;
+        for (uint8_t i = 0; i < GDBT::n_edwt_feature; ++i) {
+            uint32_t _distance_idx = min(uint32_t (distance/GDBT::edwt_windows[i]), GDBT::max_hash_edwt_idx);
+            _edwt[i] = _edwt[i] * GDBT::hash_edwt[_distance_idx] + 1;
+        }
+    }
+
 };
 
 class GDBTMeta {
 public:
     //25 byte
     uint64_t _key;
-    uint32_t _past_timestamp;
     uint32_t _size;
-    uint8_t _past_distance_idx;
-    GDBTMetaExtra * _extra;
-    vector<uint32_t> *_sample_times;
-    vector<uint16_t > _extra_features;
+    uint32_t _past_timestamp;
+    uint16_t _extra_features[2];
+    GDBTMetaExtra * _extra = nullptr;
+    vector<uint32_t> _sample_times;
 
     GDBTMeta(const uint64_t & key, const uint64_t & size, const uint64_t & past_timestamp,
-            const vector<uint16_t> & extra_features): _past_distance_idx(0), _extra(nullptr), _sample_times(nullptr) {
+            const vector<uint16_t> & extra_features) {
         _key = key;
         _size = size;
         _past_timestamp = past_timestamp;
-        _extra_features = extra_features;
+        for (int i = 0; i < GDBT::n_extra_fields; ++i)
+            _extra_features[i] = extra_features[i];
     }
 
     void emplace_sample(uint32_t & sample_t) {
-        if (!_sample_times)
-            _sample_times = new vector<uint32_t>(1, sample_t);
-        else
-            _sample_times->emplace_back(sample_t);
+        _sample_times.emplace_back(sample_t);
     }
 
     void free() {
         delete _extra;
-        delete _sample_times;
     }
 
-    inline void update(const uint32_t &past_timestamp) {
+    void update(const uint32_t &past_timestamp) {
         //distance
         uint32_t _distance = past_timestamp - _past_timestamp;
+        assert(_distance);
         if (!_extra) {
             _extra = new GDBTMetaExtra(_distance);
-        }
-        else {
-            uint8_t distance_idx = _past_distance_idx%GDBT::max_n_past_distances;
-            if (_extra->_past_distances.size() <= distance_idx)
-                _extra->_past_distances.emplace_back(_distance);
-            else
-                _extra->_past_distances[distance_idx] = _distance;
-        }
-        _past_distance_idx = _past_distance_idx + (uint8_t) 1;
-        if (_past_distance_idx >= GDBT::max_n_past_distances * 2)
-            _past_distance_idx -= GDBT::max_n_past_distances;
+        } else
+            _extra->update(_distance);
         //timestamp
         _past_timestamp = past_timestamp;
-        for (uint8_t i = 0; i < GDBT::n_edwt_feature; ++i) {
-            uint32_t _distance_idx = min(uint32_t (_distance/GDBT::edwt_windows[i]), GDBT::max_hash_edwt_idx);
-            _extra->_edwt[i] = _extra->_edwt[i] * GDBT::hash_edwt[_distance_idx] + 1;
-        }
     }
 
     int feature_overhead() {
         int ret = sizeof(GDBTMeta);
         if (_extra)
-            ret += sizeof(GDBTMetaExtra) + sizeof(uint32_t) * _extra->_past_distances.size();
+            ret += sizeof(GDBTMetaExtra) - sizeof(_sample_times) + _extra->_past_distances.capacity()*sizeof(uint32_t);
         return ret;
     }
 
     int sample_overhead() {
-        if (_sample_times)
-            return sizeof(uint32_t) * _sample_times->size();
-        else
-            return 0;
+        return sizeof(_sample_times) + sizeof(uint32_t) * _sample_times.capacity();
     }
 };
 
@@ -127,7 +130,7 @@ public:
         data.reserve(GDBT::batch_size*GDBT::n_feature);
     }
 
-    void emplace_back(const GDBTMeta &meta, uint32_t & sample_timestamp, uint32_t & future_interval) {
+    void emplace_back(GDBTMeta &meta, uint32_t & sample_timestamp, uint32_t & future_interval) {
         int32_t counter = indptr.back();
 
         indices.emplace_back(0);
@@ -136,16 +139,46 @@ public:
 
         uint32_t this_past_distance = 0;
         int j = 0;
+        uint8_t n_within = 0;
         if (meta._extra) {
-            for (; j < meta._past_distance_idx && j < GDBT::max_n_past_distances; ++j) {
-                uint8_t past_distance_idx = (meta._past_distance_idx - 1 - j) % GDBT::max_n_past_distances;
+            for (; j < meta._extra->_past_distance_idx && j < GDBT::max_n_past_distances; ++j) {
+                uint8_t past_distance_idx = (meta._extra->_past_distance_idx - 1 - j) % GDBT::max_n_past_distances;
                 const uint32_t & past_distance = meta._extra->_past_distances[past_distance_idx];
                 this_past_distance += past_distance;
                 if (this_past_distance < GDBT::forget_window) {
                     indices.emplace_back(j+1);
                     data.emplace_back(past_distance);
+                    ++n_within;
                 } else
                     break;
+            }
+            //garbage collection
+            if (n_within) {
+                if (n_within != meta._extra->_past_distances.size()) {
+                    uint8_t latest_idx = (meta._extra->_past_distance_idx - 1) % GDBT::max_n_past_distances;
+                    if (latest_idx == n_within - 1) {
+                        //no memcpy
+                    } else if (latest_idx > n_within - 1) {
+                        //one memcpy cpy
+                        memmove(meta._extra->_past_distances.data(),
+                                meta._extra->_past_distances.data()+latest_idx-n_within+1,
+                                sizeof(uint32_t)*n_within);
+                    } else {
+                        //rotate
+                        rotate(meta._extra->_past_distances.begin(),
+                                meta._extra->_past_distances.end()-(n_within-latest_idx-1),
+                                meta._extra->_past_distances.end());
+                    }
+                    meta._extra->_past_distances.resize(n_within);
+                    meta._extra->_past_distances.shrink_to_fit();
+                    meta._extra->_past_distance_idx = n_within;
+                } else {
+                    //all distances are fresh
+                }
+            } else {
+                //completely remove extra
+                delete meta._extra;
+                meta._extra = nullptr;
             }
         }
 

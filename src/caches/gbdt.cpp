@@ -83,7 +83,6 @@ void GDBTCache::sample(uint32_t t) {
 #ifdef LOG_SAMPLE_RATE
     bool log_flag = ((double) rand() / (RAND_MAX)) < LOG_SAMPLE_RATE;
 #endif
-    //todo: it is possible to deconstruct edc at sample time
     auto n_l0 = static_cast<uint32_t>(meta_holder[0].size());
     auto n_l1 = static_cast<uint32_t>(meta_holder[1].size());
     auto rand_idx = _distribution(_generator);
@@ -133,7 +132,7 @@ void GDBTCache::print_stats() {
 
 bool GDBTCache::lookup(SimpleRequest &req) {
     bool ret;
-    if (!(req._t%1000000))
+    if (!((req._t+1)%1000000))
         print_stats();
 
     //first update the metadata: insert/update, which can trigger pending data.mature
@@ -149,10 +148,10 @@ bool GDBTCache::lookup(SimpleRequest &req) {
         //if the key in key_map, it must also in forget table
         assert(forget_table.find(forget_timestamp % GDBT::forget_window) != forget_table.end());
         //re-request
-        if (meta._sample_times) {
+        if (!meta._sample_times.empty()) {
             //mature
             uint32_t future_distance = req._t - last_timestamp;
-            for (auto & sample_time: *meta._sample_times) {
+            for (auto & sample_time: meta._sample_times) {
                 //don't use label within the first forget window because the data is not static
                 training_data->emplace_back(meta, sample_time, future_distance);
                 //training
@@ -161,14 +160,24 @@ bool GDBTCache::lookup(SimpleRequest &req) {
                     training_data->clear();
                 }
             }
-            meta._sample_times->clear();
+            meta._sample_times.clear();
+            meta._sample_times.shrink_to_fit();
         }
-        //remove this entry
-        forget_table[forget_timestamp%GDBT::s_forget_table] = 0;
-        forget_table[(req._t+GDBT::forget_window)%GDBT::s_forget_table] = req._id+1;
 
-        //make this update after update training, otherwise the last timestamp will change
-        meta.update(req._t);
+        if ((req._t + GDBT::forget_window - forget_timestamp)%GDBT::forget_window) {
+            //update
+            //The else case is very rate, re-request at the end of memory window, and do not need modification or forget
+            //make this update after update training, otherwise the last timestamp will change
+            meta.update(req._t);
+            //first forget, then insert. This prevent overwriting the older request a memory window before
+            forget(req._t);
+            forget_table.erase(forget_timestamp % GDBT::forget_window);
+            forget_table.insert({(req._t + GDBT::forget_window) % GDBT::forget_window, req._id});
+            assert(forget_table.find((req._t + GDBT::forget_window)%GDBT::forget_window) != forget_table.end());
+        } else {
+            //make this update after update training, otherwise the last timestamp will change
+            meta.update(req._t);
+        }
         //update forget_table
         ret = !list_idx;
     } else {
@@ -176,7 +185,6 @@ bool GDBTCache::lookup(SimpleRequest &req) {
         forget(req._t);
     }
 
-    forget(req._t);
     //sampling
     if (!(req._t % training_sample_interval))
         sample(req._t);
@@ -195,10 +203,10 @@ void GDBTCache::forget(uint32_t t) {
         auto &meta = meta_holder[meta_id][pos];
 
         //timeout mature
-        if (meta._sample_times) {
+        if (!meta._sample_times.empty()) {
             //mature
             uint32_t future_distance = GDBT::forget_window * 2;
-            for (auto & sample_time: *meta._sample_times) {
+            for (auto & sample_time: meta._sample_times) {
                 //don't use label within the first forget window because the data is not static
                 training_data->emplace_back(meta, sample_time, future_distance);
                 //training
@@ -207,7 +215,8 @@ void GDBTCache::forget(uint32_t t) {
                     training_data->clear();
                 }
             }
-            meta._sample_times->clear();
+            meta._sample_times.clear();
+            meta._sample_times.shrink_to_fit();
         }
 
         ++n_force_eviction;
@@ -308,8 +317,8 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint32_t t) {
         uint8_t j = 0;
         uint32_t this_past_distance = 0;
         if (meta._extra) {
-            for (j = 0; j < meta._past_distance_idx && j < GDBT::max_n_past_distances; ++j) {
-                uint8_t past_distance_idx = (meta._past_distance_idx - 1 - j) % GDBT::max_n_past_distances;
+            for (j = 0; j < meta._extra->_past_distance_idx && j < GDBT::max_n_past_distances; ++j) {
+                uint8_t past_distance_idx = (meta._extra->_past_distance_idx - 1 - j) % GDBT::max_n_past_distances;
                 uint32_t & past_distance = meta._extra->_past_distances[past_distance_idx];
                 this_past_distance += past_distance;
                 if (this_past_distance < GDBT::forget_window) {
