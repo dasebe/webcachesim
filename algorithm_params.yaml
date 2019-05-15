@@ -137,7 +137,8 @@ GDBT:
 #    - 64
   num_threads:
 #    - 1
-    - 4
+    - 2
+#    - 4
   learning_rate:
     - 0.1
 #    - 0.2
@@ -149,7 +150,7 @@ GDBT:
     - 10
 #    - 12
 #    - 16
-  version: low_mem
+  version: forward_window
 Hyperbolic:
   sample_rate: 64
 LeCaR:

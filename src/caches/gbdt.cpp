@@ -316,16 +316,19 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint32_t t) {
 
         uint8_t j = 0;
         uint32_t this_past_distance = 0;
+        uint8_t n_within = 0;
         if (meta._extra) {
             for (j = 0; j < meta._extra->_past_distance_idx && j < GDBT::max_n_past_distances; ++j) {
                 uint8_t past_distance_idx = (meta._extra->_past_distance_idx - 1 - j) % GDBT::max_n_past_distances;
                 uint32_t & past_distance = meta._extra->_past_distances[past_distance_idx];
                 this_past_distance += past_distance;
+                indices[idx_feature] = j+1;
+                data[idx_feature++] = past_distance;
                 if (this_past_distance < GDBT::forget_window) {
-                    indices[idx_feature] = j+1;
-                    data[idx_feature++] = past_distance;
-                } else
-                    break;
+                    ++n_within;
+                }
+//                } else
+//                    break;
             }
         }
 
@@ -339,7 +342,7 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint32_t t) {
         }
 
         indices[idx_feature] = GDBT::max_n_past_timestamps+GDBT::n_extra_fields+1;
-        data[idx_feature++] = j;
+        data[idx_feature++] = n_within;
 
         for (uint8_t k = 0; k < GDBT::n_edwt_feature; ++k) {
             indices[idx_feature] = GDBT::max_n_past_timestamps + GDBT::n_extra_fields + 2 + k;
@@ -355,6 +358,7 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint32_t t) {
     }
     int64_t len;
     vector<double> result(n_sample);
+//    auto timeBegin = chrono::system_clock::now();
     LGBM_BoosterPredictForCSR(booster,
                               static_cast<void *>(indptr),
                               C_API_DTYPE_INT32,
@@ -369,6 +373,10 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint32_t t) {
                               GDBT_inference_params,
                               &len,
                               result.data());
+//    cerr << "Inference time: "
+//         << chrono::duration_cast<chrono::microseconds>(chrono::system_clock::now() - timeBegin).count()
+//         << " ns"
+//         << endl;
     for (int i = 0; i < n_sample; ++i)
         result[i] -= (t - past_timestamps[i]);
     if (objective == object_hit_rate)

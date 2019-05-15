@@ -145,41 +145,42 @@ public:
                 uint8_t past_distance_idx = (meta._extra->_past_distance_idx - 1 - j) % GDBT::max_n_past_distances;
                 const uint32_t & past_distance = meta._extra->_past_distances[past_distance_idx];
                 this_past_distance += past_distance;
-                if (this_past_distance < GDBT::forget_window) {
                     indices.emplace_back(j+1);
                     data.emplace_back(past_distance);
+                if (this_past_distance < GDBT::forget_window) {
                     ++n_within;
-                } else
-                    break;
-            }
-            //garbage collection
-            if (n_within) {
-                if (n_within != meta._extra->_past_distances.size()) {
-                    uint8_t latest_idx = (meta._extra->_past_distance_idx - 1) % GDBT::max_n_past_distances;
-                    if (latest_idx == n_within - 1) {
-                        //no memcpy
-                    } else if (latest_idx > n_within - 1) {
-                        //one memcpy cpy
-                        memmove(meta._extra->_past_distances.data(),
-                                meta._extra->_past_distances.data()+latest_idx-n_within+1,
-                                sizeof(uint32_t)*n_within);
-                    } else {
-                        //rotate
-                        rotate(meta._extra->_past_distances.begin(),
-                                meta._extra->_past_distances.end()-(n_within-latest_idx-1),
-                                meta._extra->_past_distances.end());
-                    }
-                    meta._extra->_past_distances.resize(n_within);
-                    meta._extra->_past_distances.shrink_to_fit();
-                    meta._extra->_past_distance_idx = n_within;
-                } else {
-                    //all distances are fresh
                 }
-            } else {
-                //completely remove extra
-                delete meta._extra;
-                meta._extra = nullptr;
+//                } else
+//                    break;
             }
+//            //garbage collection
+//            if (n_within) {
+//                if (n_within != meta._extra->_past_distances.size()) {
+//                    uint8_t latest_idx = (meta._extra->_past_distance_idx - 1) % GDBT::max_n_past_distances;
+//                    if (latest_idx == n_within - 1) {
+//                        //no memcpy
+//                    } else if (latest_idx > n_within - 1) {
+//                        //one memcpy cpy
+//                        memmove(meta._extra->_past_distances.data(),
+//                                meta._extra->_past_distances.data()+latest_idx-n_within+1,
+//                                sizeof(uint32_t)*n_within);
+//                    } else {
+//                        //rotate
+//                        rotate(meta._extra->_past_distances.begin(),
+//                                meta._extra->_past_distances.end()-(n_within-latest_idx-1),
+//                                meta._extra->_past_distances.end());
+//                    }
+//                    meta._extra->_past_distances.resize(n_within);
+//                    meta._extra->_past_distances.shrink_to_fit();
+//                    meta._extra->_past_distance_idx = n_within;
+//                } else {
+//                    //all distances are fresh
+//                }
+//            } else {
+//                //completely remove extra
+//                delete meta._extra;
+//                meta._extra = nullptr;
+//            }
         }
 
         counter += j;
@@ -195,7 +196,7 @@ public:
         counter += GDBT::n_extra_fields;
 
         indices.push_back(GDBT::max_n_past_timestamps+GDBT::n_extra_fields+1);
-        data.push_back(j);
+        data.push_back(n_within);
         ++counter;
 
         if (meta._extra) {
