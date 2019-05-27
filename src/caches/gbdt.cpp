@@ -219,10 +219,11 @@ void GDBTCache::forget(uint32_t t) {
             meta._sample_times.shrink_to_fit();
         }
 
-        ++n_force_eviction;
         assert(meta._key == forget_key);
-        if (!meta_id)
+        if (!meta_id) {
+            ++n_force_eviction;
             _currentSize -= meta._size;
+        }
         //free the actual content
         meta.free();
         //evict
