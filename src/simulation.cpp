@@ -87,16 +87,16 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
         infile.clear();
         infile.seekg(0, ios::beg);
     }
-    uint64_t byte_req = 0, byte_hit = 0, obj_req = 0, obj_hit = 0;
-    //don't use real timestamp, use relative seq starting from 0
+    uint64_t byte_req = 0, byte_miss = 0, obj_req = 0, obj_miss = 0;
     uint64_t tmp, id, size;
-    uint64_t seg_byte_req = 0, seg_byte_hit = 0, seg_obj_req = 0, seg_obj_hit = 0;
-    vector<double> seg_bhr;
-    vector<double> seg_ohr;
+    uint64_t seg_byte_req = 0, seg_byte_miss = 0, seg_obj_req = 0, seg_obj_miss = 0;
+    vector<double> seg_bmr;
+    vector<double> seg_omr;
 
     vector<uint16_t > extra_features(n_extra_fields, 0);
 
     SimpleRequest req(0, 0, 0);
+    //don't use real timestamp, use relative seq starting from 0
     uint64_t seq = 0;
     auto t_now = system_clock::now();
 
@@ -119,8 +119,8 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
         DPRINTF("seq: %lu\n", seq);
 
         if (seq >= n_warmup)
-            update_metric_req(byte_req, obj_req, size);
-        update_metric_req(seg_byte_req, seg_obj_req, size);
+            update_metric_req(byte_req, obj_req, size)
+        update_metric_req(seg_byte_req, seg_obj_req, size)
 
 #ifdef MISS_DECOUPLE
         //count total request
@@ -135,20 +135,19 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
         if (it_size == size_map.end())
             size_map.insert({id, size});
 #endif
-        req.reinit(id, size, seq+1, &extra_features);
-        bool if_hit = webcache->lookup(req);
-        if (if_hit) {
+        req.reinit(id, size, seq, &extra_features);
+        bool is_hit = webcache->lookup(req);
+        if (!is_hit) {
             if (seq >= n_warmup)
-                update_metric_req(byte_hit, obj_hit, size);
-            update_metric_req(seg_byte_hit, seg_obj_hit, size);
-        } else {
+                update_metric_req(byte_miss, obj_miss, size)
+            update_metric_req(seg_byte_miss, seg_obj_miss, size)
             webcache->admit(req);
         }
 
 #ifdef MISS_DECOUPLE
         if (seq >= n_warmup) {
             auto &n_total_request = total_request_map[id];
-            miss_stat.update(n_total_request, size, if_hit);
+            miss_stat.update(n_total_request, size, is_hit);
         }
 #endif
 
@@ -167,15 +166,15 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
             }
 #endif
             auto _t_now = chrono::system_clock::now();
+            cerr<<"\nsegment id: " << seq/segment_window-1 << endl;
             cerr<<"delta t: "<<chrono::duration_cast<std::chrono::milliseconds>(_t_now - t_now).count()/1000.<<endl;
-            cerr<<"seq: " << seq << endl;
-            double _seg_bhr = double(seg_byte_hit) / seg_byte_req;
-            double _seg_ohr = double(seg_obj_hit) / seg_obj_req;
-            cerr<<"accu bhr: " << double(byte_hit) / byte_req << endl;
-            cerr<<"seg bhr: " << _seg_bhr << endl;
-            seg_bhr.emplace_back(_seg_bhr);
-            seg_ohr.emplace_back(_seg_ohr);
-            seg_byte_hit=seg_obj_hit=seg_byte_req=seg_obj_req=0;
+            double _seg_bmr = double(seg_byte_miss) / seg_byte_req;
+            double _seg_ohm = double(seg_obj_miss) / seg_obj_req;
+            cerr<<"accu bmr: " << double(byte_miss) / byte_req << endl;
+            cerr<<"seg bmr: " << _seg_bmr << endl;
+            seg_bmr.emplace_back(_seg_bmr);
+            seg_omr.emplace_back(_seg_ohm);
+            seg_byte_miss=seg_obj_miss=seg_byte_req=seg_obj_req=0;
             t_now = _t_now;
         }
     }
@@ -183,10 +182,10 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     infile.close();
 
     map<string, string> res = {
-            {"byte_hit_rate", to_string(double(byte_hit) / byte_req)},
-            {"object_hit_rate", to_string(double(obj_hit) / obj_req)},
-            {"segment_byte_hit_rate", json(seg_bhr).dump()},
-            {"segment_object_hit_rate", json(seg_ohr).dump()},
+            {"byte_miss_rate", to_string(double(byte_miss) / byte_req)},
+            {"object_miss_rate", to_string(double(obj_miss) / obj_req)},
+            {"segment_byte_miss_rate", json(seg_bmr).dump()},
+            {"segment_object_miss_rate", json(seg_omr).dump()},
 #ifdef MISS_DECOUPLE
             {"miss_decouple", miss_stat.dump()},
 #endif
@@ -208,15 +207,7 @@ map<string, string> simulation(string trace_file, string cache_type,
         return _simulation_tinylfu(trace_file, cache_type, cache_size, params);
     else if (cache_type == "LFO")
         return LFO::_simulation_lfo(trace_file, cache_type, cache_size, params);
-//    else if (cache_type == "LFO2")
-//        return _simulation_lfo2(trace_file, cache_type, cache_size, params);
-//    else if (cache_type == "LRBelady")
-//        return _simulation_lr_belady(trace_file, cache_type, cache_size, params);
-//    else if (cache_type == "BeladyStatic")
-//        return _simulation_belady_static(trace_file, cache_type, cache_size, params);
-//    else if (cache_type == "Bins")
-//        return _simulation_bins(trace_file, cache_type, cache_size, params);
-   else if (cache_type == "BeladyTruncate")
+    else if (cache_type == "BeladyTruncate")
        return _simulation_truncate(trace_file, cache_type, cache_size, params);
     else
         return _simulation(trace_file, cache_type, cache_size, params);

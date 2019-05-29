@@ -125,14 +125,15 @@ void WLCCache::print_stats() {
     cerr << "sample overhead per entry: "<<sample_overhead/key_map.size()<<endl;
     cerr << "n_training: "<<training_data->labels.size()<<endl;
     cerr << "training loss: " << training_loss << endl;
-    cerr << "n_force_eviction: " << n_force_eviction <<endl<<endl;
+    cerr << "n_force_eviction: " << n_force_eviction <<endl;
     assert(meta_holder[0].size() + meta_holder[1].size() == key_map.size());
 }
 
 
 bool WLCCache::lookup(SimpleRequest &req) {
     bool ret;
-    if (!((req._t+1)%1000000))
+    //piggy back
+    if (req._t && !((req._t)%1000000))
         print_stats();
 
     //first update the metadata: insert/update, which can trigger pending data.mature

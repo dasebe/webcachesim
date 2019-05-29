@@ -34,19 +34,21 @@ using namespace std;
 map<string, string> _simulation_tinylfu(string trace_file, string cache_type, uint64_t cache_size,
                                        map<string, string> params) {
 
-    string cmd = "java -jar ${WEBCACHESIM_ROOT}/lib/tinylfu/tinylfu.jar " + trace_file + " Adaptive-TinyLFU " \
-            + to_string(cache_size);
-    for (auto k: params) {
-        cmd += " "+k.first+" "+k.second;
-    }
-    string r = exec(cmd.c_str());
-    vector<string> strs;
-    split(strs, r, is_any_of("\n"));
-
-    map<string, string> res = {
-            {"byte_hit_rate", strs[0]},
-            {"object_hit_rate", strs[1]},
-    };
-
-    return res;
+    cerr<<"error: need to refactor as other simulation"<<endl;
+    abort();
+//    string cmd = "java -jar ${WEBCACHESIM_ROOT}/lib/tinylfu/tinylfu.jar " + trace_file + " Adaptive-TinyLFU " \
+//            + to_string(cache_size);
+//    for (auto k: params) {
+//        cmd += " "+k.first+" "+k.second;
+//    }
+//    string r = exec(cmd.c_str());
+//    vector<string> strs;
+//    split(strs, r, is_any_of("\n"));
+//
+//    map<string, string> res = {
+//            {"byte_hit_rate", strs[0]},
+//            {"object_hit_rate", strs[1]},
+//    };
+//
+//    return res;
 }
