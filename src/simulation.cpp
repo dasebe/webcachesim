@@ -182,10 +182,10 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     infile.close();
 
     map<string, string> res = {
-            {"byte_miss_rate", to_string(double(byte_miss) / byte_req)},
-            {"object_miss_rate", to_string(double(obj_miss) / obj_req)},
-            {"segment_byte_miss_rate", json(seg_bmr).dump()},
-            {"segment_object_miss_rate", json(seg_omr).dump()},
+            {"byte_miss_ratio", to_string(double(byte_miss) / byte_req)},
+            {"object_miss_ratio", to_string(double(obj_miss) / obj_req)},
+            {"segment_byte_miss_ratio", json(seg_bmr).dump()},
+            {"segment_object_miss_ratio", json(seg_omr).dump()},
 #ifdef MISS_DECOUPLE
             {"miss_decouple", miss_stat.dump()},
 #endif

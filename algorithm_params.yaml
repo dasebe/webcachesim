@@ -144,8 +144,8 @@ WLC:
 #    - 0.2
 #    - 0.01
   objective:
-    - byte_hit_rate
-#    - object_hit_rate
+    - byte_miss_ratio
+#    - object_miss_ratio
   n_edc_feature:
     - 10
 #    - 12

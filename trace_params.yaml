@@ -232,9 +232,6 @@ msr_rehash_200m.tr:
 #      - 200000
 #      - 500000
 #      - 1000000
-#    objective:
-#      - byte_hit_rate
-#      - object_hit_rate
   LR:
     threshold: 80000000
 

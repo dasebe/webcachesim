@@ -241,8 +241,8 @@ public:
 
     unordered_map<string, string> inference_params;
 
-    enum ObjectiveT: uint8_t {byte_hit_rate=0, object_hit_rate=1};
-    ObjectiveT objective = byte_hit_rate;
+    enum ObjectiveT: uint8_t {byte_miss_ratio=0, object_miss_ratio=1};
+    ObjectiveT objective = byte_miss_ratio;
 
     default_random_engine _generator = default_random_engine();
     uniform_int_distribution<std::size_t> _distribution = uniform_int_distribution<std::size_t>();
@@ -280,10 +280,10 @@ public:
                 }
 //                WLC::n_edc_feature = stoull(it.second);
             } else if (it.first == "objective") {
-                if (it.second == "byte_hit_rate")
-                    objective = byte_hit_rate;
-                else if (it.second == "object_hit_rate")
-                    objective = object_hit_rate;
+                if (it.second == "byte_miss_ratio")
+                    objective = byte_miss_ratio;
+                else if (it.second == "object_miss_ratio")
+                    objective = object_miss_ratio;
                 else {
                     cerr<<"error: unknown objective"<<endl;
                     exit(-1);

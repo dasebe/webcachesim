@@ -381,7 +381,7 @@ pair<uint64_t, uint32_t> WLCCache::rank(const uint32_t t) {
 //         << endl;
     for (int i = 0; i < n_sample; ++i)
         result[i] -= (t - past_timestamps[i]);
-    if (objective == object_hit_rate)
+    if (objective == object_miss_ratio)
         for (uint32_t i = 0; i < n_sample; ++i)
             result[i] *= sizes[i];
 
