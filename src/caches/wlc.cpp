@@ -2,7 +2,7 @@
 // Created by zhenyus on 1/16/19.
 //
 
-#include "gbdt.h"
+#include "wlc.h"
 #include <algorithm>
 #include "utils.h"
 #include <chrono>
@@ -10,7 +10,7 @@
 using namespace chrono;
 using namespace std;
 
-void GDBTCache::train() {
+void WLCCache::train() {
     auto timeBegin = chrono::system_clock::now();
     if (booster)
         LGBM_BoosterFree(booster);
@@ -24,8 +24,8 @@ void GDBTCache::train() {
             C_API_DTYPE_FLOAT64,
             training_data->indptr.size(),
             training_data->data.size(),
-            GDBT::n_feature,  //remove future t
-            GDBT_train_params,
+            WLC::n_feature,  //remove future t
+            training_params,
             nullptr,
             &trainData);
 
@@ -36,9 +36,9 @@ void GDBTCache::train() {
                          C_API_DTYPE_FLOAT32);
 
     // init booster
-    LGBM_BoosterCreate(trainData, GDBT_train_params, &booster);
+    LGBM_BoosterCreate(trainData, training_params, &booster);
     // train
-    for (int i = 0; i < stoi(GDBT_train_params["num_iterations"]); i++) {
+    for (int i = 0; i < stoi(training_params["num_iterations"]); i++) {
         int isFinished;
         LGBM_BoosterUpdateOneIter(booster, &isFinished);
         if (isFinished) {
@@ -56,10 +56,10 @@ void GDBTCache::train() {
                               C_API_DTYPE_FLOAT64,
                               training_data->indptr.size(),
                               training_data->data.size(),
-                              GDBT::n_feature,  //remove future t
+                              WLC::n_feature,  //remove future t
                               C_API_PREDICT_NORMAL,
                               0,
-                              GDBT_train_params,
+                              training_params,
                               &len,
                               result.data());
     double se = 0;
@@ -67,7 +67,7 @@ void GDBTCache::train() {
         auto diff = result[i] - training_data->labels[i];
         se += diff * diff;
     }
-    training_loss = training_loss * 0.99 + se/GDBT::batch_size*0.01;
+    training_loss = training_loss * 0.99 + se/WLC::batch_size*0.01;
 
     LGBM_DatasetFree(trainData);
     cerr << "Training time: "
@@ -76,7 +76,7 @@ void GDBTCache::train() {
                << endl;
 }
 
-void GDBTCache::sample(uint32_t t) {
+void WLCCache::sample(uint32_t t) {
     // warmup not finish
     if (meta_holder[0].empty() || meta_holder[1].empty())
         return;
@@ -106,7 +106,7 @@ void GDBTCache::sample(uint32_t t) {
 }
 
 
-void GDBTCache::print_stats() {
+void WLCCache::print_stats() {
     uint64_t feature_overhead = 0;
     uint64_t sample_overhead = 0;
     for (auto &m: meta_holder[0]) {
@@ -125,14 +125,15 @@ void GDBTCache::print_stats() {
     cerr << "sample overhead per entry: "<<sample_overhead/key_map.size()<<endl;
     cerr << "n_training: "<<training_data->labels.size()<<endl;
     cerr << "training loss: " << training_loss << endl;
-    cerr << "n_force_eviction: " << n_force_eviction <<endl<<endl;
+    cerr << "n_force_eviction: " << n_force_eviction <<endl;
     assert(meta_holder[0].size() + meta_holder[1].size() == key_map.size());
 }
 
 
-bool GDBTCache::lookup(SimpleRequest &req) {
+bool WLCCache::lookup(SimpleRequest &req) {
     bool ret;
-    if (!((req._t+1)%1000000))
+    //piggy back
+    if (req._t && !((req._t)%1000000))
         print_stats();
 
     //first update the metadata: insert/update, which can trigger pending data.mature
@@ -141,12 +142,12 @@ bool GDBTCache::lookup(SimpleRequest &req) {
         auto list_idx = it->second.list_idx;
         auto list_pos = it->second.list_pos;
         //update past timestamps
-        GDBTMeta &meta = meta_holder[list_idx][list_pos];
+        WLCMeta &meta = meta_holder[list_idx][list_pos];
         assert(meta._key == req._id);
         uint64_t last_timestamp = meta._past_timestamp;
-        uint64_t forget_timestamp = last_timestamp + GDBT::forget_window;
+        uint64_t forget_timestamp = last_timestamp + WLC::memory_window;
         //if the key in key_map, it must also in forget table
-        assert(forget_table.find(forget_timestamp % GDBT::forget_window) != forget_table.end());
+        assert(negative_candidate_queue.find(forget_timestamp % WLC::memory_window) != negative_candidate_queue.end());
         //re-request
         if (!meta._sample_times.empty()) {
             //mature
@@ -155,7 +156,7 @@ bool GDBTCache::lookup(SimpleRequest &req) {
                 //don't use label within the first forget window because the data is not static
                 training_data->emplace_back(meta, sample_time, future_distance);
                 //training
-                if (training_data->labels.size() == GDBT::batch_size) {
+                if (training_data->labels.size() == WLC::batch_size) {
                     train();
                     training_data->clear();
                 }
@@ -164,21 +165,21 @@ bool GDBTCache::lookup(SimpleRequest &req) {
             meta._sample_times.shrink_to_fit();
         }
 
-        if ((req._t + GDBT::forget_window - forget_timestamp)%GDBT::forget_window) {
+        if ((req._t + WLC::memory_window - forget_timestamp)%WLC::memory_window) {
             //update
             //The else case is very rate, re-request at the end of memory window, and do not need modification or forget
             //make this update after update training, otherwise the last timestamp will change
             meta.update(req._t);
             //first forget, then insert. This prevent overwriting the older request a memory window before
             forget(req._t);
-            forget_table.erase(forget_timestamp % GDBT::forget_window);
-            forget_table.insert({(req._t + GDBT::forget_window) % GDBT::forget_window, req._id});
-            assert(forget_table.find((req._t + GDBT::forget_window)%GDBT::forget_window) != forget_table.end());
+            negative_candidate_queue.erase(forget_timestamp % WLC::memory_window);
+            negative_candidate_queue.insert({(req._t + WLC::memory_window) % WLC::memory_window, req._id});
+            assert(negative_candidate_queue.find((req._t + WLC::memory_window)%WLC::memory_window) != negative_candidate_queue.end());
         } else {
             //make this update after update training, otherwise the last timestamp will change
             meta.update(req._t);
         }
-        //update forget_table
+        //update negative_candidate_queue
         ret = !list_idx;
     } else {
         ret = false;
@@ -192,10 +193,10 @@ bool GDBTCache::lookup(SimpleRequest &req) {
 }
 
 
-void GDBTCache::forget(uint32_t t) {
+void WLCCache::forget(uint32_t t) {
     //remove item from forget table, which is not going to be affect from update
-    auto it = forget_table.find(t%GDBT::forget_window);
-    if (it != forget_table.end()) {
+    auto it = negative_candidate_queue.find(t%WLC::memory_window);
+    if (it != negative_candidate_queue.end()) {
         auto forget_key = it->second;
         auto meta_it = key_map.find(forget_key);
         auto pos = meta_it->second.list_pos;
@@ -205,12 +206,12 @@ void GDBTCache::forget(uint32_t t) {
         //timeout mature
         if (!meta._sample_times.empty()) {
             //mature
-            uint32_t future_distance = GDBT::forget_window * 2;
+            uint32_t future_distance = WLC::memory_window * 2;
             for (auto & sample_time: meta._sample_times) {
                 //don't use label within the first forget window because the data is not static
                 training_data->emplace_back(meta, sample_time, future_distance);
                 //training
-                if (training_data->labels.size() == GDBT::batch_size) {
+                if (training_data->labels.size() == WLC::batch_size) {
                     train();
                     training_data->clear();
                 }
@@ -219,10 +220,11 @@ void GDBTCache::forget(uint32_t t) {
             meta._sample_times.shrink_to_fit();
         }
 
-        ++n_force_eviction;
         assert(meta._key == forget_key);
-        if (!meta_id)
+        if (!meta_id) {
+            ++n_force_eviction;
             _currentSize -= meta._size;
+        }
         //free the actual content
         meta.free();
         //evict
@@ -234,11 +236,11 @@ void GDBTCache::forget(uint32_t t) {
         }
         meta_holder[meta_id].pop_back();
         key_map.erase(forget_key);
-        forget_table.erase(t%GDBT::forget_window);
+        negative_candidate_queue.erase(t%WLC::memory_window);
     }
 }
 
-void GDBTCache::admit(SimpleRequest &req) {
+void WLCCache::admit(SimpleRequest &req) {
     const uint64_t & size = req._size;
     // object feasible to store?
     if (size > _cacheSize) {
@@ -253,7 +255,7 @@ void GDBTCache::admit(SimpleRequest &req) {
         meta_holder[0].emplace_back(req._id, req._size, req._t, req._extra_features);
         _currentSize += size;
         //this must be a fresh insert
-        forget_table.insert({(req._t + GDBT::forget_window)%GDBT::forget_window, req._id});
+        negative_candidate_queue.insert({(req._t + WLC::memory_window)%WLC::memory_window, req._id});
         if (_currentSize <= _cacheSize)
             return;
     } else if (size + _currentSize <= _cacheSize){
@@ -287,7 +289,7 @@ void GDBTCache::admit(SimpleRequest &req) {
 }
 
 
-pair<uint64_t, uint32_t> GDBTCache::rank(const uint32_t t) {
+pair<uint64_t, uint32_t> WLCCache::rank(const uint32_t t) {
     uint32_t rand_idx = _distribution(_generator) % meta_holder[0].size();
     //if not trained yet, use random
     if (booster == nullptr) {
@@ -298,8 +300,8 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint32_t t) {
 
     int32_t indptr[n_sample+1];
     indptr[0] = 0;
-    int32_t indices[n_sample*GDBT::n_feature];
-    double data[n_sample*GDBT::n_feature];
+    int32_t indices[n_sample*WLC::n_feature];
+    double data[n_sample*WLC::n_feature];
     int32_t past_timestamps[n_sample];
     uint32_t sizes[n_sample];
     //next_past_timestamp, next_size = next_indptr - 1
@@ -318,13 +320,13 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint32_t t) {
         uint32_t this_past_distance = 0;
         uint8_t n_within = 0;
         if (meta._extra) {
-            for (j = 0; j < meta._extra->_past_distance_idx && j < GDBT::max_n_past_distances; ++j) {
-                uint8_t past_distance_idx = (meta._extra->_past_distance_idx - 1 - j) % GDBT::max_n_past_distances;
+            for (j = 0; j < meta._extra->_past_distance_idx && j < WLC::max_n_past_distances; ++j) {
+                uint8_t past_distance_idx = (meta._extra->_past_distance_idx - 1 - j) % WLC::max_n_past_distances;
                 uint32_t & past_distance = meta._extra->_past_distances[past_distance_idx];
                 this_past_distance += past_distance;
                 indices[idx_feature] = j+1;
                 data[idx_feature++] = past_distance;
-                if (this_past_distance < GDBT::forget_window) {
+                if (this_past_distance < WLC::memory_window) {
                     ++n_within;
                 }
 //                } else
@@ -332,26 +334,26 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint32_t t) {
             }
         }
 
-        indices[idx_feature] = GDBT::max_n_past_timestamps;
+        indices[idx_feature] = WLC::max_n_past_timestamps;
         data[idx_feature++] = meta._size;
         sizes[idx_row] = meta._size;
 
-        for (uint k = 0; k < GDBT::n_extra_fields; ++k) {
-            indices[idx_feature] = GDBT::max_n_past_timestamps + k + 1;
+        for (uint k = 0; k < WLC::n_extra_fields; ++k) {
+            indices[idx_feature] = WLC::max_n_past_timestamps + k + 1;
             data[idx_feature++] = meta._extra_features[k];
         }
 
-        indices[idx_feature] = GDBT::max_n_past_timestamps+GDBT::n_extra_fields+1;
+        indices[idx_feature] = WLC::max_n_past_timestamps+WLC::n_extra_fields+1;
         data[idx_feature++] = n_within;
 
-        for (uint8_t k = 0; k < GDBT::n_edwt_feature; ++k) {
-            indices[idx_feature] = GDBT::max_n_past_timestamps + GDBT::n_extra_fields + 2 + k;
-            uint32_t _distance_idx = min(uint32_t(t - meta._past_timestamp) / GDBT::edwt_windows[k],
-                                         GDBT::max_hash_edwt_idx);
+        for (uint8_t k = 0; k < WLC::n_edc_feature; ++k) {
+            indices[idx_feature] = WLC::max_n_past_timestamps + WLC::n_extra_fields + 2 + k;
+            uint32_t _distance_idx = min(uint32_t(t - meta._past_timestamp) / WLC::edc_windows[k],
+                                         WLC::max_hash_edc_idx);
             if (meta._extra)
-                data[idx_feature++] = meta._extra->_edwt[k] * GDBT::hash_edwt[_distance_idx];
+                data[idx_feature++] = meta._extra->_edc[k] * WLC::hash_edc[_distance_idx];
             else
-                data[idx_feature++] = GDBT::hash_edwt[_distance_idx];
+                data[idx_feature++] = WLC::hash_edc[_distance_idx];
         }
         //remove future t
         indptr[++idx_row] = idx_feature;
@@ -367,10 +369,10 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint32_t t) {
                               C_API_DTYPE_FLOAT64,
                               idx_row+1,
                               idx_feature,
-                              GDBT::n_feature,  //remove future t
+                              WLC::n_feature,  //remove future t
                               C_API_PREDICT_NORMAL,
                               0,
-                              GDBT_inference_params,
+                              inference_params,
                               &len,
                               result.data());
 //    cerr << "Inference time: "
@@ -379,7 +381,7 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint32_t t) {
 //         << endl;
     for (int i = 0; i < n_sample; ++i)
         result[i] -= (t - past_timestamps[i]);
-    if (objective == object_hit_rate)
+    if (objective == object_miss_ratio)
         for (uint32_t i = 0; i < n_sample; ++i)
             result[i] *= sizes[i];
 
@@ -400,7 +402,7 @@ pair<uint64_t, uint32_t> GDBTCache::rank(const uint32_t t) {
     return {worst_key, worst_pos};
 }
 
-void GDBTCache::evict(const uint32_t t) {
+void WLCCache::evict(const uint32_t t) {
     auto epair = rank(t);
     uint64_t & key = epair.first;
     uint32_t & old_pos = epair.second;
