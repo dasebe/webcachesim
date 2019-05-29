@@ -2,6 +2,7 @@ set(LIB_SOURCE
         caches/lru_variants.cpp
         ../include/caches/lru_variants.h
         ../include/caches/lru2.h
+        ../include/caches/wlc.h
         caches/gd_variants.cpp
         caches/random_variants.cpp
         caches/belady.cpp
@@ -25,8 +26,7 @@ set(LIB_SOURCE
 #        simulation_bins.cpp
         caches/bins.cpp
         caches/belady_truncate.cpp
-        ../include/caches/gbdt.h
-        caches/gbdt.cpp
+        caches/wlc.cpp
         caches/hyperbolic.cpp caches/lecar.cpp simulation_tinylfu.cpp caches/lr.cpp)
 #message(123)
 

@@ -109,12 +109,12 @@ Bins:
   w9:
     - 0.1
     - 0
-GDBT:
+WLC:
   training_sample_interval:
     - 64
   sample_rate:
     - 64
-  forget_window: 10000000
+  memory_window: 10000000
   batch_size:
 #    - 50000
 #    - 10000
@@ -146,7 +146,7 @@ GDBT:
   objective:
     - byte_hit_rate
 #    - object_hit_rate
-  n_edwt_feature:
+  n_edc_feature:
     - 10
 #    - 12
 #    - 16
