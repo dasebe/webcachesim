@@ -96,6 +96,7 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     uint64_t seg_byte_req = 0, seg_byte_miss = 0, seg_obj_req = 0, seg_obj_miss = 0;
     vector<double> seg_bmr;
     vector<double> seg_omr;
+    vector<uint64_t> seg_memory;
 
     vector<uint16_t > extra_features(n_extra_fields, 0);
 
@@ -184,6 +185,7 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
             struct proc_t usage;
             look_up_our_self(&usage);
             uint64_t metadata_overhead = usage.rss*getpagesize();
+            seg_memory.emplace_back(metadata_overhead);
             webcache->setSize(cache_size-metadata_overhead);
         }
     }
@@ -195,6 +197,7 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
             {"object_miss_ratio", to_string(double(obj_miss) / obj_req)},
             {"segment_byte_miss_ratio", json(seg_bmr).dump()},
             {"segment_object_miss_ratio", json(seg_omr).dump()},
+            {"segment_rss", json(seg_memory).dump()},
 #ifdef MISS_DECOUPLE
             {"miss_decouple", miss_stat.dump()},
 #endif
