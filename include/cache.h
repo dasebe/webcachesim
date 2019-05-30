@@ -37,9 +37,10 @@ public:
     // configure cache parameters
     virtual void setSize(uint64_t cs) {
         _cacheSize = cs;
-        while (_currentSize > _cacheSize) {
-            evict();
-        }
+        //delay eviction because not all algorithms implement such interface
+//        while (_currentSize > _cacheSize) {
+//            evict();
+//        }
     }
     virtual void init_with_params(std::map<std::string, std::string> params) {}
     virtual bool has(const uint64_t& id) {
