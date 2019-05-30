@@ -5,6 +5,7 @@
 #ifndef WEBCACHESIM_UTILS_H
 #define WEBCACHESIM_UTILS_H
 
+
 // hash_combine derived from boost/functional/hash/hash.hpp:212
 // Copyright 2005-2014 Daniel James.
 // Distributed under the Boost Software License, Version 1.0.
@@ -31,6 +32,8 @@ namespace std {
 
 #define update_metric_req(byte_metric, object_metric, size) \
     {byte_metric += size; ++object_metric;}
+
+
 
 //#define LOG_SAMPLE_RATE 0.01
 

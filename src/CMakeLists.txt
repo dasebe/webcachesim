@@ -35,11 +35,15 @@ INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
 
 find_library(LIGHTGBM_LIB lib_lightgbm.so)
 find_path(LIGHTGBM_PATH LightGBM)
+find_library(PROCPS_LIB procps)
+find_path(PROCPS_PATH proc)
 
 add_library(webcachesim SHARED ${LIB_SOURCE})
 
 target_include_directories(webcachesim PRIVATE ../lib)
 target_include_directories(webcachesim PUBLIC include)
 target_include_directories(webcachesim PUBLIC ${LIGHTGBM_PATH})
+target_include_directories(webcachesim PRIVATE ${PROCPS_PATH})
 
 target_link_libraries(webcachesim LINK_PUBLIC ${Boost_LIBRARIES} ${LIGHTGBM_LIB})
+target_link_libraries(webcachesim PRIVATE ${PROCPS_LIB})

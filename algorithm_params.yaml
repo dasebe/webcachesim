@@ -150,7 +150,7 @@ WLC:
     - 10
 #    - 12
 #    - 16
-  version: forward_window
+  version: e2e_memory
 Hyperbolic:
   sample_rate: 64
 LeCaR:

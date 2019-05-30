@@ -23,6 +23,10 @@
 #include "cache_size_decouple.h"
 #include "nlohmann/json.hpp"
 
+
+#include <proc/readproc.h>
+#include <cstdint>
+
 using namespace std;
 using namespace chrono;
 using json = nlohmann::json;
@@ -176,6 +180,11 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
             seg_omr.emplace_back(_seg_ohm);
             seg_byte_miss=seg_obj_miss=seg_byte_req=seg_obj_req=0;
             t_now = _t_now;
+            //reduce cache size by metadata
+            struct proc_t usage;
+            look_up_our_self(&usage);
+            uint64_t metadata_overhead = usage.rss*getpagesize();
+            webcache->setSize(cache_size-metadata_overhead);
         }
     }
 
