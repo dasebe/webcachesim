@@ -11,8 +11,8 @@
 #include <chrono>
 #include <cstdint>
 
-//max to 10 billion
-const uint64_t max_next_seq = 10000000000;
+//max to 4 billion (2**32-1)
+const uint64_t max_next_seq = 0xffffffff;
 using namespace std;
 
 class AnnotatedRequest_
@@ -35,15 +35,12 @@ public:
 
 
 void annotate(string &trace_file, int n_extra_fields) {
-    //todo: there is a risk that multiple process write a same file
-
     auto expect_file = trace_file+".ant";
     ifstream cachefile(expect_file);
     if (cachefile.good()) {
         cerr<<"file has been annotated, so skip annotation"<<endl;
         return;
     }
-
 
     // parse trace file
     vector<AnnotatedRequest_> trace;
@@ -57,7 +54,6 @@ void annotate(string &trace_file, int n_extra_fields) {
         exit(-1);
     }
 
-    //todo: read extra fields
     vector<uint64_t > extra_features(n_extra_fields, 0);
 
     while(infile>> t >> id >> size) {
@@ -98,7 +94,7 @@ void annotate(string &trace_file, int n_extra_fields) {
     auto timenow = chrono::system_clock::to_time_t(chrono::system_clock::now());
 
     ofstream outfile;
-    auto tmp_file = "/tmp/" + to_string(timenow);
+    auto tmp_file = trace_file + ".ant.tmp." + to_string(timenow);
     cerr<<"writing the annotated trace "<<tmp_file<<endl;
 
     outfile.open(tmp_file);
@@ -120,7 +116,7 @@ void annotate(string &trace_file, int n_extra_fields) {
 
     outfile.close();
 
-    //todo: fat has bug in renaming: cross link file system. Actually it's better to do this in python with c wrapper
+    //fat has bug in renaming: cross link file system. Actually it's better to do this in python with c wrapper
     system(("mv "+tmp_file+" "+expect_file).c_str());
 //    if (rename(tmp_file.c_str(), expect_file.c_str())) {
 //        cerr << "Exception in renaming file from "<<tmp_file<<" to "<<expect_file<<" code: "<<strerror(errno)<< endl;
