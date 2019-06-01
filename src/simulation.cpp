@@ -45,7 +45,7 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
 
     uint64_t n_warmup = 0;
     bool uni_size = false;
-    uint64_t segment_window = 1000000;
+    uint64_t segment_window = 10000000;
     uint n_extra_fields = 0;
 
     for (auto it = params.cbegin(); it != params.cend();) {

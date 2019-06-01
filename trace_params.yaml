@@ -165,6 +165,36 @@ wc400m.tr:
     sample_rate: 256
 
 
+wc2800m.tr:
+  cache_sizes:
+    - 549755813888
+    - 1099511627776
+    - 2199023255552
+  n_extra_fields: 1
+  n_warmup: 1400000000
+  segment_window: 10000000
+  #  window: 100
+  #  uni_size: 1
+  uni_size: 0
+  BeladySample:
+    threshold:
+      - 40000000
+    sample_rate:
+      - 64
+  WLC:
+    memory_window:
+#      - 134217728
+      - 268435456
+      - 536870912
+      - 1073741824
+    sample_rate:
+      - 64
+#      - 256
+  LR:
+    forget_window: 40000000
+    sample_rate: 25
+
+
 
 msr_rehash_200m.tr:
   cache_sizes:
