@@ -133,7 +133,7 @@ void WLCCache::print_stats() {
 bool WLCCache::lookup(SimpleRequest &req) {
     bool ret;
     //piggy back
-    if (req._t && !((req._t)%10000000))
+    if (req._t && !((req._t)%segment_window))
         print_stats();
 
     //first update the metadata: insert/update, which can trigger pending data.mature

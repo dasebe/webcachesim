@@ -220,6 +220,7 @@ public:
     // sample_size
     uint sample_rate = 64;
     uint64_t training_sample_interval = 64;
+    unsigned int segment_window = 10000000;
 
     double training_loss = 0;
     uint64_t n_force_eviction = 0;
@@ -289,8 +290,10 @@ public:
                     cerr<<"error: unknown objective"<<endl;
                     exit(-1);
                 }
+            } else if (it.first == "segment_window") {
+                segment_window = stoul(it.second);
             } else {
-                cerr << "unrecognized parameter: " << it.first << endl;
+                cerr << "WLC unrecognized parameter: " << it.first << endl;
             }
         }
 
