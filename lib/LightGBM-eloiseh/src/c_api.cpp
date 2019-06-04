@@ -503,7 +503,7 @@ int LGBM_DatasetCreateFromMat(const void* data,
                               int32_t nrow,
                               int32_t ncol,
                               int is_row_major,
-                              const char* parameters,
+                              const std::unordered_map<std::string, std::string> parameters,
                               const DatasetHandle reference,
                               DatasetHandle* out) {
   return LGBM_DatasetCreateFromMats(1,
@@ -524,13 +524,12 @@ int LGBM_DatasetCreateFromMats(int32_t nmat,
                                int32_t* nrow,
                                int32_t ncol,
                                int is_row_major,
-                               const char* parameters,
+                               const std::unordered_map<std::string, std::string> parameters,
                                const DatasetHandle reference,
                                DatasetHandle* out) {
   API_BEGIN();
-  auto param = Config::Str2Map(parameters);
   Config config;
-  config.Set(param);
+  config.Set(parameters);
   if (config.num_threads > 0) {
     omp_set_num_threads(config.num_threads);
   }
@@ -610,7 +609,7 @@ int LGBM_DatasetCreateFromCSR(const void* indptr,
                               int64_t nindptr,
                               int64_t nelem,
                               int64_t num_col,
-                              std::unordered_map<std::string, std::string> parameters,
+                              const std::unordered_map<std::string, std::string> parameters,
                               const DatasetHandle reference,
                               DatasetHandle* out) {
   API_BEGIN();

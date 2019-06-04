@@ -149,7 +149,7 @@ LIGHTGBM_C_EXPORT int LGBM_DatasetCreateFromCSR(const void* indptr,
                                                 int64_t nindptr,
                                                 int64_t nelem,
                                                 int64_t num_col,
-                                                std::unordered_map<std::string, std::string> parameters,
+                                                const std::unordered_map<std::string, std::string> parameters,
                                                 const DatasetHandle reference,
                                                 DatasetHandle* out);
 
@@ -197,7 +197,7 @@ LIGHTGBM_C_EXPORT int LGBM_DatasetCreateFromMat(const void* data,
                                                 int32_t nrow,
                                                 int32_t ncol,
                                                 int is_row_major,
-                                                const char* parameters,
+                                                const std::unordered_map<std::string, std::string> parameters,
                                                 const DatasetHandle reference,
                                                 DatasetHandle* out);
 
@@ -218,7 +218,7 @@ LIGHTGBM_C_EXPORT int LGBM_DatasetCreateFromMats(int32_t nmat,
                                                  int32_t* nrow,
                                                  int32_t ncol,
                                                  int is_row_major,
-                                                 const char* parameters,
+                                                 const std::unordered_map<std::string, std::string> parameters,
                                                  const DatasetHandle reference,
                                                  DatasetHandle* out);
 
