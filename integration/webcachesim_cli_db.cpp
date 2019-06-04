@@ -49,10 +49,14 @@ int main (int argc, char* argv[])
       return -1;
   }
 
+  string version;
+
   map<string, string> simulation_params;
   for (auto &k: params) {
       if (k.first == "dbcollection" || k.first == "dburl")
         continue;
+      else if (k.first == "version")
+          version = version;
       else
         simulation_params[k.first] = k.second;
     }
@@ -60,6 +64,10 @@ int main (int argc, char* argv[])
   auto timeBegin = chrono::system_clock::now();
   auto res = simulation(string(webcachesim_trace_dir) + '/' + argv[1], argv[2], std::stoull(argv[3]), simulation_params);
   auto simulation_time = chrono::duration_cast<chrono::seconds>(chrono::system_clock::now() - timeBegin).count();
+
+  //delay assignment of version because not passing it to simulation
+  if (!version.empty())
+    simulation_params["version"] = version;
 
   mongocxx::instance inst;
 
