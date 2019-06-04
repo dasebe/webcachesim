@@ -136,9 +136,9 @@ WLC:
     - 32
 #    - 64
   num_threads:
-    - 1
+#    - 1
 #    - 2
-#    - 4
+    - 4
   learning_rate:
     - 0.1
 #    - 0.2
