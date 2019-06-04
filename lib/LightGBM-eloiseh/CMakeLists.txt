@@ -19,7 +19,7 @@ OPTION(USE_R35 "Set to ON if your R version is not smaller than 3.5" OFF)
 #    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
 #endif()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffast-math")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffast-math")
 
 if(APPLE)
     OPTION(APPLE_OUTPUT_DYLIB "Output dylib shared library" OFF)
