@@ -47,6 +47,7 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     bool uni_size = false;
     uint64_t segment_window = 10000000;
     uint n_extra_fields = 0;
+    bool is_metadata_in_cache_size = true;
 
     for (auto it = params.cbegin(); it != params.cend();) {
         if (it->first == "n_warmup") {
@@ -55,9 +56,12 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
         } else if (it->first == "uni_size") {
             uni_size = static_cast<bool>(stoi(it->second));
             it = params.erase(it);
+        } else if (it->first == "is_metadata_in_cache_size") {
+            is_metadata_in_cache_size = static_cast<bool>(stoi(it->second));
+            it = params.erase(it);
         } else if (it->first == "segment_window") {
             segment_window = stoull((it->second));
-            it = params.erase(it);
+            ++it;
         } else if (it->first == "n_extra_fields") {
             n_extra_fields = stoull(it->second);
             ++it;
@@ -186,7 +190,8 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
             look_up_our_self(&usage);
             uint64_t metadata_overhead = usage.rss*getpagesize();
             seg_memory.emplace_back(metadata_overhead);
-            webcache->setSize(cache_size-metadata_overhead);
+            if (is_metadata_in_cache_size)
+                webcache->setSize(cache_size-metadata_overhead);
         }
     }
 
