@@ -25,9 +25,9 @@ namespace WLC {
     vector<uint32_t > edc_windows;
     vector<double > hash_edc;
     uint32_t max_hash_edc_idx;
-    uint32_t memory_window = 80000000;
+    uint32_t memory_window = 67108864;
     uint32_t n_extra_fields = 0;
-    uint32_t batch_size = 100000;
+    uint32_t batch_size = 131072;
     uint32_t n_feature;
 }
 

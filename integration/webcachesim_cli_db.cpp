@@ -23,10 +23,17 @@
 #include <mongocxx/uri.hpp>
 
 using namespace std;
+using namespace chrono;
 using bsoncxx::builder::basic::kvp;
 using bsoncxx::builder::basic::make_document;
 
-
+string current_timestamp()
+{
+    time_t now = system_clock::to_time_t(std::chrono::system_clock::now());
+    char buf[100] = {0};
+    std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", std::localtime(&now));
+    return buf;
+}
 
 int main (int argc, char* argv[])
 {
@@ -54,17 +61,17 @@ int main (int argc, char* argv[])
   map<string, string> simulation_params;
   for (auto &k: params) {
       if (k.first == "dbcollection" || k.first == "dburl")
-        continue;
+          continue;
       else if (k.first == "version")
-          version = version;
+          version = k.second;
       else
-        simulation_params[k.first] = k.second;
+          simulation_params[k.first] = k.second;
     }
 
   auto timeBegin = chrono::system_clock::now();
   auto res = simulation(string(webcachesim_trace_dir) + '/' + argv[1], argv[2], std::stoull(argv[3]), simulation_params);
   auto simulation_time = chrono::duration_cast<chrono::seconds>(chrono::system_clock::now() - timeBegin).count();
-
+  auto simulation_timestamp = current_timestamp();
   //delay assignment of version because not passing it to simulation
   if (!version.empty())
     simulation_params["version"] = version;
@@ -83,6 +90,7 @@ int main (int argc, char* argv[])
     value_builder.append(kvp("cache_type", argv[2]));
     value_builder.append(kvp("cache_size", argv[3]));
     value_builder.append(kvp("simulation_time", to_string(simulation_time)));
+    value_builder.append(kvp("simulation_timestamp", simulation_timestamp));
 
     for (auto &k: simulation_params) {
       key_builder.append(kvp(k.first, k.second));
