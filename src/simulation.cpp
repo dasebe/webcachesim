@@ -43,17 +43,13 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     // configure cache size
     webcache->setSize(cache_size);
 
-    uint64_t n_warmup = 0;
     bool uni_size = false;
     uint64_t segment_window = 10000000;
     uint n_extra_fields = 0;
     bool is_metadata_in_cache_size = true;
 
     for (auto it = params.cbegin(); it != params.cend();) {
-        if (it->first == "n_warmup") {
-            n_warmup = stoull(it->second);
-            it = params.erase(it);
-        } else if (it->first == "uni_size") {
+        if (it->first == "uni_size") {
             uni_size = static_cast<bool>(stoi(it->second));
             it = params.erase(it);
         } else if (it->first == "is_metadata_in_cache_size") {
@@ -71,7 +67,6 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     }
 
     webcache->init_with_params(params);
-
 
     ifstream infile;
     infile.open(trace_file);
@@ -95,12 +90,12 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
         infile.clear();
         infile.seekg(0, ios::beg);
     }
-    uint64_t byte_req = 0, byte_miss = 0, obj_req = 0, obj_miss = 0;
     uint64_t tmp, id, size;
-    uint64_t seg_byte_req = 0, seg_byte_miss = 0, seg_obj_req = 0, seg_obj_miss = 0;
-    vector<double> seg_bmr;
-    vector<double> seg_omr;
-    vector<uint64_t> seg_memory;
+    //measure every segment
+    uint64_t byte_req = 0, byte_miss = 0, obj_req = 0, obj_miss = 0;
+    //global statistics
+    vector<uint64_t> seg_byte_req, seg_byte_miss, seg_object_req, seg_object_miss;
+    vector<uint64_t> seg_rss;
 
     vector<uint16_t > extra_features(n_extra_fields, 0);
 
@@ -127,9 +122,7 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
 
         DPRINTF("seq: %lu\n", seq);
 
-        if (seq >= n_warmup)
-            update_metric_req(byte_req, obj_req, size)
-        update_metric_req(seg_byte_req, seg_obj_req, size)
+        update_metric_req(byte_req, obj_req, size)
 
 #ifdef MISS_DECOUPLE
         //count total request
@@ -147,9 +140,7 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
         req.reinit(id, size, seq, &extra_features);
         bool is_hit = webcache->lookup(req);
         if (!is_hit) {
-            if (seq >= n_warmup)
-                update_metric_req(byte_miss, obj_miss, size)
-            update_metric_req(seg_byte_miss, seg_obj_miss, size)
+            update_metric_req(byte_miss, obj_miss, size)
             webcache->admit(req);
         }
 
@@ -177,19 +168,16 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
             auto _t_now = chrono::system_clock::now();
             cerr<<"\nsegment id: " << seq/segment_window-1 << endl;
             cerr<<"delta t: "<<chrono::duration_cast<std::chrono::milliseconds>(_t_now - t_now).count()/1000.<<endl;
-            double _seg_bmr = double(seg_byte_miss) / seg_byte_req;
-            double _seg_ohm = double(seg_obj_miss) / seg_obj_req;
-            cerr<<"accu bmr: " << double(byte_miss) / byte_req << endl;
-            cerr<<"seg bmr: " << _seg_bmr << endl;
-            seg_bmr.emplace_back(_seg_bmr);
-            seg_omr.emplace_back(_seg_ohm);
-            seg_byte_miss=seg_obj_miss=seg_byte_req=seg_obj_req=0;
             t_now = _t_now;
+            cerr<<"segment bmr: " << double(byte_miss) / byte_req << endl;
+            seg_byte_miss.emplace_back(byte_miss); seg_byte_req.emplace_back(byte_req);
+            seg_object_miss.emplace_back(obj_miss); seg_object_req.emplace_back(obj_req);
+            byte_miss=obj_miss=byte_req=obj_req=0;
             //reduce cache size by metadata
             struct proc_t usage;
             look_up_our_self(&usage);
             uint64_t metadata_overhead = usage.rss*getpagesize();
-            seg_memory.emplace_back(metadata_overhead);
+            seg_rss.emplace_back(metadata_overhead);
             if (is_metadata_in_cache_size)
                 webcache->setSize(cache_size-metadata_overhead);
         }
@@ -198,11 +186,11 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     infile.close();
 
     map<string, string> res = {
-            {"byte_miss_ratio", to_string(double(byte_miss) / byte_req)},
-            {"object_miss_ratio", to_string(double(obj_miss) / obj_req)},
-            {"segment_byte_miss_ratio", json(seg_bmr).dump()},
-            {"segment_object_miss_ratio", json(seg_omr).dump()},
-            {"segment_rss", json(seg_memory).dump()},
+            {"segment_byte_miss", json(seg_byte_miss).dump()},
+            {"segment_byte_req", json(seg_byte_req).dump()},
+            {"segment_object_miss", json(seg_object_miss).dump()},
+            {"segment_object_req", json(seg_object_req).dump()},
+            {"segment_rss", json(seg_rss).dump()},
 #ifdef MISS_DECOUPLE
             {"miss_decouple", miss_stat.dump()},
 #endif
