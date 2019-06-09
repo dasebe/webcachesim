@@ -1,6 +1,8 @@
 #7/ec2-3-82-193-15.compute-1.amazonaws.com
 #:
-80/fat
+16/cache_client
+16/cache_origin
+#80/fat
 #5/sns59
 #5/sns60
 #5/sns61
