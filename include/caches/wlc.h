@@ -225,6 +225,9 @@ public:
     double training_loss = 0;
     uint64_t n_force_eviction = 0;
 
+    double training_time = 0;
+    double inference_time = 0;
+
     BoosterHandle booster = nullptr;
 
     unordered_map<string, string> training_params = {

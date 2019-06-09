@@ -70,10 +70,8 @@ void WLCCache::train() {
     training_loss = training_loss * 0.99 + se/WLC::batch_size*0.01;
 
     LGBM_DatasetFree(trainData);
-    cerr << "Training time: "
-               << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - timeBegin).count()
-               << " ms"
-               << endl;
+    training_time = 0.95 * training_time +
+                    0.05 * chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - timeBegin).count();
 }
 
 void WLCCache::sample(uint32_t t) {
@@ -117,15 +115,19 @@ void WLCCache::print_stats() {
         feature_overhead += m.feature_overhead();
         sample_overhead += m.sample_overhead();
     }
-    cerr << "cache size: "<<_currentSize <<"/"<<_cacheSize << " ("<<((double)_currentSize)/_cacheSize<<")"<<endl;
-    cerr << "n_metadata: "<<key_map.size()<<endl;
+    cerr
+            << "cache size: " << _currentSize << "/" << _cacheSize << " (" << ((double) _currentSize) / _cacheSize
+            << ")" << endl
+            << "n_metadata: " << key_map.size() << endl
 //    cerr << "feature overhead: "<<feature_overhead<<endl;
-    cerr << "feature overhead per entry: "<<feature_overhead/key_map.size()<<endl;
+            << "feature overhead per entry: " << feature_overhead / key_map.size() << endl
 //    cerr << "sample overhead: "<<sample_overhead<<endl;
-    cerr << "sample overhead per entry: "<<sample_overhead/key_map.size()<<endl;
-    cerr << "n_training: "<<training_data->labels.size()<<endl;
-    cerr << "training loss: " << training_loss << endl;
-    cerr << "n_force_eviction: " << n_force_eviction <<endl;
+            << "sample overhead per entry: " << sample_overhead / key_map.size() << endl
+            << "n_training: " << training_data->labels.size() << endl
+            << "training loss: " << training_loss << endl
+            << "n_force_eviction: " << n_force_eviction << endl
+            << "training_time: " << training_time << " ms" << endl
+            << "inference_time: " << inference_time << " us" << endl;
     assert(meta_holder[0].size() + meta_holder[1].size() == key_map.size());
 }
 
@@ -360,7 +362,10 @@ pair<uint64_t, uint32_t> WLCCache::rank(const uint32_t t) {
     }
     int64_t len;
     vector<double> result(n_sample);
-//    auto timeBegin = chrono::system_clock::now();
+    system_clock::time_point timeBegin;
+    //sample to measure inference time
+    if (!(t % 10000))
+        timeBegin = chrono::system_clock::now();
     LGBM_BoosterPredictForCSR(booster,
                               static_cast<void *>(indptr),
                               C_API_DTYPE_INT32,
@@ -375,10 +380,11 @@ pair<uint64_t, uint32_t> WLCCache::rank(const uint32_t t) {
                               inference_params,
                               &len,
                               result.data());
-//    cerr << "Inference time: "
-//         << chrono::duration_cast<chrono::microseconds>(chrono::system_clock::now() - timeBegin).count()
-//         << " ns"
-//         << endl;
+
+    if (!(t % 10000))
+        inference_time = 0.95 * inference_time +
+                         0.05 *
+                         chrono::duration_cast<chrono::microseconds>(chrono::system_clock::now() - timeBegin).count();
     for (int i = 0; i < n_sample; ++i)
         result[i] -= (t - past_timestamps[i]);
     if (objective == object_miss_ratio)
