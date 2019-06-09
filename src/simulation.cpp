@@ -180,6 +180,7 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
             seg_rss.emplace_back(metadata_overhead);
             if (is_metadata_in_cache_size)
                 webcache->setSize(cache_size-metadata_overhead);
+            cerr<<"rss: "<<metadata_overhead<<endl;
         }
     }
 
