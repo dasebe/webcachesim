@@ -18,6 +18,7 @@ git clone https://github.com/sunnyszy/webcachesim
 cd webcachesim
 git checkout akamai
 
+# can add CMAKE_INSTALL_PREFIX CMAKE_PREFIX_PATH
 cd webcachesim/lib/LightGBM-eloiseh/build
 cmake -DCMAKE_BUILD_TYPE=Release ..
 make && make install
