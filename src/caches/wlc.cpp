@@ -119,9 +119,9 @@ void WLCCache::print_stats() {
     }
     cerr << "cache size: "<<_currentSize <<"/"<<_cacheSize << " ("<<((double)_currentSize)/_cacheSize<<")"<<endl;
     cerr << "n_metadata: "<<key_map.size()<<endl;
-    cerr << "feature overhead: "<<feature_overhead<<endl;
+//    cerr << "feature overhead: "<<feature_overhead<<endl;
     cerr << "feature overhead per entry: "<<feature_overhead/key_map.size()<<endl;
-    cerr << "sample overhead: "<<sample_overhead<<endl;
+//    cerr << "sample overhead: "<<sample_overhead<<endl;
     cerr << "sample overhead per entry: "<<sample_overhead/key_map.size()<<endl;
     cerr << "n_training: "<<training_data->labels.size()<<endl;
     cerr << "training loss: " << training_loss << endl;

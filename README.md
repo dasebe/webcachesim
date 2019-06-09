@@ -19,22 +19,22 @@ cd webcachesim
 git checkout akamai
 
 cd webcachesim/lib/LightGBM-eloiseh/build
-cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=~/LightGBM ..
+cmake -DCMAKE_BUILD_TYPE=Release ..
 make && make install
 
 # dependency for mongo c driver
 sudo apt-get install cmake libssl-dev libsasl2-dev
 
 cd webcachesim/lib/mongo-c-driver-1.13.1/cmake-build/
-cmake -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON -DCMAKE_INSTALL_PREFIX=~/mongo-c-driver ..
+cmake -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF ..
 make && make install
 
 cd webcachesim/lib/mongo-cxx-driver-r3.4.0/build
-cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=~/mongo-cxx-driver -DCMAKE_PREFIX_PATH=~/mongo-c-driver  ..
+cmake -DCMAKE_BUILD_TYPE=Release ..
 make && make install
 
 cd webcachesim/build
-cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="~/mongo-cxx-driver;~/mongo-c-driver;~/LightGBM" ..
+cmake -DCMAKE_BUILD_TYPE=Release ..
 make
 
 # install pywebcachesim
