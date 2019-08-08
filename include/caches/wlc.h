@@ -189,7 +189,7 @@ public:
 
         counter += WLC::n_edc_feature;
 
-        labels.push_back(future_interval);
+        labels.push_back(log1p(future_interval));
         indptr.push_back(counter);
     }
 
@@ -307,7 +307,7 @@ public:
         for (uint8_t i = 0; i < WLC::n_edc_feature; ++i) {
             WLC::edc_windows[i] = pow(2, WLC::base_edc_window+i);
         }
-        WLC:: max_hash_edc_idx = (uint64_t) (WLC::memory_window/pow(2, WLC::base_edc_window))-1;
+        WLC::max_hash_edc_idx = (uint64_t) (WLC::memory_window / pow(2, WLC::base_edc_window)) - 1;
         WLC::hash_edc = vector<double >(WLC:: max_hash_edc_idx+1);
         for (int i = 0; i < WLC::hash_edc.size(); ++i)
             WLC::hash_edc[i] = pow(0.5, i);
