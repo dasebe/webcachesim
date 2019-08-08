@@ -71,12 +71,16 @@ map<string, string> _simulation_future(string trace_file, string cache_type, uin
         std::string line;
         getline(infile, line);
         istringstream iss(line);
-        int64_t tmp;
+        uint64_t tmp;
         int counter = 0;
-        while (iss>>tmp) {++counter;}
+        while (iss >> tmp) {
+            ++counter;
+        }
+        //todo: check the type of each argument
         //format: n_seq t id size [extra]
-        if (counter != 4+n_extra_fields) {
-            cerr<<"error: input file column should be 3+n_extra_fields"<<endl;
+        if (counter != 4 + n_extra_fields) {
+            cerr << "error: input file column should be 4 + " << n_extra_fields << endl
+                 << "first line: " << line << endl;
             abort();
         }
         infile.clear();

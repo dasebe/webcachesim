@@ -6,8 +6,9 @@
 sudo apt-get update
 
 sudo apt install cmake build-essential libboost-all-dev python3-pip parallel
+sudo apt install libprocps-dev
 
-# install openjdk 1.8
+# install openjdk 1.8 has to be one by one
 sudo add-apt-repository ppa:openjdk-r/ppa
 sudo apt-get update
 sudo apt-get install openjdk-8-jdk
@@ -28,15 +29,15 @@ sudo apt-get install cmake libssl-dev libsasl2-dev
 
 cd webcachesim/lib/mongo-c-driver-1.13.1/cmake-build/
 cmake -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF ..
-make && make install
+make -j8 && make install
 
 cd webcachesim/lib/mongo-cxx-driver-r3.4.0/build
 cmake -DCMAKE_BUILD_TYPE=Release ..
-make && make install
+make -j 8 && make install
 
 cd webcachesim/build
 cmake -DCMAKE_BUILD_TYPE=Release ..
-make
+make -j 8
 
 # install pywebcachesim
 cd webcachesim

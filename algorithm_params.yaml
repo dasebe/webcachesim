@@ -164,7 +164,7 @@ WLC:
     - 10
 #    - 12
 #    - 16
-  version: e2e_memory
+  version: log1p
 Hyperbolic:
   sample_rate: 64
 LeCaR:

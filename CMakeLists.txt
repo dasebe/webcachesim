@@ -16,7 +16,7 @@ remove_definitions(-DMISS_DECOUPLE)
 #add_definitions(-DCACHE_SIZE_DECOUPLE)
 remove_definitions(-DCACHE_SIZE_DECOUPLE)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffast-math")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffast-math")
 
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
