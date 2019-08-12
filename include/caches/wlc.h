@@ -28,6 +28,7 @@ namespace WLC {
     uint32_t memory_window = 67108864;
     uint32_t n_extra_fields = 0;
     uint32_t batch_size = 131072;
+    const uint max_n_extra_feature = 4;
     uint32_t n_feature;
 }
 
@@ -71,7 +72,7 @@ public:
     uint64_t _key;
     uint32_t _size;
     uint32_t _past_timestamp;
-    uint16_t _extra_features[2];
+    uint16_t _extra_features[WLC::max_n_extra_feature];
     WLCMetaExtra * _extra = nullptr;
     vector<uint32_t> _sample_times;
 
@@ -315,8 +316,9 @@ public:
         //interval, distances, size, extra_features, n_past_intervals, edwt
         WLC::n_feature = WLC::max_n_past_timestamps + WLC::n_extra_fields + 2 + WLC::n_edc_feature;
         if (WLC::n_extra_fields) {
-            if (WLC::n_extra_fields>2) {
-                cerr<<"error: only support <= 2 extra fields because of static allocation"<<endl;
+            if (WLC::n_extra_fields > WLC::max_n_extra_feature) {
+                cerr << "error: only support <= " + to_string(WLC::max_n_extra_feature)
+                        + " extra fields because of static allocation" << endl;
                 abort();
             }
             string categorical_feature = to_string(WLC::max_n_past_timestamps+1);
