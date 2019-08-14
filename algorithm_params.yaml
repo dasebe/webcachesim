@@ -164,7 +164,7 @@ WLC:
     - 10
 #    - 12
 #    - 16
-  version: log1p
+  version: log1p_fix
 Hyperbolic:
   sample_rate: 64
 LeCaR:
