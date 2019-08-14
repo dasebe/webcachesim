@@ -177,9 +177,9 @@ bool WLCCache::lookup(SimpleRequest &req) {
         //re-request
         if (!meta._sample_times.empty()) {
             //mature
-            uint32_t future_distance = req._t - last_timestamp;
             for (auto & sample_time: meta._sample_times) {
                 //don't use label within the first forget window because the data is not static
+                uint32_t future_distance = req._t - sample_time;
                 training_data->emplace_back(meta, sample_time, future_distance);
                 //training
                 if (training_data->labels.size() == WLC::batch_size) {
