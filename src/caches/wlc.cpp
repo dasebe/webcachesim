@@ -46,6 +46,30 @@ void WLCCache::train() {
         }
     }
 
+
+//    int res;
+//    auto importances = vector<double >(WLC::n_feature);
+//
+//    res = LGBM_BoosterFeatureImportance(booster,
+//                          0,
+//                          1,
+//                          importances.data());
+//    if (res == -1)
+//        abort();
+//    for (int i = 0; i < WLC::n_feature; ++i) {
+//        if (i<32)
+//            cout<<"delta"<<i<<" "<<importances[i]<<endl;
+//        else if (i<33)
+//            cout<<"size "<<importances[i]<<endl;
+//        else if (i<37)
+//            cout<<"extra"<<i-33<<" "<<importances[i]<<endl;
+//        else if (i<38)
+//            cout<<"n_delta "<<importances[i]<<endl;
+//        else
+//            cout<<"edc"<<i-38<<" "<<importances[i]<<endl;
+//    }
+//    cout<<endl;
+
     int64_t len;
     vector<double > result(training_data->indptr.size()-1);
     LGBM_BoosterPredictForCSR(booster,
