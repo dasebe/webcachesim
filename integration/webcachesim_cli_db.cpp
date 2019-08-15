@@ -57,6 +57,7 @@ int main (int argc, char* argv[])
   }
 
   string version;
+    string task_id;
 
   map<string, string> simulation_params;
   for (auto &k: params) {
@@ -75,8 +76,12 @@ int main (int argc, char* argv[])
   //delay assignment of version because not passing it to simulation
   if (!version.empty())
     simulation_params["version"] = version;
+    //move task_id from key to value
+    auto it = simulation_params.find("task_id");
+    if (it != simulation_params.end())
+        task_id = it->second;
 
-  mongocxx::instance inst;
+    mongocxx::instance inst;
 
   try {
     mongocxx::client client = mongocxx::client{mongocxx::uri(params["dburl"])};
@@ -100,6 +105,9 @@ int main (int argc, char* argv[])
     for (auto &k: res) {
       value_builder.append(kvp(k.first, k.second));
     }
+
+      if (!(task_id.empty()))
+          value_builder.append(kvp("task_id", task_id));
 
     mongocxx::options::replace option;
     db[params["dbcollection"]].replace_one(key_builder.extract(), value_builder.extract(), option.upsert(true));
