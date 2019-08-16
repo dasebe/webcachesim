@@ -363,7 +363,7 @@ public:
 
         res["n_metadata"] = to_string(key_map.size());
         res["feature_overhead"] = to_string(feature_overhead);
-        res["sample overhead"] = to_string(sample_overhead);
+        res["sample_overhead"] = to_string(sample_overhead);
         res["n_force_eviction"] = to_string(n_force_eviction);
     }
 
