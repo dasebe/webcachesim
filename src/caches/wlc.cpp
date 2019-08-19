@@ -100,13 +100,13 @@ void WLCCache::train() {
 
 void WLCCache::sample(uint32_t t) {
     // warmup not finish
-    if (meta_holder[0].empty() || meta_holder[1].empty())
+    if (in_cache_metas.empty() || out_cache_metas.empty())
         return;
 #ifdef LOG_SAMPLE_RATE
     bool log_flag = ((double) rand() / (RAND_MAX)) < LOG_SAMPLE_RATE;
 #endif
-    auto n_l0 = static_cast<uint32_t>(meta_holder[0].size());
-    auto n_l1 = static_cast<uint32_t>(meta_holder[1].size());
+    auto n_l0 = static_cast<uint32_t>(in_cache_metas.size());
+    auto n_l1 = static_cast<uint32_t>(out_cache_metas.size());
     auto rand_idx = _distribution(_generator);
     // at least sample 1 from the list, at most size of the list
     auto n_sample_l0 = min(max(uint32_t (training_sample_interval*n_l0/(n_l0+n_l1)), (uint32_t) 1), n_l0);
@@ -115,14 +115,14 @@ void WLCCache::sample(uint32_t t) {
     //sample list 0
     for (uint32_t i = 0; i < n_sample_l0; i++) {
         uint32_t pos = (uint32_t) (i + rand_idx) % n_l0;
-        auto &meta = meta_holder[0][pos];
+        auto &meta = in_cache_metas[pos];
         meta.emplace_sample(t);
     }
 
     //sample list 1
     for (uint32_t i = 0; i < n_sample_l1; i++) {
         uint32_t pos = (uint32_t) (i + rand_idx) % n_l1;
-        auto &meta = meta_holder[1][pos];
+        auto &meta = out_cache_metas[pos];
         meta.emplace_sample(t);
     }
 }
@@ -131,28 +131,29 @@ void WLCCache::sample(uint32_t t) {
 void WLCCache::print_stats() {
     uint64_t feature_overhead = 0;
     uint64_t sample_overhead = 0;
-    for (auto &m: meta_holder[0]) {
+    for (auto &m: in_cache_metas) {
         feature_overhead += m.feature_overhead();
         sample_overhead += m.sample_overhead();
     }
-    for (auto &m: meta_holder[1]) {
+    for (auto &m: out_cache_metas) {
         feature_overhead += m.feature_overhead();
         sample_overhead += m.sample_overhead();
     }
     cerr
             << "cache size: " << _currentSize << "/" << _cacheSize << " (" << ((double) _currentSize) / _cacheSize
             << ")" << endl
-            << "n_metadata: " << key_map.size() << endl
+            << "in/out metadata " << in_cache_metas.size() << " / " << out_cache_metas.size() << endl
 //    cerr << "feature overhead: "<<feature_overhead<<endl;
             << "feature overhead per entry: " << feature_overhead / key_map.size() << endl
 //    cerr << "sample overhead: "<<sample_overhead<<endl;
             << "sample overhead per entry: " << sample_overhead / key_map.size() << endl
             << "n_training: " << training_data->labels.size() << endl
-            << "training loss: " << training_loss << endl
-            << "n_force_eviction: " << n_force_eviction << endl
+            //            << "training loss: " << training_loss << endl
+            //TODO: can remove this
+            //            << "n_force_eviction: " << n_force_eviction << endl
             << "training_time: " << training_time << " ms" << endl
             << "inference_time: " << inference_time << " us" << endl;
-    assert(meta_holder[0].size() + meta_holder[1].size() == key_map.size());
+    assert(in_cache_metas.size() + out_cache_metas.size() == key_map.size());
 }
 
 
@@ -170,23 +171,25 @@ bool WLCCache::lookup(SimpleRequest &req) {
         } else {
             it->second = _req->_next_seq;
         }
+        //TODO: if we have global variable WLC::current_t, don't need t as a function argument
         WLC::current_t = req._t;
-
     }
-
+    forget(req._t);
 
     //first update the metadata: insert/update, which can trigger pending data.mature
     auto it = key_map.find(req._id);
     if (it != key_map.end()) {
         auto list_idx = it->second.list_idx;
         auto list_pos = it->second.list_pos;
+        WLCMeta &meta = list_idx ? out_cache_metas[list_pos] : in_cache_metas[list_pos];
         //update past timestamps
-        WLCMeta &meta = meta_holder[list_idx][list_pos];
         assert(meta._key == req._id);
         uint64_t last_timestamp = meta._past_timestamp;
         uint64_t forget_timestamp = last_timestamp + WLC::memory_window;
-        //if the key in key_map, it must also in forget table
-        assert(negative_candidate_queue.find(forget_timestamp % WLC::memory_window) != negative_candidate_queue.end());
+        //if the key in out_metadata, it must also in forget table
+        assert((!list_idx) ||
+               (negative_candidate_queue.find(forget_timestamp % WLC::memory_window) !=
+                negative_candidate_queue.end()));
         //re-request
         if (!meta._sample_times.empty()) {
             //mature
@@ -204,28 +207,24 @@ bool WLCCache::lookup(SimpleRequest &req) {
             meta._sample_times.shrink_to_fit();
         }
 
-        if ((req._t + WLC::memory_window - forget_timestamp)%WLC::memory_window) {
-            //update
-            //The else case is very rate, re-request at the end of memory window, and do not need modification or forget
-            //make this update after update training, otherwise the last timestamp will change
-            meta.update(req._t);
-            //first forget, then insert. This prevent overwriting the older request a memory window before
-            forget(req._t);
+        //make this update after update training, otherwise the last timestamp will change
+        meta.update(req._t);
+        if (list_idx) {
             negative_candidate_queue.erase(forget_timestamp % WLC::memory_window);
             negative_candidate_queue.insert({(req._t + WLC::memory_window) % WLC::memory_window, req._id});
-            assert(negative_candidate_queue.find((req._t + WLC::memory_window)%WLC::memory_window) != negative_candidate_queue.end());
+            assert(negative_candidate_queue.find((req._t + WLC::memory_window) % WLC::memory_window) !=
+                   negative_candidate_queue.end());
         } else {
-            //make this update after update training, otherwise the last timestamp will change
-            meta.update(req._t);
+            InCacheMeta *p = static_cast<InCacheMeta *>(&meta);
+            p->p_last_request = in_cache_lru_queue.re_request(p->p_last_request);
         }
         //update negative_candidate_queue
         ret = !list_idx;
     } else {
         ret = false;
-        forget(req._t);
     }
 
-    //sampling
+    //sampling happens late to prevent immediate re-request
     if (!(req._t % training_sample_interval))
         sample(req._t);
     return ret;
@@ -233,14 +232,20 @@ bool WLCCache::lookup(SimpleRequest &req) {
 
 
 void WLCCache::forget(uint32_t t) {
+    /*
+     * forget happens exactly after the beginning of each time, without doing any other operations. For example, an
+     * object is request at time 0 with memory window = 5, and will be forgotten exactly at the start of time 5.
+     * */
     //remove item from forget table, which is not going to be affect from update
     auto it = negative_candidate_queue.find(t%WLC::memory_window);
     if (it != negative_candidate_queue.end()) {
         auto forget_key = it->second;
-        auto meta_it = key_map.find(forget_key);
-        auto pos = meta_it->second.list_pos;
-        bool meta_id = meta_it->second.list_idx;
-        auto &meta = meta_holder[meta_id][pos];
+        auto pos = key_map.find(forget_key)->second.list_pos;
+        // Forget only happens at list 1
+        assert(key_map.find(forget_key)->second.list_idx);
+//        auto pos = meta_it->second.list_pos;
+//        bool meta_id = meta_it->second.list_idx;
+        auto &meta = out_cache_metas[pos];
 
         //timeout mature
         if (!meta._sample_times.empty()) {
@@ -260,28 +265,29 @@ void WLCCache::forget(uint32_t t) {
         }
 
         assert(meta._key == forget_key);
-        if (!meta_id) {
-            ++n_force_eviction;
-            _currentSize -= meta._size;
-            {
-                auto it = WLC::future_timestamps.find(meta._key);
-                unsigned int decision_qulity =
-                        static_cast<double>(it->second - WLC::current_t) / (_cacheSize * 1e6 / byte_million_req);
-                decision_qulity = min((unsigned int) 255, decision_qulity);
-                eviction_qualities.emplace_back(decision_qulity);
-                eviction_logic_timestamps.emplace_back(WLC::current_t / 10000);
-            }
-        }
+//        if (!meta_id) {
+//            ++n_force_eviction;
+//            _currentSize -= meta._size;
+//            {
+//                auto it = WLC::future_timestamps.find(meta._key);
+//                unsigned int decision_qulity =
+//                        static_cast<double>(it->second - WLC::current_t) / (_cacheSize * 1e6 / byte_million_req);
+//                decision_qulity = min((unsigned int) 255, decision_qulity);
+//                eviction_qualities.emplace_back(decision_qulity);
+//                eviction_logic_timestamps.emplace_back(WLC::current_t / 10000);
+//            }
+//        }
         //free the actual content
         meta.free();
+        //TODO: can add a function to delete from a queue with (key, pos)
         //evict
-        uint32_t tail_pos = meta_holder[meta_id].size() - 1;
+        uint32_t tail_pos = out_cache_metas.size() - 1;
         if (pos != tail_pos) {
             //swap tail
-            meta_holder[meta_id][pos] = meta_holder[meta_id][tail_pos];
-            key_map.find(meta_holder[meta_id][tail_pos]._key)->second.list_pos= pos;
+            out_cache_metas[pos] = out_cache_metas[tail_pos];
+            key_map.find(out_cache_metas[tail_pos]._key)->second.list_pos = pos;
         }
-        meta_holder[meta_id].pop_back();
+        out_cache_metas.pop_back();
         key_map.erase(forget_key);
         negative_candidate_queue.erase(t%WLC::memory_window);
     }
@@ -298,36 +304,33 @@ void WLCCache::admit(SimpleRequest &req) {
     auto it = key_map.find(req._id);
     if (it == key_map.end()) {
         //fresh insert
-        key_map.insert({req._id, {0, (uint32_t) meta_holder[0].size()}});
-        meta_holder[0].emplace_back(req._id, req._size, req._t, req._extra_features);
+        key_map.insert({req._id, {0, (uint32_t) in_cache_metas.size()}});
+        auto lru_it = in_cache_lru_queue.request(req._id);
+        in_cache_metas.emplace_back(req._id, req._size, req._t, req._extra_features, lru_it);
         _currentSize += size;
         //this must be a fresh insert
-        negative_candidate_queue.insert({(req._t + WLC::memory_window)%WLC::memory_window, req._id});
+//        negative_candidate_queue.insert({(req._t + WLC::memory_window)%WLC::memory_window, req._id});
         if (_currentSize <= _cacheSize)
             return;
     } else if (size + _currentSize <= _cacheSize){
         //bring list 1 to list 0
         //first move meta data, then modify hash table
-        uint32_t tail0_pos = meta_holder[0].size();
-        meta_holder[0].emplace_back(meta_holder[1][it->second.list_pos]);
-        uint32_t tail1_pos = meta_holder[1].size()-1;
+        uint32_t tail0_pos = in_cache_metas.size();
+        auto &meta = out_cache_metas[it->second.list_pos];
+        auto forget_timestamp = meta._past_timestamp + WLC::memory_window;
+        negative_candidate_queue.erase(forget_timestamp % WLC::memory_window);
+        auto it_lru = in_cache_lru_queue.request(req._id);
+        in_cache_metas.emplace_back(out_cache_metas[it->second.list_pos], it_lru);
+        uint32_t tail1_pos = out_cache_metas.size() - 1;
         if (it->second.list_pos !=  tail1_pos) {
             //swap tail
-            meta_holder[1][it->second.list_pos] = meta_holder[1][tail1_pos];
-            key_map.find(meta_holder[1][tail1_pos]._key)->second.list_pos = it->second.list_pos;
+            out_cache_metas[it->second.list_pos] = out_cache_metas[tail1_pos];
+            key_map.find(out_cache_metas[tail1_pos]._key)->second.list_pos = it->second.list_pos;
         }
-        meta_holder[1].pop_back();
+        out_cache_metas.pop_back();
         it->second = {0, tail0_pos};
         _currentSize += size;
         return;
-    } else {
-        //insert-evict
-        auto epair = rank(req._t);
-        auto & key0 = epair.first;
-        auto & pos0 = epair.second;
-        _currentSize = _currentSize - meta_holder[0][pos0]._size + req._size;
-        swap(meta_holder[0][pos0], meta_holder[1][it->second.list_pos]);
-        swap(it->second, key_map.find(key0)->second);
     }
     // check more eviction needed?
     while (_currentSize > _cacheSize) {
@@ -337,13 +340,19 @@ void WLCCache::admit(SimpleRequest &req) {
 
 
 pair<uint64_t, uint32_t> WLCCache::rank(const uint32_t t) {
-    uint32_t rand_idx = _distribution(_generator) % meta_holder[0].size();
-    //if not trained yet, use random
-    if (booster == nullptr) {
-        return {meta_holder[0][rand_idx]._key, rand_idx};
+    {
+        //if not trained yet, or in_cache_lru past memory window, use LRU
+        uint64_t &candidate_key = in_cache_lru_queue.dq.back();
+        auto it = key_map.find(candidate_key);
+        auto pos = it->second.list_pos;
+        auto &meta = in_cache_metas[pos];
+        if ((!booster) || (meta._past_timestamp + WLC::memory_window <= t))
+            return {meta._key, pos};
     }
 
-    uint n_sample = min(sample_rate, (uint32_t) meta_holder[0].size());
+    uint32_t rand_idx = _distribution(_generator) % in_cache_metas.size();
+
+    uint n_sample = min(sample_rate, (uint32_t) in_cache_metas.size());
 
     int32_t indptr[n_sample+1];
     indptr[0] = 0;
@@ -356,8 +365,8 @@ pair<uint64_t, uint32_t> WLCCache::rank(const uint32_t t) {
     unsigned int idx_feature = 0;
     unsigned int idx_row = 0;
     for (int i = 0; i < n_sample; i++) {
-        uint32_t pos = (i+rand_idx)%meta_holder[0].size();
-        auto & meta = meta_holder[0][pos];
+        uint32_t pos = (i + rand_idx) % in_cache_metas.size();
+        auto &meta = in_cache_metas[pos];
         //fill in past_interval
         indices[idx_feature] = 0;
         data[idx_feature++] = t - meta._past_timestamp;
@@ -446,8 +455,8 @@ pair<uint64_t, uint32_t> WLCCache::rank(const uint32_t t) {
             worst_pos = i;
             min_past_timestamp = past_timestamps[i];
         }
-    worst_pos = (worst_pos+rand_idx)%meta_holder[0].size();
-    auto & meta = meta_holder[0][worst_pos];
+    worst_pos = (worst_pos + rand_idx) % in_cache_metas.size();
+    auto &meta = in_cache_metas[worst_pos];
     auto & worst_key = meta._key;
 
     return {worst_key, worst_pos};
@@ -468,20 +477,56 @@ void WLCCache::evict(const uint32_t t) {
         eviction_logic_timestamps.emplace_back(WLC::current_t / 10000);
     }
 
-    //bring list 0 to list 1
-    uint32_t new_pos = meta_holder[1].size();
+    auto &meta = in_cache_metas[old_pos];
+    if (meta._past_timestamp + WLC::memory_window <= t) {
+        //must be the tail of lru
+        if (!meta._sample_times.empty()) {
+            //mature
+            uint32_t future_distance = t - meta._past_timestamp + WLC::memory_window;
+            for (auto &sample_time: meta._sample_times) {
+                //don't use label within the first forget window because the data is not static
+                training_data->emplace_back(meta, sample_time, future_distance);
+                //training
+                if (training_data->labels.size() == WLC::batch_size) {
+                    train();
+                    training_data->clear();
+                }
+            }
+            meta._sample_times.clear();
+            meta._sample_times.shrink_to_fit();
+        }
 
-    meta_holder[1].emplace_back(meta_holder[0][old_pos]);
-    uint32_t activate_tail_idx = meta_holder[0].size()-1;
-    if (old_pos !=  activate_tail_idx) {
-        //move tail
-        meta_holder[0][old_pos] = meta_holder[0][activate_tail_idx];
-        key_map.find(meta_holder[0][activate_tail_idx]._key)->second.list_pos = old_pos;
+        _currentSize -= meta._size;
+        key_map.erase(key);
+        in_cache_lru_queue.dq.pop_back();
+
+        uint32_t activate_tail_idx = in_cache_metas.size() - 1;
+        if (old_pos != activate_tail_idx) {
+            //move tail
+            in_cache_metas[old_pos] = in_cache_metas[activate_tail_idx];
+            key_map.find(in_cache_metas[activate_tail_idx]._key)->second.list_pos = old_pos;
+        }
+        in_cache_metas.pop_back();
+
+    } else {
+        //bring list 0 to list 1
+
+        auto &meta = in_cache_metas[old_pos];
+        in_cache_lru_queue.dq.erase(meta.p_last_request);
+        _currentSize -= meta._size;
+        negative_candidate_queue.insert({(meta._past_timestamp + WLC::memory_window) % WLC::memory_window, meta._key});
+
+        uint32_t new_pos = out_cache_metas.size();
+        out_cache_metas.emplace_back(in_cache_metas[old_pos]);
+        uint32_t activate_tail_idx = in_cache_metas.size() - 1;
+        if (old_pos != activate_tail_idx) {
+            //move tail
+            in_cache_metas[old_pos] = in_cache_metas[activate_tail_idx];
+            key_map.find(in_cache_metas[activate_tail_idx]._key)->second.list_pos = old_pos;
+        }
+        in_cache_metas.pop_back();
+        key_map.find(key)->second = {1, new_pos};
     }
-    meta_holder[0].pop_back();
-
-    key_map.find(key)->second = {1, new_pos};
-    _currentSize -= meta_holder[1][new_pos]._size;
 }
 
 

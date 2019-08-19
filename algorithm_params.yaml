@@ -151,8 +151,8 @@ WLC:
 #    - 64
   num_threads:
     #    - 1
-    - 2
-  #    - 4
+    #    - 2
+    - 4
   learning_rate:
     - 0.1
 #    - 0.2
@@ -164,7 +164,7 @@ WLC:
     - 10
 #    - 12
 #    - 16
-  version: log1p_eviction_decisions
+  version: no_force_eviction
 Hyperbolic:
   sample_rate: 64
 LeCaR:

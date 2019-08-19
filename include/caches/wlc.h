@@ -14,9 +14,11 @@
 #include <LightGBM/c_api.h>
 #include <assert.h>
 #include <fstream>
+#include <list>
 
 using namespace std;
 using spp::sparse_hash_map;
+typedef uint64_t WLCKey;
 
 namespace WLC {
     uint8_t max_n_past_timestamps = 32;
@@ -66,7 +68,6 @@ struct WLCMetaExtra {
             _edc[i] = _edc[i] * WLC::hash_edc[_distance_idx] + 1;
         }
     }
-
 };
 
 class WLCMeta {
@@ -117,6 +118,47 @@ public:
 
     int sample_overhead() {
         return sizeof(_sample_times) + sizeof(uint32_t) * _sample_times.capacity();
+    }
+};
+
+
+class InCacheMeta : public WLCMeta {
+public:
+    //pointer to lru0
+    list<WLCKey>::const_iterator p_last_request;
+    //any change to functions?
+
+    InCacheMeta(const uint64_t &key,
+                const uint64_t &size,
+                const uint64_t &past_timestamp,
+                const vector<uint16_t> &extra_features, const list<WLCKey>::const_iterator &it) :
+            WLCMeta(key, size, past_timestamp, extra_features) {
+        p_last_request = it;
+    };
+
+    InCacheMeta(const WLCMeta &meta, const list<WLCKey>::const_iterator &it) : WLCMeta(meta) {
+        p_last_request = it;
+    };
+
+};
+
+class InCacheLRUQueue {
+public:
+    list<WLCKey> dq;
+
+    //size?
+    //the hashtable (location information is maintained outside, and assume it is always correct)
+    list<WLCKey>::const_iterator request(WLCKey key) {
+        dq.emplace_front(key);
+        return dq.cbegin();
+    }
+
+    list<WLCKey>::const_iterator re_request(list<WLCKey>::const_iterator it) {
+        if (it != dq.cbegin()) {
+            dq.emplace_front(*it);
+            dq.erase(it);
+        }
+        return dq.cbegin();
     }
 };
 
@@ -216,8 +258,12 @@ class WLCCache : public Cache
 public:
     //key -> (0/1 list, idx)
     sparse_hash_map<uint64_t, KeyMapEntryT> key_map;
-    vector<WLCMeta> meta_holder[2];
+//    vector<WLCMeta> meta_holder[2];
+    vector<InCacheMeta> in_cache_metas;
+    vector<WLCMeta> out_cache_metas;
 
+    InCacheLRUQueue in_cache_lru_queue;
+    //TODO: negative queue should have a better abstraction, at least hide the round-up
     sparse_hash_map<uint32_t, uint64_t> negative_candidate_queue;
     WLCTrainingData * training_data;
 
@@ -367,11 +413,11 @@ public:
     void update_stat(std::map<std::string, std::string> &res) override {
         uint64_t feature_overhead = 0;
         uint64_t sample_overhead = 0;
-        for (auto &m: meta_holder[0]) {
+        for (auto &m: in_cache_metas) {
             feature_overhead += m.feature_overhead();
             sample_overhead += m.sample_overhead();
         }
-        for (auto &m: meta_holder[1]) {
+        for (auto &m: out_cache_metas) {
             feature_overhead += m.feature_overhead();
             sample_overhead += m.sample_overhead();
         }
