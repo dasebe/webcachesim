@@ -14,6 +14,18 @@ using namespace std;
 */
 bool GreedyDualBase::lookup(SimpleRequest& req)
 {
+
+    {
+        auto &_req = dynamic_cast<AnnotatedRequest &>(req);
+        current_t = req._t;
+        auto it = future_timestamps.find(req._id);
+        if (it == future_timestamps.end()) {
+            future_timestamps.insert({_req._id, _req._next_seq});
+        } else {
+            it->second = _req._next_seq;
+        }
+    }
+
     uint64_t& obj = req._id;
     auto it = _cacheMap.find(obj);
     if (it != _cacheMap.end()) {
@@ -96,6 +108,16 @@ void GreedyDualBase::evict()
         }
         assert(lit != _valueMap.end()); // bug if this happens
         uint64_t toDelObj = lit->second;
+
+        {
+            auto it = future_timestamps.find(toDelObj);
+            unsigned int decision_qulity =
+                    static_cast<double>(it->second - current_t) / (_cacheSize * 1e6 / byte_million_req);
+            decision_qulity = min((unsigned int) 255, decision_qulity);
+            eviction_qualities.emplace_back(decision_qulity);
+            eviction_logic_timestamps.emplace_back(current_t / 10000);
+        }
+
         LOG("e", lit->first, toDelObj.id, toDelObj.size);
         auto size = _sizemap[toDelObj];
         _currentSize -= size;
@@ -198,6 +220,7 @@ void LRUKCache::evict()
         }
         assert(lit != _valueMap.end()); // bug if this happens
         uint64_t obj = lit->second;
+
         _refsMap.erase(obj); // delete LRU-K info
         GreedyDualBase::evict();
     }

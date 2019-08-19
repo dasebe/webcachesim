@@ -6,6 +6,19 @@
 
 bool LeCaRCache::lookup(SimpleRequest& req)
 {
+
+    {
+        auto &_req = dynamic_cast<AnnotatedRequest &>(req);
+        current_t = req._t;
+        auto it = future_timestamps.find(req._id);
+        if (it == future_timestamps.end()) {
+            future_timestamps.insert({_req._id, _req._next_seq});
+        } else {
+            it->second = _req._next_seq;
+        }
+    }
+
+
     auto & key = req._id;
 
     auto it = size_map.find(key);
@@ -87,6 +100,14 @@ void LeCaRCache::evict(uint64_t & t, uint64_t & counter) {
 //        cout<<(it_size == size_map.end())<<endl;
         auto & size = it_size->second;
         //add new to h
+        {
+            auto it = future_timestamps.find(key);
+            unsigned int decision_qulity =
+                    static_cast<double>(it->second - current_t) / (_cacheSize * 1e6 / byte_million_req);
+            decision_qulity = min((unsigned int) 255, decision_qulity);
+            eviction_qualities.emplace_back(decision_qulity);
+            eviction_logic_timestamps.emplace_back(current_t / 10000);
+        }
 //        cout<<"before inserting t: "<<t<<" k: "<<key<<" size: "<<size<<" map size: "<<h_lfu.left.size()<<endl;
         auto tmp_it = h_lru.left.find(make_pair(t, counter));
 //        cout<<(tmp_it == h_lfu.left.end())<<endl;
@@ -105,6 +126,16 @@ void LeCaRCache::evict(uint64_t & t, uint64_t & counter) {
             auto lru_it = h_lru.left.begin();
             auto & key = lru_it->second;
             auto & size = h_size_map.find(key)->second;
+
+            {
+                auto it = future_timestamps.find(key);
+                unsigned int decision_qulity =
+                        static_cast<double>(it->second - current_t) / (_cacheSize * 1e6 / byte_million_req);
+                decision_qulity = min((unsigned int) 255, decision_qulity);
+                eviction_qualities.emplace_back(decision_qulity);
+                eviction_logic_timestamps.emplace_back(current_t / 10000);
+            }
+
             h_lru_current_size -= size;
             h_size_map.erase(key);
             h_lru.left.erase(lru_it);
@@ -116,6 +147,14 @@ void LeCaRCache::evict(uint64_t & t, uint64_t & counter) {
         auto it_size = size_map.find(key);
 //        cout<<(it_size == size_map.end())<<endl;
         auto & size = it_size->second;
+        {
+            auto it = future_timestamps.find(key);
+            unsigned int decision_qulity =
+                    static_cast<double>(it->second - current_t) / (_cacheSize * 1e6 / byte_million_req);
+            decision_qulity = min((unsigned int) 255, decision_qulity);
+            eviction_qualities.emplace_back(decision_qulity);
+            eviction_logic_timestamps.emplace_back(current_t / 10000);
+        }
         //add new to h
 //        cout<<"before inserting t: "<<t<<" k: "<<key<<" size: "<<size<<" map size: "<<h_lfu.left.size()<<endl;
         auto tmp_it = h_lfu.left.find(make_pair(t, counter));
@@ -135,6 +174,14 @@ void LeCaRCache::evict(uint64_t & t, uint64_t & counter) {
             auto lfu_it = h_lfu.left.begin();
             auto & key = lfu_it->second;
             auto & size = h_size_map.find(key)->second;
+            {
+                auto it = future_timestamps.find(key);
+                unsigned int decision_qulity =
+                        static_cast<double>(it->second - current_t) / (_cacheSize * 1e6 / byte_million_req);
+                decision_qulity = min((unsigned int) 255, decision_qulity);
+                eviction_qualities.emplace_back(decision_qulity);
+                eviction_logic_timestamps.emplace_back(current_t / 10000);
+            }
 //            cout<<(lfu_it == h_lfu.left.end())<<endl;
             h_lfu_current_size -= size;
             h_size_map.erase(key);

@@ -162,6 +162,19 @@ bool WLCCache::lookup(SimpleRequest &req) {
     if (req._t && !((req._t)%segment_window))
         print_stats();
 
+    {
+        AnnotatedRequest *_req = (AnnotatedRequest *) &req;
+        auto it = WLC::future_timestamps.find(_req->_id);
+        if (it == WLC::future_timestamps.end()) {
+            WLC::future_timestamps.insert({_req->_id, _req->_next_seq});
+        } else {
+            it->second = _req->_next_seq;
+        }
+        WLC::current_t = req._t;
+
+    }
+
+
     //first update the metadata: insert/update, which can trigger pending data.mature
     auto it = key_map.find(req._id);
     if (it != key_map.end()) {
@@ -250,6 +263,14 @@ void WLCCache::forget(uint32_t t) {
         if (!meta_id) {
             ++n_force_eviction;
             _currentSize -= meta._size;
+            {
+                auto it = WLC::future_timestamps.find(meta._key);
+                unsigned int decision_qulity =
+                        static_cast<double>(it->second - WLC::current_t) / (_cacheSize * 1e6 / byte_million_req);
+                decision_qulity = min((unsigned int) 255, decision_qulity);
+                eviction_qualities.emplace_back(decision_qulity);
+                eviction_logic_timestamps.emplace_back(WLC::current_t / 10000);
+            }
         }
         //free the actual content
         meta.free();
@@ -436,6 +457,16 @@ void WLCCache::evict(const uint32_t t) {
     auto epair = rank(t);
     uint64_t & key = epair.first;
     uint32_t & old_pos = epair.second;
+
+
+    {
+        auto it = WLC::future_timestamps.find(key);
+        unsigned int decision_qulity =
+                static_cast<double>(it->second - WLC::current_t) / (_cacheSize * 1e6 / byte_million_req);
+        decision_qulity = min((unsigned int) 255, decision_qulity);
+        eviction_qualities.emplace_back(decision_qulity);
+        eviction_logic_timestamps.emplace_back(WLC::current_t / 10000);
+    }
 
     //bring list 0 to list 1
     uint32_t new_pos = meta_holder[1].size();

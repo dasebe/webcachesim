@@ -6,11 +6,14 @@
 #include <map>
 #include <queue>
 #include "cache.h"
+#include <fstream>
 
 typedef std::multimap<long double, uint64_t> ValueMapType;
 typedef ValueMapType::iterator ValueMapIteratorType;
 typedef std::unordered_map<uint64_t, ValueMapIteratorType> GdCacheMapType;
 typedef std::unordered_map<uint64_t, uint64_t> CacheStatsMapType;
+
+using namespace std;
 
 /*
   GD: greedy dual eviction (base class)
@@ -27,6 +30,12 @@ protected:
     // find objects via unordered_map
     GdCacheMapType _cacheMap;
     unordered_map<uint64_t , uint64_t > _sizemap;
+    uint32_t current_t;
+    unordered_map<uint64_t, uint32_t> future_timestamps;
+    vector<uint8_t> eviction_qualities;
+    vector<uint16_t> eviction_logic_timestamps;
+    uint64_t byte_million_req;
+    string task_id;
 
 
     virtual long double ageValue(SimpleRequest& req);
@@ -120,9 +129,39 @@ public:
         for (auto& it: params) {
             if (it.first == "k") {
                 _tk = stoul(it.second);
+            } else if (it.first == "byte_million_req") {
+                byte_million_req = stoull(it.second);
+            } else if (it.first == "task_id") {
+                task_id = it.second;
             } else {
                 cerr << "unrecognized parameter: " << it.first << endl;
             }
+        }
+    }
+
+
+    void update_stat(std::map<std::string, std::string> &res) override {
+        //log eviction qualities. The value is too big to store in mongodb
+        string webcachesim_trace_dir = getenv("WEBCACHESIM_TRACE_DIR");
+        {
+            ofstream outfile(webcachesim_trace_dir + "/" + task_id + ".evictions");
+            if (!outfile) {
+                cerr << "Exception opening file" << endl;
+                abort();
+            }
+            for (auto &b: eviction_qualities)
+                outfile << b;
+            outfile.close();
+        }
+        {
+            ofstream outfile(webcachesim_trace_dir + "/" + task_id + ".eviction_timestamps");
+            if (!outfile) {
+                cerr << "Exception opening file" << endl;
+                abort();
+            }
+            for (auto &b: eviction_logic_timestamps)
+                outfile.write((char *) &b, sizeof(uint16_t));
+            outfile.close();
         }
     }
 
@@ -150,6 +189,45 @@ public:
     }
     virtual ~LFUDACache()
     {
+    }
+
+    void init_with_params(map<string, string> params) override {
+        //set params
+        for (auto &it: params) {
+            if (it.first == "byte_million_req") {
+                byte_million_req = stoull(it.second);
+            } else if (it.first == "task_id") {
+                task_id = it.second;
+            } else {
+                cerr << "unrecognized parameter: " << it.first << endl;
+            }
+        }
+    }
+
+
+    void update_stat(std::map<std::string, std::string> &res) override {
+        //log eviction qualities. The value is too big to store in mongodb
+        string webcachesim_trace_dir = getenv("WEBCACHESIM_TRACE_DIR");
+        {
+            ofstream outfile(webcachesim_trace_dir + "/" + task_id + ".evictions");
+            if (!outfile) {
+                cerr << "Exception opening file" << endl;
+                abort();
+            }
+            for (auto &b: eviction_qualities)
+                outfile << b;
+            outfile.close();
+        }
+        {
+            ofstream outfile(webcachesim_trace_dir + "/" + task_id + ".eviction_timestamps");
+            if (!outfile) {
+                cerr << "Exception opening file" << endl;
+                abort();
+            }
+            for (auto &b: eviction_logic_timestamps)
+                outfile.write((char *) &b, sizeof(uint16_t));
+            outfile.close();
+        }
     }
 
     virtual bool lookup(SimpleRequest& req);

@@ -13,6 +13,7 @@
 #include <cmath>
 #include <LightGBM/c_api.h>
 #include <assert.h>
+#include <fstream>
 
 using namespace std;
 using spp::sparse_hash_map;
@@ -30,6 +31,8 @@ namespace WLC {
     uint32_t batch_size = 131072;
     const uint max_n_extra_feature = 4;
     uint32_t n_feature;
+    uint32_t current_t;
+    unordered_map<uint64_t, uint32_t> future_timestamps;
 }
 
 struct WLCMetaExtra {
@@ -233,16 +236,16 @@ public:
 
     unordered_map<string, string> training_params = {
     //don't use alias here. C api may not recongize
-            {"boosting",                   "gbdt"},
-            {"objective",                  "regression"},
-            {"num_iterations",             "32"},
-            {"num_leaves",                  "32"},
-            {"num_threads",                "4"},
-            {"feature_fraction",           "0.8"},
-            {"bagging_freq",               "5"},
-            {"bagging_fraction",           "0.8"},
-            {"learning_rate",              "0.1"},
-            {"verbosity",                "0"},
+            {"boosting",         "gbdt"},
+            {"objective",        "regression"},
+            {"num_iterations",   "32"},
+            {"num_leaves",       "32"},
+            {"num_threads",      "4"},
+            {"feature_fraction", "0.8"},
+            {"bagging_freq",     "5"},
+            {"bagging_fraction", "0.8"},
+            {"learning_rate",    "0.1"},
+            {"verbosity",        "0"},
     };
 
     unordered_map<string, string> inference_params;
@@ -252,6 +255,14 @@ public:
 
     default_random_engine _generator = default_random_engine();
     uniform_int_distribution<std::size_t> _distribution = uniform_int_distribution<std::size_t>();
+
+    vector<uint8_t> eviction_qualities;
+    vector<uint16_t> eviction_logic_timestamps;
+//    vector<uint8_t> prediction_qualities;
+//    vector<uint8_t> prediction_groundtruths;
+//    vector<uint16_t> prediction_logic_timestamps;
+    uint64_t byte_million_req;
+    string task_id;
 
     WLCCache()
         : Cache()
@@ -277,11 +288,15 @@ public:
                 training_params["learning_rate"] = it.second;
             } else if (it.first == "num_threads") {
                 training_params["num_threads"] = it.second;
+            } else if (it.first == "byte_million_req") {
+                byte_million_req = stoull(it.second);
+            } else if (it.first == "task_id") {
+                task_id = it.second;
             } else if (it.first == "training_sample_interval") {
                 training_sample_interval = stoull(it.second);
             } else if (it.first == "n_edc_feature") {
                 if (stoull(it.second) != WLC::n_edc_feature) {
-                    cerr<<"error: cannot change n_edc_feature because of const"<<endl;
+                    cerr << "error: cannot change n_edc_feature because of const" << endl;
                     abort();
                 }
 //                WLC::n_edc_feature = stoull(it.second);
@@ -291,7 +306,7 @@ public:
                 else if (it.second == "object_miss_ratio")
                     objective = object_miss_ratio;
                 else {
-                    cerr<<"error: unknown objective"<<endl;
+                    cerr << "error: unknown objective" << endl;
                     exit(-1);
                 }
             } else if (it.first == "segment_window") {
@@ -363,8 +378,31 @@ public:
 
         res["n_metadata"] = to_string(key_map.size());
         res["feature_overhead"] = to_string(feature_overhead);
-        res["sample_overhead"] = to_string(sample_overhead);
+        res["sample overhead"] = to_string(sample_overhead);
         res["n_force_eviction"] = to_string(n_force_eviction);
+
+        //log eviction qualities. The value is too big to store in mongodb
+        string webcachesim_trace_dir = getenv("WEBCACHESIM_TRACE_DIR");
+        {
+            ofstream outfile(webcachesim_trace_dir + "/" + task_id + ".evictions");
+            if (!outfile) {
+                cerr << "Exception opening file" << endl;
+                abort();
+            }
+            for (auto &b: eviction_qualities)
+                outfile << b;
+            outfile.close();
+        }
+        {
+            ofstream outfile(webcachesim_trace_dir + "/" + task_id + ".eviction_timestamps");
+            if (!outfile) {
+                cerr << "Exception opening file" << endl;
+                abort();
+            }
+            for (auto &b: eviction_logic_timestamps)
+                outfile.write((char *) &b, sizeof(uint16_t));
+            outfile.close();
+        }
     }
 
 };
