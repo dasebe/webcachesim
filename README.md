@@ -5,8 +5,7 @@
 
 sudo apt-get update
 
-sudo apt install cmake build-essential libboost-all-dev python3-pip parallel
-sudo apt install libprocps-dev
+sudo apt install cmake build-essential libboost-all-dev python3-pip parallel libprocps-dev
 
 # install openjdk 1.8 has to be one by one
 sudo add-apt-repository ppa:openjdk-r/ppa
@@ -20,28 +19,40 @@ cd webcachesim
 git checkout akamai
 
 # can add CMAKE_INSTALL_PREFIX CMAKE_PREFIX_PATH
-cd webcachesim/lib/LightGBM-eloiseh/build
+cd webcachesim
+
+# install LightGBM
+cd lib/LightGBM-eloiseh/build
 cmake -DCMAKE_BUILD_TYPE=Release ..
-make && make install
+make
+sudo make install
+cd ../../..
 
 # dependency for mongo c driver
 sudo apt-get install cmake libssl-dev libsasl2-dev
 
-cd webcachesim/lib/mongo-c-driver-1.13.1/cmake-build/
+# installing mongo c
+cd lib/mongo-c-driver-1.13.1/cmake-build/
 cmake -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF ..
-make -j8 && make install
+make
+sudo make install
+cd ../../..
 
-cd webcachesim/lib/mongo-cxx-driver-r3.4.0/build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-make -j 8 && make install
+# installing mongo-cxx
+cd lib/mongo-cxx-driver-r3.4.0/build
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
+sudo make
+sudo make install
+cd ../../..
 
-cd webcachesim/build
+# building webcachesim
+cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
-make -j 8
+make
 
 # install pywebcachesim
-cd webcachesim
-pip3 install -e .
+#cd webcachesim
+#pip3 install -e .
 
 # add binary and trace dir to path
 # set based on where you put your pin and trace
