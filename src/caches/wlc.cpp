@@ -312,7 +312,7 @@ void WLCCache::admit(SimpleRequest &req) {
 //        negative_candidate_queue.insert({(req._t + WLC::memory_window)%WLC::memory_window, req._id});
         if (_currentSize <= _cacheSize)
             return;
-    } else if (size + _currentSize <= _cacheSize){
+    } else {
         //bring list 1 to list 0
         //first move meta data, then modify hash table
         uint32_t tail0_pos = in_cache_metas.size();
@@ -330,7 +330,6 @@ void WLCCache::admit(SimpleRequest &req) {
         out_cache_metas.pop_back();
         it->second = {0, tail0_pos};
         _currentSize += size;
-        return;
     }
     // check more eviction needed?
     while (_currentSize > _cacheSize) {
@@ -340,6 +339,11 @@ void WLCCache::admit(SimpleRequest &req) {
 
 
 pair<uint64_t, uint32_t> WLCCache::rank(const uint32_t t) {
+//    {
+//        uint32_t rand_idx = _distribution(_generator) % in_cache_metas.size();
+//        if ((!booster))
+//            return {in_cache_metas[rand_idx]._key, rand_idx};
+//    }
     {
         //if not trained yet, or in_cache_lru past memory window, use LRU
         uint64_t &candidate_key = in_cache_lru_queue.dq.back();
@@ -467,6 +471,7 @@ void WLCCache::evict(const uint32_t t) {
     uint64_t & key = epair.first;
     uint32_t & old_pos = epair.second;
 
+//    cout<<t<<" "<<key<<endl;
 
     {
         auto it = WLC::future_timestamps.find(key);
@@ -528,5 +533,4 @@ void WLCCache::evict(const uint32_t t) {
         key_map.find(key)->second = {1, new_pos};
     }
 }
-
 
