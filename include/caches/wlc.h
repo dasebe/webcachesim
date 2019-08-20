@@ -304,9 +304,9 @@ public:
 
     vector<uint8_t> eviction_qualities;
     vector<uint16_t> eviction_logic_timestamps;
-//    vector<uint8_t> prediction_qualities;
-//    vector<uint8_t> prediction_groundtruths;
-//    vector<uint16_t> prediction_logic_timestamps;
+    vector<uint8_t> predictions;
+    vector<uint8_t> prediction_labels;
+    vector<uint16_t> prediction_logic_timestamps;
     uint64_t byte_million_req;
     string task_id;
 
@@ -446,6 +446,36 @@ public:
                 abort();
             }
             for (auto &b: eviction_logic_timestamps)
+                outfile.write((char *) &b, sizeof(uint16_t));
+            outfile.close();
+        }
+        {
+            ofstream outfile(webcachesim_trace_dir + "/" + task_id + ".predictions");
+            if (!outfile) {
+                cerr << "Exception opening file" << endl;
+                abort();
+            }
+            for (auto &b: predictions)
+                outfile << b;
+            outfile.close();
+        }
+        {
+            ofstream outfile(webcachesim_trace_dir + "/" + task_id + ".prediction_labels");
+            if (!outfile) {
+                cerr << "Exception opening file" << endl;
+                abort();
+            }
+            for (auto &b: prediction_labels)
+                outfile << b;
+            outfile.close();
+        }
+        {
+            ofstream outfile(webcachesim_trace_dir + "/" + task_id + ".prediction_timestamps");
+            if (!outfile) {
+                cerr << "Exception opening file" << endl;
+                abort();
+            }
+            for (auto &b: prediction_logic_timestamps)
                 outfile.write((char *) &b, sizeof(uint16_t));
             outfile.close();
         }

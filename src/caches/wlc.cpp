@@ -368,6 +368,9 @@ pair<uint64_t, uint32_t> WLCCache::rank(const uint32_t t) {
 
     unsigned int idx_feature = 0;
     unsigned int idx_row = 0;
+    {
+        prediction_logic_timestamps.emplace_back(WLC::current_t / 10000);
+    }
     for (int i = 0; i < n_sample; i++) {
         uint32_t pos = (i + rand_idx) % in_cache_metas.size();
         auto &meta = in_cache_metas[pos];
@@ -375,6 +378,14 @@ pair<uint64_t, uint32_t> WLCCache::rank(const uint32_t t) {
         indices[idx_feature] = 0;
         data[idx_feature++] = t - meta._past_timestamp;
         past_timestamps[idx_row] = meta._past_timestamp;
+
+        {
+            auto it = WLC::future_timestamps.find(meta._key);
+            unsigned int prediction_label =
+                    static_cast<double>(it->second - WLC::current_t) / (_cacheSize * 1e6 / byte_million_req);
+            prediction_label = min((unsigned int) 255, prediction_label);
+            prediction_labels.emplace_back(prediction_label);
+        }
 
         uint8_t j = 0;
         uint32_t this_past_distance = 0;
@@ -438,6 +449,15 @@ pair<uint64_t, uint32_t> WLCCache::rank(const uint32_t t) {
                               inference_params,
                               &len,
                               result.data());
+
+
+    {
+        for (int i = 0; i < n_sample; ++i) {
+            unsigned int prediction = (exp(result[i]) - 1) / (_cacheSize * 1e6 / byte_million_req);
+            prediction = min((unsigned int) 255, prediction);
+            predictions.emplace_back(prediction);
+        }
+    }
 
     if (!(t % 10000))
         inference_time = 0.95 * inference_time +
@@ -515,7 +535,6 @@ void WLCCache::evict(const uint32_t t) {
 
     } else {
         //bring list 0 to list 1
-
         auto &meta = in_cache_metas[old_pos];
         in_cache_lru_queue.dq.erase(meta.p_last_request);
         _currentSize -= meta._size;
