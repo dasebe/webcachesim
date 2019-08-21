@@ -368,9 +368,6 @@ pair<uint64_t, uint32_t> WLCCache::rank(const uint32_t t) {
 
     unsigned int idx_feature = 0;
     unsigned int idx_row = 0;
-    {
-        prediction_logic_timestamps.emplace_back(WLC::current_t / 10000);
-    }
     for (int i = 0; i < n_sample; i++) {
         uint32_t pos = (i + rand_idx) % in_cache_metas.size();
         auto &meta = in_cache_metas[pos];
@@ -380,6 +377,7 @@ pair<uint64_t, uint32_t> WLCCache::rank(const uint32_t t) {
         past_timestamps[idx_row] = meta._past_timestamp;
 
         {
+            prediction_logic_timestamps.emplace_back(WLC::current_t / 10000);
             auto it = WLC::future_timestamps.find(meta._key);
             unsigned int prediction_label =
                     static_cast<double>(it->second - WLC::current_t) / (_cacheSize * 1e6 / byte_million_req);
