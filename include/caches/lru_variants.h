@@ -26,6 +26,9 @@ protected:
     lruCacheMapType _cacheMap;
     unordered_map<uint64_t , uint64_t > _size_map;
     uint32_t current_t;
+    unordered_map<uint64_t, uint32_t> future_timestamps;
+    vector<uint8_t> eviction_qualities;
+    vector<uint16_t> eviction_logic_timestamps;
     unordered_map<uint64_t, uint32_t> last_timestamps;
     vector<uint8_t> hits;
     vector<uint16_t> hit_timestamps;
@@ -50,6 +53,26 @@ protected:
     void update_stat(std::map<std::string, std::string> &res) override {
         //log eviction qualities. The value is too big to store in mongodb
         string webcachesim_trace_dir = getenv("WEBCACHESIM_TRACE_DIR");
+        {
+            ofstream outfile(webcachesim_trace_dir + "/" + task_id + ".evictions");
+            if (!outfile) {
+                cerr << "Exception opening file" << endl;
+                abort();
+            }
+            for (auto &b: eviction_qualities)
+                outfile << b;
+            outfile.close();
+        }
+        {
+            ofstream outfile(webcachesim_trace_dir + "/" + task_id + ".eviction_timestamps");
+            if (!outfile) {
+                cerr << "Exception opening file" << endl;
+                abort();
+            }
+            for (auto &b: eviction_logic_timestamps)
+                outfile.write((char *) &b, sizeof(uint16_t));
+            outfile.close();
+        }
         {
             ofstream outfile(webcachesim_trace_dir + "/" + task_id + ".hits");
             if (!outfile) {

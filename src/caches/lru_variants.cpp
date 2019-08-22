@@ -46,6 +46,14 @@ bool LRUCache::lookup(SimpleRequest& req)
         } else {
             it->second = current_t;
         }
+
+
+        it = future_timestamps.find(req._id);
+        if (it == future_timestamps.end()) {
+            future_timestamps.insert({_req._id, _req._next_seq});
+        } else {
+            it->second = _req._next_seq;
+        }
     }
 
 
@@ -115,6 +123,17 @@ void LRUCache::evict()
         ListIteratorType lit = _cacheList.end();
         lit--;
         uint64_t obj = *lit;
+
+
+        {
+            auto it = future_timestamps.find(obj);
+            unsigned int decision_qulity =
+                    static_cast<double>(it->second - current_t) / (_cacheSize * 1e6 / byte_million_req);
+            decision_qulity = min((unsigned int) 255, decision_qulity);
+            eviction_qualities.emplace_back(decision_qulity);
+            eviction_logic_timestamps.emplace_back(current_t / 10000);
+        }
+
         LOG("e", _currentSize, obj.id, obj.size);
         auto & size = _size_map[obj];
         _currentSize -= size;
