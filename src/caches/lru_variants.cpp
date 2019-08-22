@@ -24,6 +24,31 @@ static inline double oP2(double T, double l, double p) {
 */
 bool LRUCache::lookup(SimpleRequest& req)
 {
+
+
+    {
+        auto &_req = dynamic_cast<AnnotatedRequest &>(req);
+        current_t = req._t;
+
+        if (_cacheMap.find(req._id) != _cacheMap.end()) {
+            //hit
+            auto it = last_timestamps.find(req._id);
+            unsigned int hit =
+                    static_cast<double>(current_t - it->second) / (_cacheSize * 1e6 / byte_million_req);
+            hit = min((unsigned int) 255, hit);
+            hits.emplace_back(hit);
+            hit_timestamps.emplace_back(current_t / 10000);
+        }
+
+        auto it = last_timestamps.find(req._id);
+        if (it == last_timestamps.end()) {
+            last_timestamps.insert({_req._id, current_t});
+        } else {
+            it->second = current_t;
+        }
+    }
+
+
     uint64_t & obj = req._id;
     auto it = _cacheMap.find(obj);
     if (it != _cacheMap.end()) {

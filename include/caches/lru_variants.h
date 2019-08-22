@@ -7,6 +7,7 @@
 #include <random>
 #include "cache.h"
 #include "adaptsize_const.h" /* AdaptSize constants */
+#include <fstream>
 
 typedef std::list<uint64_t >::iterator ListIteratorType;
 typedef std::unordered_map<uint64_t , ListIteratorType> lruCacheMapType;
@@ -24,6 +25,52 @@ protected:
     // map to find objects in list
     lruCacheMapType _cacheMap;
     unordered_map<uint64_t , uint64_t > _size_map;
+    uint32_t current_t;
+    unordered_map<uint64_t, uint32_t> last_timestamps;
+    vector<uint8_t> hits;
+    vector<uint16_t> hit_timestamps;
+    uint64_t byte_million_req;
+    string task_id;
+
+
+    void init_with_params(map<string, string> params) override {
+        //set params
+        for (auto &it: params) {
+            if (it.first == "byte_million_req") {
+                byte_million_req = stoull(it.second);
+            } else if (it.first == "task_id") {
+                task_id = it.second;
+            } else {
+                cerr << "unrecognized parameter: " << it.first << endl;
+            }
+        }
+    }
+
+
+    void update_stat(std::map<std::string, std::string> &res) override {
+        //log eviction qualities. The value is too big to store in mongodb
+        string webcachesim_trace_dir = getenv("WEBCACHESIM_TRACE_DIR");
+        {
+            ofstream outfile(webcachesim_trace_dir + "/" + task_id + ".hits");
+            if (!outfile) {
+                cerr << "Exception opening file" << endl;
+                abort();
+            }
+            for (auto &b: hits)
+                outfile << b;
+            outfile.close();
+        }
+        {
+            ofstream outfile(webcachesim_trace_dir + "/" + task_id + ".hit_timestamps");
+            if (!outfile) {
+                cerr << "Exception opening file" << endl;
+                abort();
+            }
+            for (auto &b: hit_timestamps)
+                outfile.write((char *) &b, sizeof(uint16_t));
+            outfile.close();
+        }
+    }
 
     virtual void hit(lruCacheMapType::const_iterator it, uint64_t size);
 
