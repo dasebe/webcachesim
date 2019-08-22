@@ -294,7 +294,7 @@ map<string, string> simulation(string trace_file, string cache_type,
         uint64_t cache_size, map<string, string> params){
     if (cache_type == "Belady" || cache_type == "BeladySample" || cache_type == "LRUKSample" ||
         cache_type == "LFUSample" || cache_type == "WLC" || cache_type == "LRU" || cache_type == "LRUK"
-        || cache_type == "LFUDA" || cache_type == "LeCaR")
+        || cache_type == "LFUDA" || cache_type == "LeCaR" || cache_type == "FIFO")
         return _simulation_future(trace_file, cache_type, cache_size, params);
     else if (cache_type == "Adaptive-TinyLFU")
         return _simulation_tinylfu(trace_file, cache_type, cache_size, params);
