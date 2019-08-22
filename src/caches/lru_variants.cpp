@@ -171,16 +171,15 @@ void FIFOCache::hit(lruCacheMapType::const_iterator it, uint64_t size)
 {
 }
 
-//
-///*
-//  FilterCache (admit only after N requests)
-//*/
-//FilterCache::FilterCache()
-//    : LRUCache(),
-//      _nParam(2)
-//{
-//}
-//
+
+/*
+  FilterCache (admit only after N requests)
+*/
+FilterCache::FilterCache()
+        : LRUCache(),
+          _nParam(2) {
+}
+
 //void FilterCache::setPar(std::string parName, std::string parValue) {
 //    if(parName.compare("n") == 0) {
 //        const uint64_t n = std::stoull(parValue);
@@ -190,23 +189,24 @@ void FIFOCache::hit(lruCacheMapType::const_iterator it, uint64_t size)
 //        std::cerr << "unrecognized parameter: " << parName << std::endl;
 //    }
 //}
-//
-//
+
+
 //bool FilterCache::lookup(SimpleRequest& req)
 //{
 //    CacheObject obj(req);
 //    _filter[obj]++;
 //    return LRUCache::lookup(req);
 //}
-//
-//void FilterCache::admit(SimpleRequest& req)
-//{
-//    CacheObject obj(req);
-//    if (_filter[obj] <= _nParam) {
-//        return;
-//    }
-//    LRUCache::admit(req);
-//}
+
+void FilterCache::admit(SimpleRequest &req) {
+    auto &id = req._id;
+    _filter[id]++;
+
+    if (_filter[id] <= _nParam) {
+        return;
+    }
+    LRUCache::admit(req);
+}
 
 AdaptSizeCache::AdaptSizeCache()
         : LRUCache()

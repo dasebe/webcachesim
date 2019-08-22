@@ -4,6 +4,9 @@ LRUK:
 #    - 2
 #    - 3
     - 4
+# Bad but equivalent implementation of Bloom Filter
+Filter:
+  n: 1
 LFO:
   cutoff: 0.5
   window: 10000000

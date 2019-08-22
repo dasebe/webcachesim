@@ -173,27 +173,38 @@ public:
 
 static Factory<FIFOCache> factoryFIFO("FIFO");
 
-///*
-//  FilterCache (admit only after N requests)
-//*/
-//class FilterCache : public LRUCache
-//{
-//protected:
-//    uint64_t _nParam;
-//    std::unordered_map<CacheObject, uint64_t> _filter;
-//
-//public:
-//    FilterCache();
-//    virtual ~FilterCache()
-//    {
-//    }
-//
+/*
+  FilterCache (admit only after N requests)
+*/
+class FilterCache : public LRUCache {
+protected:
+    uint64_t _nParam;
+    std::unordered_map<uint64_t, uint64_t> _filter;
+
+public:
+    FilterCache();
+
+    virtual ~FilterCache() {
+    }
+
 //    virtual void setPar(std::string parName, std::string parValue);
 //    virtual bool lookup(SimpleRequest& req);
-//    virtual void admit(SimpleRequest& req);
-//};
-//
-//static Factory<FilterCache> factoryFilter("Filter");
+    virtual void admit(SimpleRequest &req);
+
+    void init_with_params(map<string, string> params) override {
+        //set params
+        for (auto &it: params) {
+            if (it.first == "n") {
+                _nParam = stoull(it.second);
+            } else {
+                cerr << "unrecognized parameter: " << it.first << endl;
+            }
+        }
+        LRUCache::init_with_params(params);
+    };
+};
+
+static Factory<FilterCache> factoryFilter("Filter");
 
 /*
   AdaptSize: ExpLRU with automatic adaption of the _cParam
