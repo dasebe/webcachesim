@@ -7,7 +7,6 @@
 
 #include <string>
 
-
-void annotate(std::string & trace_file, int n_extra_fields);
+void annotate(const std::string &trace_file, int n_extra_fields);
 
 #endif //WEBCACHESIM_ANNOTATE_H

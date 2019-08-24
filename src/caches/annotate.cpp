@@ -16,7 +16,7 @@ const uint64_t max_next_seq = 0xffffffff;
 using namespace std;
 
 
-void annotate(string &trace_file, int n_extra_fields) {
+void annotate(const string &trace_file, int n_extra_fields) {
     /*
      * assume trace is less than max(uint32_t)
      * */
