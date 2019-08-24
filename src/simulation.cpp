@@ -19,8 +19,9 @@
 #include "utils.h"
 #include <unordered_map>
 #include "simulation_lfo.h"
-#include "miss_decouple.h"
-#include "cache_size_decouple.h"
+//remove the code related with decouple because not using it for a long time
+//#include "miss_decouple.h"
+//#include "cache_size_decouple.h"
 #include "nlohmann/json.hpp"
 #include <proc/readproc.h>
 #include <cstdint>
@@ -161,16 +162,6 @@ void FrameWork::simulate() {
         req = new SimpleRequest(0, 0, 0);
     t_now = system_clock::now();
 
-#ifdef MISS_DECOUPLE
-    unordered_map<uint64_t , uint32_t > total_request_map;
-    MissStatistics miss_stat;
-#endif
-
-#ifdef CACHE_SIZE_DECOUPLE
-    unordered_map<uint64_t, uint64_t> size_map;
-    CacheSizeStatistics size_stat;
-#endif
-
     while (infile >> next_seq >> t >> id >> size) {
         for (int i = 0; i < n_extra_fields; ++i)
             infile >> extra_features[i];
@@ -181,38 +172,12 @@ void FrameWork::simulate() {
 
         while (t >= time_window_end)
             update_real_time_stats();
-
-        if (seq && !(seq % segment_window)) {
-#ifdef CACHE_SIZE_DECOUPLE
-            if (seq >= n_warmup) {
-                uint32_t snapshot_id = seq/segment_window;
-                cerr<<"snapshoting cache size decoupling at id: "<<snapshot_id<<endl;
-                for (auto &kv: total_request_map) {
-                    if (webcache->has(kv.first)) {
-                        size_stat.update(snapshot_id, kv.second, size_map[kv.first]);
-                    }
-                }
-            }
-#endif
+        if (seq && !(seq % segment_window))
             update_stats();
-        }
 
         update_metric_req(byte_req, obj_req, size);
         update_metric_req(rt_byte_req, rt_obj_req, size)
 
-#ifdef MISS_DECOUPLE
-        //count total request
-        auto it = total_request_map.find(id);
-        if (it == total_request_map.end())
-            total_request_map.insert({id, 1});
-        else
-            ++it->second;
-#endif
-#ifdef CACHE_SIZE_DECOUPLE
-        auto it_size = size_map.find(id);
-        if (it_size == size_map.end())
-            size_map.insert({id, size});
-#endif
         if (_cache_type == "Belady") {
             dynamic_cast<AnnotatedRequest *>(req)->reinit(id, size, seq, next_seq, &extra_features);
         } else {
@@ -224,35 +189,11 @@ void FrameWork::simulate() {
             update_metric_req(rt_byte_miss, rt_obj_miss, size)
             webcache->admit(*req);
         }
-
-#ifdef MISS_DECOUPLE
-        if (seq >= n_warmup) {
-            auto &n_total_request = total_request_map[id];
-            miss_stat.update(n_total_request, size, is_hit);
-        }
-#endif
         ++seq;
     }
-
     //for the residue segment of trace
     update_real_time_stats();
     update_stats();
-
-
-    {
-#ifdef CACHE_SIZE_DECOUPLE
-        if (seq >= n_warmup) {
-                uint32_t snapshot_id = seq/segment_window;
-                cerr<<"snapshoting cache size decoupling at id: "<<snapshot_id<<endl;
-                for (auto &kv: total_request_map) {
-                    if (webcache->has(kv.first)) {
-                        size_stat.update(snapshot_id, kv.second, size_map[kv.first]);
-                    }
-                }
-            }
-#endif
-    }
-
     infile.close();
 }
 
@@ -269,12 +210,6 @@ std::map<std::string, std::string> FrameWork::simulation_results() {
             {"real_time_segment_object_miss", json(rt_seg_object_miss).dump()},
             {"real_time_segment_object_req", json(rt_seg_object_req).dump()},
             {"real_time_segment_rss", json(rt_seg_rss).dump()},
-#ifdef MISS_DECOUPLE
-            {"miss_decouple", miss_stat.dump()},
-#endif
-#ifdef CACHE_SIZE_DECOUPLE
-            {"cache_size_decouple", size_stat.dump()},
-#endif
     };
 
     webcache->update_stat(res);
