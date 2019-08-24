@@ -7,7 +7,7 @@
 #include <string>
 #include <regex>
 #include "request.h"
-#include "simulation_future.h"
+#include "annotate.h"
 #include "simulation_tinylfu.h"
 #include "cache.h"
 //#include "simulation_lr_belady.h"
@@ -15,15 +15,13 @@
 //#include "simulation_bins.h"
 #include "simulation_truncate.h"
 #include <chrono>
+#include <sstream>
 #include "utils.h"
 #include <unordered_map>
 #include "simulation_lfo.h"
-
 #include "miss_decouple.h"
 #include "cache_size_decouple.h"
 #include "nlohmann/json.hpp"
-
-
 #include <proc/readproc.h>
 #include <cstdint>
 
@@ -37,6 +35,8 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
         cerr << "error: field n_extra_fields is required" << endl;
         exit(-1);
     }
+    annotate(trace_file, stoul(params["n_extra_fields"]));
+
     // create cache
     unique_ptr<Cache> webcache = move(Cache::create_unique(cache_type));
     if(webcache == nullptr) {
@@ -76,7 +76,7 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
 
     webcache->init_with_params(params);
 
-    ifstream infile(trace_file);
+    ifstream infile(trace_file + ".ant");
     if (!infile) {
         cerr << "Exception opening/reading file"<<endl;
         exit(-1);
@@ -93,15 +93,15 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
         }
         //todo: check the type of each argument
         //format: n_seq t id size [extra]
-        if (counter != 3 + n_extra_fields) {
-            cerr << "error: input file column should be 3 + " << n_extra_fields << endl
+        if (counter != 4 + n_extra_fields) {
+            cerr << "error: input file column should be 4 + " << n_extra_fields << endl
                  << "first line: " << line << endl;
             abort();
         }
         infile.clear();
         infile.seekg(0, ios::beg);
     }
-    uint64_t t, id, size;
+    uint64_t t, id, size, next_seq;
     //measure every segment
     uint64_t byte_req = 0, byte_miss = 0, obj_req = 0, obj_miss = 0;
     //rt: real_time
@@ -116,7 +116,7 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     uint64_t time_window_end;
     {
         // Zhenyu: not assume t start from any constant, so need to compute the first window
-        infile >> t;
+        infile >> next_seq >> t;
         time_window_end =
                 real_time_segment_window * (t / real_time_segment_window + (t % real_time_segment_window != 0));
         infile.clear();
@@ -125,7 +125,13 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
 
     vector<uint16_t > extra_features(n_extra_fields, 0);
 
-    SimpleRequest req(0, 0, 0);
+    cerr << "simulating" << endl;
+    SimpleRequest *req;
+    if (cache_type == "Belady") {
+        req = new AnnotatedRequest(0, 0, 0, 0);
+    } else {
+        req = new SimpleRequest(0, 0, 0);
+    }
     //don't use real timestamp, use relative seq starting from 0
     uint64_t seq = 0;
     auto t_now = system_clock::now();
@@ -140,7 +146,7 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
     CacheSizeStatistics size_stat;
 #endif
 
-    while (infile >> t >> id >> size) {
+    while (infile >> next_seq >> t >> id >> size) {
         for (int i = 0; i < n_extra_fields; ++i)
             infile>>extra_features[i];
         if (uni_size)
@@ -212,12 +218,16 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
         if (it_size == size_map.end())
             size_map.insert({id, size});
 #endif
-        req.reinit(id, size, seq, &extra_features);
-        bool is_hit = webcache->lookup(req);
+        if (cache_type == "Belady") {
+            dynamic_cast<AnnotatedRequest *>(req)->reinit(id, size, seq, next_seq, &extra_features);
+        } else {
+            req->reinit(id, size, seq, &extra_features);
+        }
+        bool is_hit = webcache->lookup(*req);
         if (!is_hit) {
             update_metric_req(byte_miss, obj_miss, size)
             update_metric_req(rt_byte_miss, rt_obj_miss, size)
-            webcache->admit(req);
+            webcache->admit(*req);
         }
 
 #ifdef MISS_DECOUPLE
@@ -292,11 +302,7 @@ map<string, string> _simulation(string trace_file, string cache_type, uint64_t c
 
 map<string, string> simulation(string trace_file, string cache_type,
         uint64_t cache_size, map<string, string> params){
-    if (cache_type == "Belady" || cache_type == "BeladySample" || cache_type == "LRUKSample" ||
-        cache_type == "LFUSample" || cache_type == "WLC" || cache_type == "LRU" || cache_type == "LRUK"
-        || cache_type == "LFUDA" || cache_type == "LeCaR" || cache_type == "FIFO" || cache_type == "Filter")
-        return _simulation_future(trace_file, cache_type, cache_size, params);
-    else if (cache_type == "Adaptive-TinyLFU")
+    if (cache_type == "Adaptive-TinyLFU")
         return _simulation_tinylfu(trace_file, cache_type, cache_size, params);
     else if (cache_type == "LFO")
         return LFO::_simulation_lfo(trace_file, cache_type, cache_size, params);

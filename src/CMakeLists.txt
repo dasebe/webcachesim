@@ -10,10 +10,11 @@ set(LIB_SOURCE
         caches/lhd/lhd_variants.cpp
         caches/lhd/lhd.cpp
         random_helper.cpp
+        ../include/simulation.h
         simulation.cpp
+        ../include/simulation_lfo.h
         simulation_lfo.cpp
-#        simulation_lfo2.cpp
-        simulation_future.cpp
+        ../include/simulation_truncate.h
         simulation_truncate.cpp
         caches/annotate.cpp
         caches/ucb.cpp
