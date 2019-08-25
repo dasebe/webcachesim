@@ -70,12 +70,23 @@ def job_to_tasks(args):
     tasks = []
     for trace_file in args['trace_files']:
         for cache_type in args['cache_types']:
-            for cache_size in trace_params[trace_file]['cache_sizes']:
+            for cache_size_or_size_parameters in trace_params[trace_file]['cache_sizes']:
+                # element can be k: v or k: list[v], which would be expanded with cartesian product
                 parameters = {}
                 if cache_type in default_algorithm_params:
                     parameters = {**parameters, **default_algorithm_params[cache_type]}
                 if cache_type in trace_params[trace_file]:
+                    # trace parameters overwrite default parameters
                     parameters = {**parameters, **trace_params[trace_file][cache_type]}
+                if isinstance(cache_size_or_size_parameters, dict):
+                    # only 1 key (single cache size) is allowed
+                    assert (len(cache_size_or_size_parameters) == 1)
+                    cache_size = list(cache_size_or_size_parameters.keys())[0]
+                    if cache_type in cache_size_or_size_parameters[cache_size]:
+                        # per cache size parameters overwrite other parameters
+                        parameters = {**parameters, **cache_size_or_size_parameters[cache_size][cache_type]}
+                else:
+                    cache_size = cache_size_or_size_parameters
                 parameters_list = cartesian_product(parameters)
                 for parameters in parameters_list:
                     task = {
