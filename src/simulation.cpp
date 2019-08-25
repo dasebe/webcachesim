@@ -3,33 +3,33 @@
 //
 
 #include "simulation.h"
-#include <fstream>
-#include <string>
-#include <regex>
-#include "request.h"
+//#include <string>
+//#include "request.h"
 #include "annotate.h"
-#include "simulation_tinylfu.h"
-#include "cache.h"
-//#include "simulation_lr_belady.h"
-//#include "simulation_belady_static.h"
-//#include "simulation_bins.h"
-#include "simulation_truncate.h"
-#include <chrono>
+//#include "simulation_tinylfu.h"
+//#include "cache.h"
+////#include "simulation_lr_belady.h"
+////#include "simulation_belady_static.h"
+////#include "simulation_bins.h"
+////#include "simulation_truncate.h"
 #include <sstream>
 #include "utils.h"
-#include <unordered_map>
-#include "simulation_lfo.h"
-//remove the code related with decouple because not using it for a long time
-//#include "miss_decouple.h"
-//#include "cache_size_decouple.h"
-#include "nlohmann/json.hpp"
-#include <proc/readproc.h>
+//#include <unordered_map>
+////#include "simulation_lfo.h"
+////remove the code related with decouple because not using it for a long time
+////#include "miss_decouple.h"
+////#include "cache_size_decouple.h"
+//#include "nlohmann/json.hpp"
+#include "rss.h"
 #include <cstdint>
+#include "bsoncxx/builder/basic/document.hpp"
+#include "bsoncxx/json.hpp"
 
 using namespace std;
 using namespace chrono;
-using json = nlohmann::json;
-
+//using json = nlohmann::json;
+using bsoncxx::builder::basic::kvp;
+using bsoncxx::builder::basic::sub_array;
 
 FrameWork::FrameWork(const string &trace_file, const string &cache_type, const uint64_t &cache_size,
                      map<string, string> &params) {
@@ -123,9 +123,7 @@ void FrameWork::update_real_time_stats() {
     rt_seg_object_req.emplace_back(rt_obj_req);
     rt_byte_miss = rt_obj_miss = rt_byte_req = rt_obj_req = 0;
     //real time only read rss info
-    struct proc_t usage;
-    look_up_our_self(&usage);
-    uint64_t metadata_overhead = usage.rss * getpagesize();
+    auto metadata_overhead = get_rss();
     rt_seg_rss.emplace_back(metadata_overhead);
     time_window_end += real_time_segment_window;
 }
@@ -143,9 +141,8 @@ void FrameWork::update_stats() {
     seg_object_req.emplace_back(obj_req);
     byte_miss = obj_miss = byte_req = obj_req = 0;
     //reduce cache size by metadata
-    struct proc_t usage;
-    look_up_our_self(&usage);
-    uint64_t metadata_overhead = usage.rss * getpagesize();
+    auto metadata_overhead = get_rss();
+    rt_seg_rss.emplace_back(metadata_overhead);
     seg_rss.emplace_back(metadata_overhead);
     if (is_metadata_in_cache_size)
         webcache->setSize(_cache_size - metadata_overhead);
@@ -198,39 +195,69 @@ void FrameWork::simulate() {
 }
 
 
-std::map<std::string, std::string> FrameWork::simulation_results() {
-    map<string, string> res = {
-            {"segment_byte_miss", json(seg_byte_miss).dump()},
-            {"segment_byte_req", json(seg_byte_req).dump()},
-            {"segment_object_miss", json(seg_object_miss).dump()},
-            {"segment_object_req", json(seg_object_req).dump()},
-            {"segment_rss", json(seg_rss).dump()},
-            {"real_time_segment_byte_miss", json(rt_seg_byte_miss).dump()},
-            {"real_time_segment_byte_req", json(rt_seg_byte_req).dump()},
-            {"real_time_segment_object_miss", json(rt_seg_object_miss).dump()},
-            {"real_time_segment_object_req", json(rt_seg_object_req).dump()},
-            {"real_time_segment_rss", json(rt_seg_rss).dump()},
-    };
+bsoncxx::builder::basic::document FrameWork::simulation_results() {
+    bsoncxx::builder::basic::document value_builder{};
+    value_builder.append(kvp("segment_byte_miss", [this](sub_array child) {
+        for (const auto &element : seg_byte_miss)
+            child.append(element);
+    }));
+    value_builder.append(kvp("segment_byte_req", [this](sub_array child) {
+        for (const auto &element : seg_byte_req)
+            child.append(element);
+    }));
+    value_builder.append(kvp("segment_object_miss", [this](sub_array child) {
+        for (const auto &element : seg_object_miss)
+            child.append(element);
+    }));
+    value_builder.append(kvp("segment_object_req", [this](sub_array child) {
+        for (const auto &element : seg_object_req)
+            child.append(element);
+    }));
+    value_builder.append(kvp("segment_rss", [this](sub_array child) {
+        for (const auto &element : seg_rss)
+            child.append(element);
+    }));
+    value_builder.append(kvp("real_time_segment_byte_miss", [this](sub_array child) {
+        for (const auto &element : rt_seg_byte_miss)
+            child.append(element);
+    }));
+    value_builder.append(kvp("real_time_segment_byte_req", [this](sub_array child) {
+        for (const auto &element : rt_seg_byte_req)
+            child.append(element);
+    }));
+    value_builder.append(kvp("real_time_segment_object_miss", [this](sub_array child) {
+        for (const auto &element : rt_seg_object_miss)
+            child.append(element);
+    }));
+    value_builder.append(kvp("real_time_segment_object_req", [this](sub_array child) {
+        for (const auto &element : rt_seg_object_req)
+            child.append(element);
+    }));
+    value_builder.append(kvp("real_time_segment_rss", [this](sub_array child) {
+        for (const auto &element : rt_seg_rss)
+            child.append(element);
+    }));
 
-    webcache->update_stat(res);
-    return res;
+//   TODO: update stat
+//    webcache->update_stat(res);
+    return value_builder;
 }
 
-map<string, string> _simulation(string trace_file, string cache_type, uint64_t cache_size,
-                                map<string, string> params){
+bsoncxx::builder::basic::document _simulation(string trace_file, string cache_type, uint64_t cache_size,
+                                              map<string, string> params) {
     FrameWork frame_work(trace_file, cache_type, cache_size, params);
     frame_work.simulate();
     return frame_work.simulation_results();
 }
 
-map<string, string> simulation(string trace_file, string cache_type,
-        uint64_t cache_size, map<string, string> params){
-    if (cache_type == "Adaptive-TinyLFU")
-        return _simulation_tinylfu(trace_file, cache_type, cache_size, params);
-    else if (cache_type == "LFO")
-        return LFO::_simulation_lfo(trace_file, cache_type, cache_size, params);
-    else if (cache_type == "BeladyTruncate")
-       return _simulation_truncate(trace_file, cache_type, cache_size, params);
-    else
+bsoncxx::builder::basic::document simulation(string trace_file, string cache_type,
+                                             uint64_t cache_size, map<string, string> params) {
+//    if (cache_type == "Adaptive-TinyLFU")
+//        return _simulation_tinylfu(trace_file, cache_type, cache_size, params);
+//    else if (cache_type == "LFO")
+//        return LFO::_simulation_lfo(trace_file, cache_type, cache_size, params);
+//    else if (cache_type == "BeladyTruncate")
+//       return _simulation_truncate(trace_file, cache_type, cache_size, params);
+//    else
         return _simulation(trace_file, cache_type, cache_size, params);
 }

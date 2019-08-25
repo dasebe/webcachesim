@@ -8,11 +8,11 @@
 #include <unordered_set>
 #include <cstdlib>
 #include <iostream>
-#include <bsoncxx/builder/basic/document.hpp>
-#include <bsoncxx/json.hpp>
-#include <mongocxx/client.hpp>
-#include <mongocxx/instance.hpp>
-#include <mongocxx/uri.hpp>
+#include "bsoncxx/builder/basic/document.hpp"
+#include "bsoncxx/json.hpp"
+#include "mongocxx/client.hpp"
+#include "mongocxx/instance.hpp"
+#include "mongocxx/uri.hpp"
 
 using namespace std;
 using namespace chrono;
@@ -66,8 +66,8 @@ int main(int argc, char *argv[]) {
     bsoncxx::builder::basic::document value_builder{};
     for (bsoncxx::document::element ele: key_builder.view())
         value_builder.append(kvp(ele.key(), ele.get_value()));
-    for (auto &k: res)
-        value_builder.append(kvp(k.first, k.second));
+    for (bsoncxx::document::element ele: res.view())
+        value_builder.append(kvp(ele.key(), ele.get_value()));
     value_builder.append(kvp("simulation_time", to_string(simulation_time)));
     value_builder.append(kvp("simulation_timestamp", simulation_timestamp));
 

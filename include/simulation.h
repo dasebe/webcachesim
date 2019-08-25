@@ -10,13 +10,16 @@
 #include <chrono>
 #include <fstream>
 #include <vector>
+#include <bsoncxx/builder/basic/document.hpp>
 #include "cache.h"
+#include "bsoncxx/document/view.hpp"
+
 
 /*
  * single thread simulation. Returns results.
  */
-std::map<std::string, std::string> simulation(std::string trace_file, std::string cache_type,
-                                              uint64_t cache_size, std::map<std::string, std::string> params);
+bsoncxx::builder::basic::document simulation(std::string trace_file, std::string cache_type,
+                                             uint64_t cache_size, std::map<std::string, std::string> params);
 
 
 class FrameWork {
@@ -42,11 +45,11 @@ public:
     //rt: real_time
     uint64_t rt_byte_req = 0, rt_byte_miss = 0, rt_obj_req = 0, rt_obj_miss = 0;
     //global statistics
-    std::vector<uint64_t> seg_byte_req, seg_byte_miss, seg_object_req, seg_object_miss;
-    std::vector<uint64_t> seg_rss;
+    std::vector<int64_t> seg_byte_req, seg_byte_miss, seg_object_req, seg_object_miss;
+    std::vector<int64_t> seg_rss;
     //rt: real_time
-    std::vector<uint64_t> rt_seg_byte_req, rt_seg_byte_miss, rt_seg_object_req, rt_seg_object_miss;
-    std::vector<uint64_t> rt_seg_rss;
+    std::vector<int64_t> rt_seg_byte_req, rt_seg_byte_miss, rt_seg_object_req, rt_seg_object_miss;
+    std::vector<int64_t> rt_seg_rss;
     uint64_t time_window_end;
     std::vector<uint16_t> extra_features;
     //use relative seq starting from 0
@@ -59,7 +62,7 @@ public:
 
     void simulate();
 
-    std::map<std::string, std::string> simulation_results();
+    bsoncxx::builder::basic::document simulation_results();
 
     void check_trace_format();
 

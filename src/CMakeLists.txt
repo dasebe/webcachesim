@@ -19,32 +19,38 @@ set(LIB_SOURCE
         caches/annotate.cpp
         caches/ucb.cpp
         caches/belady_sample.cpp
-        caches/lfo.cpp
-#        caches/lruk_sample.cpp
-#        caches/lfu_sample.cpp
-#        simulation_lr_belady.cpp
-#        simulation_belady_static.cpp
-#        simulation_bins.cpp
+        #        caches/lfo.cpp
+        #        caches/lruk_sample.cpp
+        #        caches/lfu_sample.cpp
+        #        simulation_lr_belady.cpp
+        #        simulation_belady_static.cpp
+        #        simulation_bins.cpp
         caches/bins.cpp
-        caches/belady_truncate.cpp
+        #        caches/belady_truncate.cpp
         caches/wlc.cpp
-        caches/hyperbolic.cpp caches/lecar.cpp simulation_tinylfu.cpp caches/lr.cpp)
+        caches/hyperbolic.cpp caches/lecar.cpp simulation_tinylfu.cpp caches/lr.cpp
+        rss.cpp ../include/rss.h)
 #message(123)
 
+
+add_library(webcachesim SHARED ${LIB_SOURCE})
+target_include_directories(webcachesim PUBLIC include)
+target_include_directories(webcachesim PUBLIC ../lib)
+
+find_package(libmongocxx REQUIRED)
+target_include_directories(webcachesim PRIVATE ${LIBMONGOCXX_INCLUDE_DIRS})
+target_link_libraries(webcachesim PRIVATE ${LIBMONGOCXX_LIBRARIES})
+target_compile_definitions(webcachesim PRIVATE ${LIBMONGOCXX_DEFINITIONS})
+
 find_package(Boost)
-INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
+target_include_directories(webcachesim PRIVATE ${Boost_INCLUDE_DIR})
+target_link_libraries(webcachesim LINK_PUBLIC ${Boost_LIBRARIES} ${LIGHTGBM_LIB})
 
 find_library(LIGHTGBM_LIB lib_lightgbm.so)
 find_path(LIGHTGBM_PATH LightGBM)
+target_include_directories(webcachesim PUBLIC ${LIGHTGBM_PATH})
+
 find_library(PROCPS_LIB procps)
 find_path(PROCPS_PATH proc)
-
-add_library(webcachesim SHARED ${LIB_SOURCE})
-
-target_include_directories(webcachesim PRIVATE ../lib)
-target_include_directories(webcachesim PUBLIC include)
-target_include_directories(webcachesim PUBLIC ${LIGHTGBM_PATH})
 target_include_directories(webcachesim PRIVATE ${PROCPS_PATH})
-
-target_link_libraries(webcachesim LINK_PUBLIC ${Boost_LIBRARIES} ${LIGHTGBM_LIB})
 target_link_libraries(webcachesim PRIVATE ${PROCPS_LIB})

@@ -7,11 +7,12 @@
 
 #include <map>
 #include <string>
+#include <bsoncxx/document/view.hpp>
 
 /*
  * single thread simulation. Returns results.
  */
-std::map<std::string, std::string> _simulation_tinylfu(std::string trace_file, std::string cache_type,
-        uint64_t cache_size, std::map<std::string, std::string> params);
+bsoncxx::document::view _simulation_tinylfu(std::string trace_file, std::string cache_type,
+                                            uint64_t cache_size, std::map<std::string, std::string> params);
 
 #endif //WEBCACHESIM_SIMULATION_TINYLFU_H
