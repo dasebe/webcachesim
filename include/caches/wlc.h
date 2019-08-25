@@ -401,14 +401,16 @@ public:
 
     bool lookup(SimpleRequest& req);
     void admit(SimpleRequest& req);
-    void evict(const uint32_t t);
+
+    void evict();
     void evict(SimpleRequest & req) {};
-    void evict() {};
-    void forget(uint32_t t);
+
+    void forget();
     //sample, rank the 1st and return
-    pair<uint64_t, uint32_t > rank(const uint32_t t);
+    pair<uint64_t, uint32_t> rank();
     void train();
-    void sample(uint32_t t);
+
+    void sample();
     void print_stats();
     bool has(const uint64_t& id) {
         auto it = key_map.find(id);

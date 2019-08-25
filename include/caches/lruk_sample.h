@@ -23,7 +23,6 @@ public:
     uint8_t n_past_intervals = 4;
     bool forget_on_evict = true;
 
-    //todo: seed and generator
     default_random_engine _generator = default_random_engine();
     uniform_int_distribution<std::size_t> _distribution = uniform_int_distribution<std::size_t>();
 

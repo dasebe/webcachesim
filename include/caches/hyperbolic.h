@@ -39,7 +39,6 @@ public:
 
     unsigned long sample_rate = 64;
 
-    //todo: seed and generator
     default_random_engine _generator = default_random_engine();
     uniform_int_distribution<std::size_t> _distribution = uniform_int_distribution<std::size_t>();
 

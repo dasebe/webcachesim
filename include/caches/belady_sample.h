@@ -46,7 +46,6 @@ public:
     // threshold
     uint64_t threshold = 10000000;
 
-    //todo: seed and generator
     default_random_engine _generator = default_random_engine();
     uniform_int_distribution<std::size_t> _distribution = uniform_int_distribution<std::size_t>();
 

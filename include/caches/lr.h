@@ -39,8 +39,7 @@ public:
     inline void update(const uint64_t &past_timestamp) {
         _past_timestamps[_past_timestamp_idx%LR::max_n_past_timestamps] = past_timestamp;
         _past_timestamp_idx = _past_timestamp_idx + (uint8_t) 1;
-        //todo: can use bit-wise
-        // prevent overflow
+        //todo: can use bit-wise prevent overflow
         if (_past_timestamp_idx >= LR::max_n_past_timestamps * 2)
             _past_timestamp_idx -= LR::max_n_past_timestamps;
     }

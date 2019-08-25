@@ -98,7 +98,7 @@ void WLCCache::train() {
                     0.05 * chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - timeBegin).count();
 }
 
-void WLCCache::sample(uint32_t t) {
+void WLCCache::sample() {
     // warmup not finish
     if (in_cache_metas.empty() || out_cache_metas.empty())
         return;
@@ -116,14 +116,14 @@ void WLCCache::sample(uint32_t t) {
     for (uint32_t i = 0; i < n_sample_l0; i++) {
         uint32_t pos = (uint32_t) (i + rand_idx) % n_l0;
         auto &meta = in_cache_metas[pos];
-        meta.emplace_sample(t);
+        meta.emplace_sample(WLC::current_t);
     }
 
     //sample list 1
     for (uint32_t i = 0; i < n_sample_l1; i++) {
         uint32_t pos = (uint32_t) (i + rand_idx) % n_l1;
         auto &meta = out_cache_metas[pos];
-        meta.emplace_sample(t);
+        meta.emplace_sample(WLC::current_t);
     }
 }
 
@@ -149,8 +149,6 @@ void WLCCache::print_stats() {
             << "sample overhead per entry: " << sample_overhead / key_map.size() << endl
             << "n_training: " << training_data->labels.size() << endl
             //            << "training loss: " << training_loss << endl
-            //TODO: can remove this
-            //            << "n_force_eviction: " << n_force_eviction << endl
             << "training_time: " << training_time << " ms" << endl
             << "inference_time: " << inference_time << " us" << endl;
     assert(in_cache_metas.size() + out_cache_metas.size() == key_map.size());
@@ -171,10 +169,9 @@ bool WLCCache::lookup(SimpleRequest &req) {
         } else {
             it->second = _req->_next_seq;
         }
-        //TODO: if we have global variable WLC::current_t, don't need t as a function argument
         WLC::current_t = req._t;
     }
-    forget(req._t);
+    forget();
 
     //first update the metadata: insert/update, which can trigger pending data.mature
     auto it = key_map.find(req._id);
@@ -226,18 +223,18 @@ bool WLCCache::lookup(SimpleRequest &req) {
 
     //sampling happens late to prevent immediate re-request
     if (!(req._t % training_sample_interval))
-        sample(req._t);
+        sample();
     return ret;
 }
 
 
-void WLCCache::forget(uint32_t t) {
+void WLCCache::forget() {
     /*
      * forget happens exactly after the beginning of each time, without doing any other operations. For example, an
      * object is request at time 0 with memory window = 5, and will be forgotten exactly at the start of time 5.
      * */
     //remove item from forget table, which is not going to be affect from update
-    auto it = negative_candidate_queue.find(t%WLC::memory_window);
+    auto it = negative_candidate_queue.find(WLC::current_t % WLC::memory_window);
     if (it != negative_candidate_queue.end()) {
         auto forget_key = it->second;
         auto pos = key_map.find(forget_key)->second.list_pos;
@@ -289,7 +286,7 @@ void WLCCache::forget(uint32_t t) {
         }
         out_cache_metas.pop_back();
         key_map.erase(forget_key);
-        negative_candidate_queue.erase(t%WLC::memory_window);
+        negative_candidate_queue.erase(WLC::current_t % WLC::memory_window);
     }
 }
 
@@ -333,12 +330,12 @@ void WLCCache::admit(SimpleRequest &req) {
     }
     // check more eviction needed?
     while (_currentSize > _cacheSize) {
-        evict(req._t);
+        evict();
     }
 }
 
 
-pair<uint64_t, uint32_t> WLCCache::rank(const uint32_t t) {
+pair<uint64_t, uint32_t> WLCCache::rank() {
 //    {
 //        uint32_t rand_idx = _distribution(_generator) % in_cache_metas.size();
 //        if ((!booster))
@@ -350,7 +347,7 @@ pair<uint64_t, uint32_t> WLCCache::rank(const uint32_t t) {
         auto it = key_map.find(candidate_key);
         auto pos = it->second.list_pos;
         auto &meta = in_cache_metas[pos];
-        if ((!booster) || (meta._past_timestamp + WLC::memory_window <= t))
+        if ((!booster) || (meta._past_timestamp + WLC::memory_window <= WLC::current_t))
             return {meta._key, pos};
     }
 
@@ -373,7 +370,7 @@ pair<uint64_t, uint32_t> WLCCache::rank(const uint32_t t) {
         auto &meta = in_cache_metas[pos];
         //fill in past_interval
         indices[idx_feature] = 0;
-        data[idx_feature++] = t - meta._past_timestamp;
+        data[idx_feature++] = WLC::current_t - meta._past_timestamp;
         past_timestamps[idx_row] = meta._past_timestamp;
 
         {
@@ -417,7 +414,7 @@ pair<uint64_t, uint32_t> WLCCache::rank(const uint32_t t) {
 
         for (uint8_t k = 0; k < WLC::n_edc_feature; ++k) {
             indices[idx_feature] = WLC::max_n_past_timestamps + WLC::n_extra_fields + 2 + k;
-            uint32_t _distance_idx = min(uint32_t(t - meta._past_timestamp) / WLC::edc_windows[k],
+            uint32_t _distance_idx = min(uint32_t(WLC::current_t - meta._past_timestamp) / WLC::edc_windows[k],
                                          WLC::max_hash_edc_idx);
             if (meta._extra)
                 data[idx_feature++] = meta._extra->_edc[k] * WLC::hash_edc[_distance_idx];
@@ -431,7 +428,7 @@ pair<uint64_t, uint32_t> WLCCache::rank(const uint32_t t) {
     vector<double> result(n_sample);
     system_clock::time_point timeBegin;
     //sample to measure inference time
-    if (!(t % 10000))
+    if (!(WLC::current_t % 10000))
         timeBegin = chrono::system_clock::now();
     LGBM_BoosterPredictForCSR(booster,
                               static_cast<void *>(indptr),
@@ -457,7 +454,7 @@ pair<uint64_t, uint32_t> WLCCache::rank(const uint32_t t) {
         }
     }
 
-    if (!(t % 10000))
+    if (!(WLC::current_t % 10000))
         inference_time = 0.95 * inference_time +
                          0.05 *
                          chrono::duration_cast<chrono::microseconds>(chrono::system_clock::now() - timeBegin).count();
@@ -484,8 +481,8 @@ pair<uint64_t, uint32_t> WLCCache::rank(const uint32_t t) {
     return {worst_key, worst_pos};
 }
 
-void WLCCache::evict(const uint32_t t) {
-    auto epair = rank(t);
+void WLCCache::evict() {
+    auto epair = rank();
     uint64_t & key = epair.first;
     uint32_t & old_pos = epair.second;
 
@@ -501,11 +498,11 @@ void WLCCache::evict(const uint32_t t) {
     }
 
     auto &meta = in_cache_metas[old_pos];
-    if (meta._past_timestamp + WLC::memory_window <= t) {
+    if (meta._past_timestamp + WLC::memory_window <= WLC::current_t) {
         //must be the tail of lru
         if (!meta._sample_times.empty()) {
             //mature
-            uint32_t future_distance = t - meta._past_timestamp + WLC::memory_window;
+            uint32_t future_distance = WLC::current_t - meta._past_timestamp + WLC::memory_window;
             for (auto &sample_time: meta._sample_times) {
                 //don't use label within the first forget window because the data is not static
                 training_data->emplace_back(meta, sample_time, future_distance);
