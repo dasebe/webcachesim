@@ -48,7 +48,7 @@ void BeladyCache::evict() {
                     static_cast<double>(it->first - current_t) / (_cacheSize * 1e6 / byte_million_req);
             decision_qulity = min((unsigned int) 255, decision_qulity);
             eviction_qualities.emplace_back(decision_qulity);
-            eviction_logic_timestamps.emplace_back(current_t / 10000);
+            eviction_logic_timestamps.emplace_back(current_t / 65536);
         }
         _currentSize -= iit->second;
         _cacheMap.erase(iit);

@@ -9,6 +9,7 @@
 #include <memory>
 #include "request.h"
 #include "common.h"
+#include "bsoncxx/builder/basic/document.hpp"
 
 class Cache;
 
@@ -50,7 +51,7 @@ public:
         return false;
     }
 
-    virtual void update_stat(std::map<std::string, std::string> &res) {
+    virtual void update_stat(bsoncxx::builder::basic::document &doc) {
     }
 
     virtual size_t memory_overhead() {

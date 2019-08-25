@@ -377,7 +377,7 @@ pair<uint64_t, uint32_t> WLCCache::rank(const uint32_t t) {
         past_timestamps[idx_row] = meta._past_timestamp;
 
         {
-            prediction_logic_timestamps.emplace_back(WLC::current_t / 10000);
+            prediction_logic_timestamps.emplace_back(WLC::current_t / 65536);
             auto it = WLC::future_timestamps.find(meta._key);
             unsigned int prediction_label =
                     static_cast<double>(it->second - WLC::current_t) / (_cacheSize * 1e6 / byte_million_req);
@@ -497,7 +497,7 @@ void WLCCache::evict(const uint32_t t) {
                 static_cast<double>(it->second - WLC::current_t) / (_cacheSize * 1e6 / byte_million_req);
         decision_qulity = min((unsigned int) 255, decision_qulity);
         eviction_qualities.emplace_back(decision_qulity);
-        eviction_logic_timestamps.emplace_back(WLC::current_t / 10000);
+        eviction_logic_timestamps.emplace_back(WLC::current_t / 65536);
     }
 
     auto &meta = in_cache_metas[old_pos];

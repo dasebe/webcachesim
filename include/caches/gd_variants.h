@@ -7,11 +7,16 @@
 #include <queue>
 #include "cache.h"
 #include <fstream>
+#include <bsoncxx/builder/basic/document.hpp>
 
 typedef std::multimap<long double, uint64_t> ValueMapType;
 typedef ValueMapType::iterator ValueMapIteratorType;
 typedef std::unordered_map<uint64_t, ValueMapIteratorType> GdCacheMapType;
 typedef std::unordered_map<uint64_t, uint64_t> CacheStatsMapType;
+
+#include "mongocxx/client.hpp"
+#include "mongocxx/uri.hpp"
+#include <mongocxx/gridfs/bucket.hpp>
 
 using namespace std;
 
@@ -36,6 +41,7 @@ protected:
     vector<uint16_t> eviction_logic_timestamps;
     uint64_t byte_million_req;
     string task_id;
+    string dburl;
 
 
     virtual long double ageValue(SimpleRequest& req);
@@ -133,6 +139,8 @@ public:
                 byte_million_req = stoull(it.second);
             } else if (it.first == "task_id") {
                 task_id = it.second;
+            } else if (it.first == "dburl") {
+                dburl = it.second;
             } else {
                 cerr << "unrecognized parameter: " << it.first << endl;
             }
@@ -140,28 +148,24 @@ public:
     }
 
 
-    void update_stat(std::map<std::string, std::string> &res) override {
-        //log eviction qualities. The value is too big to store in mongodb
-        string webcachesim_trace_dir = getenv("WEBCACHESIM_TRACE_DIR");
-        {
-            ofstream outfile(webcachesim_trace_dir + "/" + task_id + ".evictions");
-            if (!outfile) {
-                cerr << "Exception opening file" << endl;
-                abort();
-            }
+    void update_stat(bsoncxx::v_noabi::builder::basic::document &doc) override {
+        //Log to GridFs because the value is too big to store in mongodb
+        try {
+            mongocxx::client client = mongocxx::client{mongocxx::uri(dburl)};
+            mongocxx::database db = client["webcachesim"];
+            auto bucket = db.gridfs_bucket();
+
+            auto uploader = bucket.open_upload_stream(task_id + ".evictions");
             for (auto &b: eviction_qualities)
-                outfile << b;
-            outfile.close();
-        }
-        {
-            ofstream outfile(webcachesim_trace_dir + "/" + task_id + ".eviction_timestamps");
-            if (!outfile) {
-                cerr << "Exception opening file" << endl;
-                abort();
-            }
+                uploader.write((uint8_t *) (&b), sizeof(uint8_t));
+            uploader.close();
+            uploader = bucket.open_upload_stream(task_id + ".eviction_timestamps");
             for (auto &b: eviction_logic_timestamps)
-                outfile.write((char *) &b, sizeof(uint16_t));
-            outfile.close();
+                uploader.write((uint8_t *) (&b), sizeof(uint16_t));
+            uploader.close();
+        } catch (const std::exception &xcp) {
+            cerr << "error: db connection failed: " << xcp.what() << std::endl;
+            abort();
         }
     }
 
@@ -198,6 +202,8 @@ public:
                 byte_million_req = stoull(it.second);
             } else if (it.first == "task_id") {
                 task_id = it.second;
+            } else if (it.first == "dburl") {
+                dburl = it.second;
             } else {
                 cerr << "unrecognized parameter: " << it.first << endl;
             }
@@ -205,29 +211,26 @@ public:
     }
 
 
-    void update_stat(std::map<std::string, std::string> &res) override {
-        //log eviction qualities. The value is too big to store in mongodb
-        string webcachesim_trace_dir = getenv("WEBCACHESIM_TRACE_DIR");
-        {
-            ofstream outfile(webcachesim_trace_dir + "/" + task_id + ".evictions");
-            if (!outfile) {
-                cerr << "Exception opening file" << endl;
-                abort();
-            }
+    void update_stat(bsoncxx::builder::basic::document &doc) override {
+        //Log to GridFs because the value is too big to store in mongodb
+        try {
+            mongocxx::client client = mongocxx::client{mongocxx::uri(dburl)};
+            mongocxx::database db = client["webcachesim"];
+            auto bucket = db.gridfs_bucket();
+
+            auto uploader = bucket.open_upload_stream(task_id + ".evictions");
             for (auto &b: eviction_qualities)
-                outfile << b;
-            outfile.close();
-        }
-        {
-            ofstream outfile(webcachesim_trace_dir + "/" + task_id + ".eviction_timestamps");
-            if (!outfile) {
-                cerr << "Exception opening file" << endl;
-                abort();
-            }
+                uploader.write((uint8_t *) (&b), sizeof(uint8_t));
+            uploader.close();
+            uploader = bucket.open_upload_stream(task_id + ".eviction_timestamps");
             for (auto &b: eviction_logic_timestamps)
-                outfile.write((char *) &b, sizeof(uint16_t));
-            outfile.close();
+                uploader.write((uint8_t *) (&b), sizeof(uint16_t));
+            uploader.close();
+        } catch (const std::exception &xcp) {
+            cerr << "error: db connection failed: " << xcp.what() << std::endl;
+            abort();
         }
+
     }
 
     virtual bool lookup(SimpleRequest& req);

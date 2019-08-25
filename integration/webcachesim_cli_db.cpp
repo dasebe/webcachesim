@@ -48,14 +48,19 @@ int main(int argc, char *argv[]) {
     string task_id;
 
     bsoncxx::builder::basic::document key_builder{};
+    bsoncxx::builder::basic::document value_builder{};
     key_builder.append(kvp("trace_file", argv[1]));
     key_builder.append(kvp("cache_type", argv[2]));
     key_builder.append(kvp("cache_size", argv[3]));
 
-    for (auto &k: params)
+    for (auto &k: params) {
         if (!unordered_set<string>({"dbcollection", "dburl", "version", "task_id"}).count(k.first)) {
             key_builder.append(kvp(k.first, k.second));
         }
+        value_builder.append(kvp(k.first, k.second));
+    }
+
+    mongocxx::instance inst;
 
     auto timeBegin = chrono::system_clock::now();
     auto res = simulation(string(webcachesim_trace_dir) + '/' + argv[1], argv[2], std::stoull(argv[3]),
@@ -63,15 +68,11 @@ int main(int argc, char *argv[]) {
     auto simulation_time = chrono::duration_cast<chrono::seconds>(chrono::system_clock::now() - timeBegin).count();
     auto simulation_timestamp = current_timestamp();
 
-    bsoncxx::builder::basic::document value_builder{};
-    for (bsoncxx::document::element ele: key_builder.view())
-        value_builder.append(kvp(ele.key(), ele.get_value()));
     for (bsoncxx::document::element ele: res.view())
         value_builder.append(kvp(ele.key(), ele.get_value()));
     value_builder.append(kvp("simulation_time", to_string(simulation_time)));
     value_builder.append(kvp("simulation_timestamp", simulation_timestamp));
 
-    mongocxx::instance inst;
     try {
         mongocxx::client client = mongocxx::client{mongocxx::uri(params["dburl"])};
         mongocxx::database db = client["webcachesim"];

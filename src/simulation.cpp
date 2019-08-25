@@ -14,7 +14,6 @@
 ////#include "simulation_truncate.h"
 #include <sstream>
 #include "utils.h"
-//#include <unordered_map>
 ////#include "simulation_lfo.h"
 ////remove the code related with decouple because not using it for a long time
 ////#include "miss_decouple.h"
@@ -22,6 +21,8 @@
 //#include "nlohmann/json.hpp"
 #include "rss.h"
 #include <cstdint>
+#include <unordered_map>
+#include <unordered_set>
 #include "bsoncxx/builder/basic/document.hpp"
 #include "bsoncxx/json.hpp"
 
@@ -30,6 +31,7 @@ using namespace chrono;
 //using json = nlohmann::json;
 using bsoncxx::builder::basic::kvp;
 using bsoncxx::builder::basic::sub_array;
+
 
 FrameWork::FrameWork(const string &trace_file, const string &cache_type, const uint64_t &cache_size,
                      map<string, string> &params) {
@@ -152,8 +154,14 @@ void FrameWork::update_stats() {
 
 void FrameWork::simulate() {
     cerr << "simulating" << endl;
+    unordered_map<uint64_t, uint32_t> future_timestamps;
+    vector<uint8_t> eviction_qualities;
+    vector<uint16_t> eviction_logic_timestamps;
+
     SimpleRequest *req;
-    if (_cache_type == "Belady")
+    unordered_set<string> offline_algorithms = {"Belady", "BeladySample", "LRUKSample", "LFUSample", "WLC", "LRU",
+                                                "LRUK", "LFUDA", "LeCaR", "FIFO", "Filter"};
+    if (offline_algorithms.count(_cache_type))
         req = new AnnotatedRequest(0, 0, 0, 0);
     else
         req = new SimpleRequest(0, 0, 0);
@@ -175,11 +183,11 @@ void FrameWork::simulate() {
         update_metric_req(byte_req, obj_req, size);
         update_metric_req(rt_byte_req, rt_obj_req, size)
 
-        if (_cache_type == "Belady") {
+        if (offline_algorithms.count(_cache_type))
             dynamic_cast<AnnotatedRequest *>(req)->reinit(id, size, seq, next_seq, &extra_features);
-        } else {
+        else
             req->reinit(id, size, seq, &extra_features);
-        }
+
         bool is_hit = webcache->lookup(*req);
         if (!is_hit) {
             update_metric_req(byte_miss, obj_miss, size);
@@ -238,8 +246,7 @@ bsoncxx::builder::basic::document FrameWork::simulation_results() {
             child.append(element);
     }));
 
-//   TODO: update stat
-//    webcache->update_stat(res);
+    webcache->update_stat(value_builder);
     return value_builder;
 }
 

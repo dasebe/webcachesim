@@ -262,9 +262,9 @@ ntg1_200m_base.tr:
     - 8589934592
     - 4294967296
   n_extra_fields: 2
-  segment_window: 1000000
+  segment_window: 50000
   #in unit of second
-  real_time_segment_window: 3600
+  real_time_segment_window: 30
   is_metadata_in_cache_size: 0
   byte_million_req: 384002720142
   uni_size: 0
@@ -274,16 +274,16 @@ ntg1_200m_base.tr:
   WLC:
     memory_window:
       #      - 65536
-      - 131072
-      - 262144
-      - 524288
-      - 1048576
-      - 2097152
-      - 4194304
+      #      - 131072
+      #      - 262144
+      #      - 524288
+      #      - 1048576
+      #      - 2097152
+      #      - 4194304
       - 8388608
-      - 16777216
-      - 33554432
-      - 67108864
+  #      - 16777216
+  #      - 33554432
+  #      - 67108864
   #      - 268435456
   #      - 1073741824
   LR:

@@ -106,7 +106,7 @@ void LeCaRCache::evict(uint64_t & t, uint64_t & counter) {
                     static_cast<double>(it->second - current_t) / (_cacheSize * 1e6 / byte_million_req);
             decision_qulity = min((unsigned int) 255, decision_qulity);
             eviction_qualities.emplace_back(decision_qulity);
-            eviction_logic_timestamps.emplace_back(current_t / 10000);
+            eviction_logic_timestamps.emplace_back(current_t / 65536);
         }
 //        cout<<"before inserting t: "<<t<<" k: "<<key<<" size: "<<size<<" map size: "<<h_lfu.left.size()<<endl;
         auto tmp_it = h_lru.left.find(make_pair(t, counter));
@@ -133,7 +133,7 @@ void LeCaRCache::evict(uint64_t & t, uint64_t & counter) {
                         static_cast<double>(it->second - current_t) / (_cacheSize * 1e6 / byte_million_req);
                 decision_qulity = min((unsigned int) 255, decision_qulity);
                 eviction_qualities.emplace_back(decision_qulity);
-                eviction_logic_timestamps.emplace_back(current_t / 10000);
+                eviction_logic_timestamps.emplace_back(current_t / 65536);
             }
 
             h_lru_current_size -= size;
@@ -153,7 +153,7 @@ void LeCaRCache::evict(uint64_t & t, uint64_t & counter) {
                     static_cast<double>(it->second - current_t) / (_cacheSize * 1e6 / byte_million_req);
             decision_qulity = min((unsigned int) 255, decision_qulity);
             eviction_qualities.emplace_back(decision_qulity);
-            eviction_logic_timestamps.emplace_back(current_t / 10000);
+            eviction_logic_timestamps.emplace_back(current_t / 65536);
         }
         //add new to h
 //        cout<<"before inserting t: "<<t<<" k: "<<key<<" size: "<<size<<" map size: "<<h_lfu.left.size()<<endl;
@@ -180,7 +180,7 @@ void LeCaRCache::evict(uint64_t & t, uint64_t & counter) {
                         static_cast<double>(it->second - current_t) / (_cacheSize * 1e6 / byte_million_req);
                 decision_qulity = min((unsigned int) 255, decision_qulity);
                 eviction_qualities.emplace_back(decision_qulity);
-                eviction_logic_timestamps.emplace_back(current_t / 10000);
+                eviction_logic_timestamps.emplace_back(current_t / 65536);
             }
 //            cout<<(lfu_it == h_lfu.left.end())<<endl;
             h_lfu_current_size -= size;

@@ -15,6 +15,10 @@
 #include <assert.h>
 #include <fstream>
 #include <list>
+#include <bsoncxx/builder/basic/document.hpp>
+#include "mongocxx/client.hpp"
+#include "mongocxx/uri.hpp"
+#include <mongocxx/gridfs/bucket.hpp>
 
 using namespace std;
 using spp::sparse_hash_map;
@@ -309,6 +313,7 @@ public:
     vector<uint16_t> prediction_logic_timestamps;
     uint64_t byte_million_req;
     string task_id;
+    string dburl;
 
     WLCCache()
         : Cache()
@@ -336,6 +341,8 @@ public:
                 training_params["num_threads"] = it.second;
             } else if (it.first == "byte_million_req") {
                 byte_million_req = stoull(it.second);
+            } else if (it.first == "dburl") {
+                dburl = it.second;
             } else if (it.first == "task_id") {
                 task_id = it.second;
             } else if (it.first == "training_sample_interval") {
@@ -410,74 +417,52 @@ public:
         return !it->second.list_idx;
     }
 
-    void update_stat(std::map<std::string, std::string> &res) override {
-        uint64_t feature_overhead = 0;
-        uint64_t sample_overhead = 0;
-        for (auto &m: in_cache_metas) {
-            feature_overhead += m.feature_overhead();
-            sample_overhead += m.sample_overhead();
-        }
-        for (auto &m: out_cache_metas) {
-            feature_overhead += m.feature_overhead();
-            sample_overhead += m.sample_overhead();
-        }
+    void update_stat(bsoncxx::v_noabi::builder::basic::document &doc) override {
+        //TODO: finish
+//        uint64_t feature_overhead = 0;
+//        uint64_t sample_overhead = 0;
+//        for (auto &m: in_cache_metas) {
+//            feature_overhead += m.feature_overhead();
+//            sample_overhead += m.sample_overhead();
+//        }
+//        for (auto &m: out_cache_metas) {
+//            feature_overhead += m.feature_overhead();
+//            sample_overhead += m.sample_overhead();
+//        }
+//
+//        res["n_metadata"] = to_string(key_map.size());
+//        res["feature_overhead"] = to_string(feature_overhead);
+//        res["sample overhead"] = to_string(sample_overhead);
+//        res["n_force_eviction"] = to_string(n_force_eviction);
+//
+        try {
+            mongocxx::client client = mongocxx::client{mongocxx::uri(dburl)};
+            mongocxx::database db = client["webcachesim"];
+            auto bucket = db.gridfs_bucket();
 
-        res["n_metadata"] = to_string(key_map.size());
-        res["feature_overhead"] = to_string(feature_overhead);
-        res["sample overhead"] = to_string(sample_overhead);
-        res["n_force_eviction"] = to_string(n_force_eviction);
-
-        //log eviction qualities. The value is too big to store in mongodb
-        string webcachesim_trace_dir = getenv("WEBCACHESIM_TRACE_DIR");
-        {
-            ofstream outfile(webcachesim_trace_dir + "/" + task_id + ".evictions");
-            if (!outfile) {
-                cerr << "Exception opening file" << endl;
-                abort();
-            }
+            auto uploader = bucket.open_upload_stream(task_id + ".evictions");
             for (auto &b: eviction_qualities)
-                outfile << b;
-            outfile.close();
-        }
-        {
-            ofstream outfile(webcachesim_trace_dir + "/" + task_id + ".eviction_timestamps");
-            if (!outfile) {
-                cerr << "Exception opening file" << endl;
-                abort();
-            }
+                uploader.write((uint8_t *) (&b), sizeof(uint8_t));
+            uploader.close();
+            uploader = bucket.open_upload_stream(task_id + ".eviction_timestamps");
             for (auto &b: eviction_logic_timestamps)
-                outfile.write((char *) &b, sizeof(uint16_t));
-            outfile.close();
-        }
-        {
-            ofstream outfile(webcachesim_trace_dir + "/" + task_id + ".predictions");
-            if (!outfile) {
-                cerr << "Exception opening file" << endl;
-                abort();
-            }
+                uploader.write((uint8_t *) (&b), sizeof(uint16_t));
+            uploader.close();
+            uploader = bucket.open_upload_stream(task_id + ".predictions");
             for (auto &b: predictions)
-                outfile << b;
-            outfile.close();
-        }
-        {
-            ofstream outfile(webcachesim_trace_dir + "/" + task_id + ".prediction_labels");
-            if (!outfile) {
-                cerr << "Exception opening file" << endl;
-                abort();
-            }
+                uploader.write((uint8_t *) (&b), sizeof(uint8_t));
+            uploader.close();
+            uploader = bucket.open_upload_stream(task_id + ".prediction_labels");
             for (auto &b: prediction_labels)
-                outfile << b;
-            outfile.close();
-        }
-        {
-            ofstream outfile(webcachesim_trace_dir + "/" + task_id + ".prediction_timestamps");
-            if (!outfile) {
-                cerr << "Exception opening file" << endl;
-                abort();
-            }
+                uploader.write((uint8_t *) (&b), sizeof(uint8_t));
+            uploader.close();
+            uploader = bucket.open_upload_stream(task_id + ".prediction_timestamps");
             for (auto &b: prediction_logic_timestamps)
-                outfile.write((char *) &b, sizeof(uint16_t));
-            outfile.close();
+                uploader.write((uint8_t *) (&b), sizeof(uint16_t));
+            uploader.close();
+        } catch (const std::exception &xcp) {
+            cerr << "error: db connection failed: " << xcp.what() << std::endl;
+            abort();
         }
     }
 
