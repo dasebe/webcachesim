@@ -26,6 +26,8 @@ string current_timestamp() {
 }
 
 int main(int argc, char *argv[]) {
+    // TODO: current the set relations are not simple: (trace_file, cache_type, cache_size), params,
+    //  key_builder, value_builder
     // output help if insufficient params
     if (argc < 4) {
         cerr << "webcachesim traceFile cacheType cacheSizeBytes [cacheParams]" << endl;
@@ -52,6 +54,9 @@ int main(int argc, char *argv[]) {
     key_builder.append(kvp("trace_file", argv[1]));
     key_builder.append(kvp("cache_type", argv[2]));
     key_builder.append(kvp("cache_size", argv[3]));
+    value_builder.append(kvp("trace_file", argv[1]));
+    value_builder.append(kvp("cache_type", argv[2]));
+    value_builder.append(kvp("cache_size", argv[3]));
 
     for (auto &k: params) {
         if (!unordered_set<string>({"dbcollection", "dburl", "version", "task_id"}).count(k.first)) {
