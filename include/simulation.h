@@ -32,6 +32,7 @@ public:
     bool is_metadata_in_cache_size = true;
     unique_ptr<Cache> webcache = nullptr;
     std::ifstream infile;
+    int64_t n_early_stop;  //-1: no stop
 
     std::string _trace_file;
     std::string _cache_type;

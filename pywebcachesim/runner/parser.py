@@ -72,9 +72,15 @@ def job_to_tasks(args):
         for cache_type in args['cache_types']:
             for cache_size_or_size_parameters in trace_params[trace_file]['cache_sizes']:
                 # element can be k: v or k: list[v], which would be expanded with cartesian product
+                # priority: default < per trace < per trace per algorithm < per trace per algorithm per cache size
                 parameters = {}
                 if cache_type in default_algorithm_params:
                     parameters = {**parameters, **default_algorithm_params[cache_type]}
+                per_trace_params = {}
+                for k, v in trace_params[trace_file].items():
+                    if k not in ['cache_sizes'] and k not in default_algorithm_params and v is not None:
+                        per_trace_params[k] = v
+                parameters = {**parameters, **per_trace_params}
                 if cache_type in trace_params[trace_file]:
                     # trace parameters overwrite default parameters
                     parameters = {**parameters, **trace_params[trace_file][cache_type]}
@@ -103,9 +109,6 @@ def job_to_tasks(args):
                             'trace_param_file',
                             'config_file'
                         ] and v is not None:
-                            task[k] = v
-                    for k, v in trace_params[trace_file].items():
-                        if k not in ['cache_sizes'] and k not in default_algorithm_params and v is not None:
                             task[k] = v
                     tasks.append(task)
     return tasks

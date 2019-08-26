@@ -69,6 +69,9 @@ FrameWork::FrameWork(const string &trace_file, const string &cache_type, const u
         } else if (it->first == "real_time_segment_window") {
             real_time_segment_window = stoull((it->second));
             it = params.erase(it);
+        } else if (it->first == "n_early_stop") {
+            n_early_stop = stoll((it->second));
+            it = params.erase(it);
         } else if (it->first == "n_extra_fields") {
             n_extra_fields = stoull(it->second);
             ++it;
@@ -168,6 +171,8 @@ void FrameWork::simulate() {
     t_now = system_clock::now();
 
     while (infile >> next_seq >> t >> id >> size) {
+        if (seq == n_early_stop)
+            break;
         for (int i = 0; i < n_extra_fields; ++i)
             infile >> extra_features[i];
         if (uni_size)

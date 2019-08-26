@@ -85,10 +85,9 @@ traceUS.tr:
     forget_window: 40000000
     sample_rate: 256
 
-wc400m.tr:
+
+wc2800m_ts.tr:
   cache_sizes:
-#    - 1073741824
-#    - 2147483648
     - 4294967296
     - 8589934592
     - 17179869184
@@ -97,62 +96,24 @@ wc400m.tr:
     - 137438953472
   #    - 274877906944
   #    - 549755813888
+  #    - 1099511627776
+  #    - 2199023255552
   n_extra_fields: 1
   segment_window: 1000000
+  real_time_segment_window: 600
   is_metadata_in_cache_size: 0
-  byte_million_req: 34040739961
-  #  window: 100
-  uni_size: 0
-  BeladySample:
-    threshold:
-      - 40000000
-    sample_rate:
-      - 64
-  WLC:
-    memory_window:
-      #      - 131072
-      #      - 262144
-      #      - 524288
-      - 1048576
-      - 2097152
-      - 4194304
-      - 8388608
-      - 16777216
-      - 33554432
-      - 67108864
-    #      - 134217728
-    sample_rate:
-      - 64
-#      - 256
-  LR:
-    forget_window: 40000000
-    sample_rate: 256
-
-
-wc2800m.tr:
-  cache_sizes:
-    - 137438953472
-    - 274877906944
-    - 549755813888
-    - 1099511627776
-    - 2199023255552
-  n_extra_fields: 1
-  segment_window: 10000000
-  is_metadata_in_cache_size: 1
   byte_million_req: 35234263115
-  #  window: 100
   uni_size: 0
-  BeladySample:
-    threshold:
-      - 40000000
-    sample_rate:
-      - 64
+  # stop at exactly before req id n, so finish reqs [0, n-1]
+  n_early_stop:
+    #    - -1
+    - 400000000
   WLC:
     memory_window:
-#      - 134217728
-#- 268435456
-#     - 536870912
-#      - 1073741824
+      #      - 134217728
+      #- 268435456
+      #     - 536870912
+      #      - 1073741824
       - 67108864
       - 134217728
       - 268435456
@@ -162,20 +123,9 @@ wc2800m.tr:
     #      - 1610612736
     #      - 1879048192
     #      - 2147483648
-#      - 1200000000
-#      - 1400000000
-#      - 1600000000
-#      - 1800000000
-#      - 2000000000
-#      - 2200000000
-#      - 2400000000
-#      - 2600000000
     sample_rate:
       - 64
-#      - 256
-  LR:
-    forget_window: 40000000
-    sample_rate: 25
+  #      - 256
 
 
 ntg1.tr:
