@@ -6,7 +6,7 @@
 //#include <string>
 //#include "request.h"
 #include "annotate.h"
-//#include "simulation_tinylfu.h"
+#include "simulation_tinylfu.h"
 //#include "cache.h"
 ////#include "simulation_lr_belady.h"
 ////#include "simulation_belady_static.h"
@@ -265,12 +265,12 @@ bsoncxx::builder::basic::document _simulation(string trace_file, string cache_ty
 
 bsoncxx::builder::basic::document simulation(string trace_file, string cache_type,
                                              uint64_t cache_size, map<string, string> params) {
-//    if (cache_type == "Adaptive-TinyLFU")
-//        return _simulation_tinylfu(trace_file, cache_type, cache_size, params);
+    if (cache_type == "Adaptive-TinyLFU")
+        return _simulation_tinylfu(trace_file, cache_type, cache_size, params);
 //    else if (cache_type == "LFO")
 //        return LFO::_simulation_lfo(trace_file, cache_type, cache_size, params);
 //    else if (cache_type == "BeladyTruncate")
 //       return _simulation_truncate(trace_file, cache_type, cache_size, params);
-//    else
+    else
         return _simulation(trace_file, cache_type, cache_size, params);
 }

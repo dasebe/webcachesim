@@ -28,7 +28,9 @@ set(LIB_SOURCE
         caches/bins.cpp
         #        caches/belady_truncate.cpp
         caches/wlc.cpp
-        caches/hyperbolic.cpp caches/lecar.cpp simulation_tinylfu.cpp caches/lr.cpp
+        caches/hyperbolic.cpp caches/lecar.cpp
+        simulation_tinylfu.cpp ../include/simulation_tinylfu.h
+        caches/lr.cpp
         rss.cpp ../include/rss.h)
 #message(123)
 
