@@ -336,11 +336,6 @@ void WLCCache::admit(SimpleRequest &req) {
 
 
 pair<uint64_t, uint32_t> WLCCache::rank() {
-//    {
-//        uint32_t rand_idx = _distribution(_generator) % in_cache_metas.size();
-//        if ((!booster))
-//            return {in_cache_metas[rand_idx]._key, rand_idx};
-//    }
     {
         //if not trained yet, or in_cache_lru past memory window, use LRU
         uint64_t &candidate_key = in_cache_lru_queue.dq.back();
@@ -353,19 +348,17 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
 
     uint32_t rand_idx = _distribution(_generator) % in_cache_metas.size();
 
-    uint n_sample = min(sample_rate, (uint32_t) in_cache_metas.size());
-
-    int32_t indptr[n_sample+1];
+    int32_t indptr[sample_rate + 1];
     indptr[0] = 0;
-    int32_t indices[n_sample*WLC::n_feature];
-    double data[n_sample * WLC::n_feature];
-    int32_t past_timestamps[n_sample];
-    uint32_t sizes[n_sample];
+    int32_t indices[sample_rate * WLC::n_feature];
+    double data[sample_rate * WLC::n_feature];
+    int32_t past_timestamps[sample_rate];
+    uint32_t sizes[sample_rate];
     //next_past_timestamp, next_size = next_indptr - 1
 
     unsigned int idx_feature = 0;
     unsigned int idx_row = 0;
-    for (int i = 0; i < n_sample; i++) {
+    for (int i = 0; i < sample_rate; i++) {
         uint32_t pos = (i + rand_idx) % in_cache_metas.size();
         auto &meta = in_cache_metas[pos];
         //fill in past_interval
@@ -425,7 +418,7 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
         indptr[++idx_row] = idx_feature;
     }
     int64_t len;
-    vector<double> result(n_sample);
+    vector<double> result(sample_rate);
     system_clock::time_point timeBegin;
     //sample to measure inference time
     if (!(WLC::current_t % 10000))
@@ -447,7 +440,7 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
 
 
     {
-        for (int i = 0; i < n_sample; ++i) {
+        for (int i = 0; i < sample_rate; ++i) {
             unsigned int prediction = (exp(result[i]) - 1) / (_cacheSize * 1e6 / byte_million_req);
             prediction = min((unsigned int) 255, prediction);
             predictions.emplace_back(prediction);
@@ -461,14 +454,14 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
 //    for (int i = 0; i < n_sample; ++i)
 //        result[i] -= (t - past_timestamps[i]);
     if (objective == object_miss_ratio)
-        for (uint32_t i = 0; i < n_sample; ++i)
+        for (uint32_t i = 0; i < sample_rate; ++i)
             result[i] *= sizes[i];
 
     double worst_score;
     uint32_t worst_pos;
     uint64_t min_past_timestamp;
 
-    for (int i = 0; i < n_sample; ++i)
+    for (int i = 0; i < sample_rate; ++i)
         if (!i || result[i] > worst_score || (result[i] == worst_score && (past_timestamps[i] < min_past_timestamp))) {
             worst_score = result[i];
             worst_pos = i;
