@@ -43,6 +43,7 @@ traceHK_ts.tr:
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
   byte_million_req: 378055367727
+  n_req: 453490596
   uni_size: 0
   # stop at exactly before req id n, so finish reqs [0, n-1]
   n_early_stop:
@@ -102,6 +103,7 @@ traceUS_ts.tr:
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
   byte_million_req: 406036951298
+  n_req: 410634759
   uni_size: 0
   # stop at exactly before req id n, so finish reqs [0, n-1]
   n_early_stop:
@@ -164,6 +166,7 @@ wc2800m_ts.tr:
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
   byte_million_req: 35234263115
+  n_req: 2800000000
   uni_size: 0
   # stop at exactly before req id n, so finish reqs [0, n-1]
   n_early_stop:
@@ -234,6 +237,7 @@ ntg1_base.tr:
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
   byte_million_req: 382836853735
+  n_req: 1832408226
   uni_size: 0
   # stop at exactly before req id n, so finish reqs [0, n-1]
   n_early_stop:
@@ -301,6 +305,7 @@ ntg2_base.tr:
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
   byte_million_req: 246201729549
+  n_req: 2348079768
   uni_size: 0
   # stop at exactly before req id n, so finish reqs [0, n-1]
   n_early_stop:
@@ -368,6 +373,7 @@ ntg3_base.tr:
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
   byte_million_req: 318057140120
+  n_req: 1987460177
   uni_size: 0
   # stop at exactly before req id n, so finish reqs [0, n-1]
   n_early_stop:

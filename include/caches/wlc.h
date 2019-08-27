@@ -172,12 +172,15 @@ public:
     vector<int32_t> indptr;
     vector<int32_t> indices;
     vector<double> data;
+    vector<uint64_t> ids;
+
     WLCTrainingData() {
         labels.reserve(WLC::batch_size);
         indptr.reserve(WLC::batch_size+1);
         indptr.emplace_back(0);
         indices.reserve(WLC::batch_size*WLC::n_feature);
         data.reserve(WLC::batch_size*WLC::n_feature);
+        ids.reserve(WLC::batch_size);
     }
 
     void emplace_back(WLCMeta &meta, uint32_t & sample_timestamp, uint32_t & future_interval) {
@@ -241,6 +244,8 @@ public:
 
         labels.push_back(log1p(future_interval));
         indptr.push_back(counter);
+
+        ids.emplace_back(meta._key);
     }
 
     void clear() {
@@ -248,6 +253,7 @@ public:
         indptr.resize(1);
         indices.clear();
         data.clear();
+        ids.clear();
     }
 };
 
@@ -308,10 +314,14 @@ public:
 
     vector<uint8_t> eviction_qualities;
     vector<uint16_t> eviction_logic_timestamps;
-    vector<uint8_t> predictions;
-    vector<uint8_t> prediction_labels;
-    vector<uint16_t> prediction_logic_timestamps;
     uint64_t byte_million_req;
+    uint32_t n_req;
+    int64_t n_early_stop = -1;
+    uint32_t n_logging_start0, n_logging_end0, n_logging_start1, n_logging_end1;
+    vector<float> predictions;
+    vector<uint16_t> prediction_logic_timestamps;
+    vector<float> trainings;
+    vector<uint16_t> training_logic_timestamps;
     string task_id;
     string dburl;
 
@@ -331,6 +341,10 @@ public:
                 WLC::max_n_past_timestamps = (uint8_t) stoi(it.second);
             } else if (it.first == "batch_size") {
                 WLC::batch_size = stoull(it.second);
+            } else if (it.first == "n_early_stop") {
+                n_early_stop = stoll((it.second));
+            } else if (it.first == "n_req") {
+                n_req = stoull(it.second);
             } else if (it.first == "n_extra_fields") {
                 WLC::n_extra_fields = stoull(it.second);
             } else if (it.first == "num_iterations") {
@@ -397,6 +411,17 @@ public:
         }
         inference_params = training_params;
         training_data = new WLCTrainingData();
+
+        //logging at 50%, 75% requests
+        if (n_early_stop < 0) {
+            n_logging_start0 = n_req * 0.5;
+            n_logging_start1 = n_req * 0.75;
+        } else {
+            n_logging_start0 = n_early_stop * 0.5;
+            n_logging_start1 = n_early_stop * 0.75;
+        }
+        n_logging_end0 = n_logging_start0 + 1000000;
+        n_logging_end1 = n_logging_start1 + 1000000;
     }
 
     bool lookup(SimpleRequest& req);
@@ -452,19 +477,24 @@ public:
             uploader.close();
             uploader = bucket.open_upload_stream(task_id + ".predictions");
             for (auto &b: predictions)
-                uploader.write((uint8_t *) (&b), sizeof(uint8_t));
-            uploader.close();
-            uploader = bucket.open_upload_stream(task_id + ".prediction_labels");
-            for (auto &b: prediction_labels)
-                uploader.write((uint8_t *) (&b), sizeof(uint8_t));
+                uploader.write((uint8_t *) (&b), sizeof(float));
             uploader.close();
             uploader = bucket.open_upload_stream(task_id + ".prediction_timestamps");
             for (auto &b: prediction_logic_timestamps)
                 uploader.write((uint8_t *) (&b), sizeof(uint16_t));
             uploader.close();
+            uploader = bucket.open_upload_stream(task_id + ".trainings");
+            for (auto &b: trainings)
+                uploader.write((uint8_t *) (&b), sizeof(float));
+            uploader.close();
+            uploader = bucket.open_upload_stream(task_id + ".training_timestamps");
+            for (auto &b: training_logic_timestamps)
+                uploader.write((uint8_t *) (&b), sizeof(uint16_t));
+            uploader.close();
         } catch (const std::exception &xcp) {
             cerr << "error: db connection failed: " << xcp.what() << std::endl;
-            abort();
+            //continue to upload the simulation summaries
+//            abort();
         }
     }
 

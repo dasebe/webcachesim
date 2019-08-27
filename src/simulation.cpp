@@ -71,7 +71,7 @@ FrameWork::FrameWork(const string &trace_file, const string &cache_type, const u
             it = params.erase(it);
         } else if (it->first == "n_early_stop") {
             n_early_stop = stoll((it->second));
-            it = params.erase(it);
+            ++it;
         } else if (it->first == "n_extra_fields") {
             n_extra_fields = stoull(it->second);
             ++it;

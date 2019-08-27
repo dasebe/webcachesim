@@ -86,6 +86,28 @@ void WLCCache::train() {
                               training_params,
                               &len,
                               result.data());
+
+    {
+        if ((WLC::current_t >= n_logging_start0 && WLC::current_t < n_logging_end0) ||
+            (WLC::current_t >= n_logging_start1 && WLC::current_t < n_logging_end1)) {
+            training_logic_timestamps.emplace_back(WLC::current_t / 65536);
+            for (int i = 0; i < training_data->labels.size(); ++i) {
+                int current_idx = training_data->indptr[i];
+                for (int p = 0; p < WLC::n_feature; ++p) {
+                    if (p == training_data->indices[current_idx]) {
+                        trainings.emplace_back(training_data->data[current_idx]);
+                        if (current_idx < training_data->indptr[i + 1] - 1)
+                            ++current_idx;
+                    } else
+                        trainings.emplace_back(NAN);
+                }
+                uint32_t future_interval = WLC::future_timestamps.find(training_data->ids[i])->second - WLC::current_t;
+                trainings.emplace_back(future_interval);
+            }
+        }
+    }
+
+
     double se = 0;
     for (int i = 0; i < result.size(); ++i) {
         auto diff = result[i] - training_data->labels[i];
@@ -354,6 +376,7 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
     double data[sample_rate * WLC::n_feature];
     int32_t past_timestamps[sample_rate];
     uint32_t sizes[sample_rate];
+    uint64_t ids[sample_rate];
     //next_past_timestamp, next_size = next_indptr - 1
 
     unsigned int idx_feature = 0;
@@ -361,19 +384,12 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
     for (int i = 0; i < sample_rate; i++) {
         uint32_t pos = (i + rand_idx) % in_cache_metas.size();
         auto &meta = in_cache_metas[pos];
+
+        ids[i] = meta._key;
         //fill in past_interval
         indices[idx_feature] = 0;
         data[idx_feature++] = WLC::current_t - meta._past_timestamp;
         past_timestamps[idx_row] = meta._past_timestamp;
-
-        {
-            prediction_logic_timestamps.emplace_back(WLC::current_t / 65536);
-            auto it = WLC::future_timestamps.find(meta._key);
-            unsigned int prediction_label =
-                    static_cast<double>(it->second - WLC::current_t) / (_cacheSize * 1e6 / byte_million_req);
-            prediction_label = min((unsigned int) 255, prediction_label);
-            prediction_labels.emplace_back(prediction_label);
-        }
 
         uint8_t j = 0;
         uint32_t this_past_distance = 0;
@@ -467,6 +483,29 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
             worst_pos = i;
             min_past_timestamp = past_timestamps[i];
         }
+
+    {
+        if ((WLC::current_t >= n_logging_start0 && WLC::current_t < n_logging_end0) ||
+            (WLC::current_t >= n_logging_start1 && WLC::current_t < n_logging_end1)) {
+            prediction_logic_timestamps.emplace_back(WLC::current_t / 65536);
+            for (int i = 0; i < sample_rate; ++i) {
+                int current_idx = indptr[i];
+                for (int p = 0; p < WLC::n_feature; ++p) {
+                    if (p == indices[current_idx]) {
+                        predictions.emplace_back(training_data->data[current_idx]);
+                        if (current_idx < indptr[i + 1] - 1)
+                            ++current_idx;
+                    } else
+                        predictions.emplace_back(NAN);
+                }
+                uint32_t future_interval = WLC::future_timestamps.find(ids[i])->second - WLC::current_t;
+                predictions.emplace_back(future_interval);
+                predictions.emplace_back(result[i]);
+            }
+        }
+    }
+
+
     worst_pos = (worst_pos + rand_idx) % in_cache_metas.size();
     auto &meta = in_cache_metas[worst_pos];
     auto & worst_key = meta._key;
