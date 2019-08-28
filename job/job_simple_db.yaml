@@ -1,9 +1,0 @@
-debug: true
-dburl: mongodb://zhenyus:szy123456@ds135724.mlab.com:35724/webcachesim
-dbcollection: test
-
-# only one trace file is allowed
-trace_files:
-  - 'test.tr'
-cache_types:
-  - LRUK

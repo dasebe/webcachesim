@@ -16,6 +16,7 @@ def parse_cmd_args():
     parser.add_argument('--config_file', type=str, nargs='?', help='runner configuration file')
     parser.add_argument('--algorithm_param_file', type=str, help='algorithm parameter config file')
     parser.add_argument('--trace_param_file', type=str, help='trace parameter config file')
+    parser.add_argument('--nodefile', type=str, help='node file to use for gnu parallel')
     args = parser.parse_args()
 
     return vars(args)
@@ -107,7 +108,8 @@ def job_to_tasks(args):
                             'trace_files',
                             'algorithm_param_file',
                             'trace_param_file',
-                            'config_file'
+                            'config_file',
+                            'nodefile',
                         ] and v is not None:
                             task[k] = v
                     tasks.append(task)
