@@ -318,10 +318,8 @@ public:
     uint32_t n_req;
     int64_t n_early_stop = -1;
     uint32_t n_logging_start0, n_logging_end0, n_logging_start1, n_logging_end1;
-    vector<float> predictions;
-    vector<uint16_t> prediction_logic_timestamps;
-    vector<float> trainings;
-    vector<uint16_t> training_logic_timestamps;
+    vector<float> trainings_and_predictions;
+    vector<uint16_t> training_and_prediction_logic_timestamps;
     string task_id;
     string dburl;
 
@@ -475,20 +473,12 @@ public:
             for (auto &b: eviction_logic_timestamps)
                 uploader.write((uint8_t *) (&b), sizeof(uint16_t));
             uploader.close();
-            uploader = bucket.open_upload_stream(task_id + ".predictions");
-            for (auto &b: predictions)
+            uploader = bucket.open_upload_stream(task_id + ".trainings_and_predictions");
+            for (auto &b: trainings_and_predictions)
                 uploader.write((uint8_t *) (&b), sizeof(float));
             uploader.close();
-            uploader = bucket.open_upload_stream(task_id + ".prediction_timestamps");
-            for (auto &b: prediction_logic_timestamps)
-                uploader.write((uint8_t *) (&b), sizeof(uint16_t));
-            uploader.close();
-            uploader = bucket.open_upload_stream(task_id + ".trainings");
-            for (auto &b: trainings)
-                uploader.write((uint8_t *) (&b), sizeof(float));
-            uploader.close();
-            uploader = bucket.open_upload_stream(task_id + ".training_timestamps");
-            for (auto &b: training_logic_timestamps)
+            uploader = bucket.open_upload_stream(task_id + ".training_and_prediction_timestamps");
+            for (auto &b: training_and_prediction_logic_timestamps)
                 uploader.write((uint8_t *) (&b), sizeof(uint16_t));
             uploader.close();
         } catch (const std::exception &xcp) {

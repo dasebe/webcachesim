@@ -90,19 +90,20 @@ void WLCCache::train() {
     {
         if ((WLC::current_t >= n_logging_start0 && WLC::current_t < n_logging_end0) ||
             (WLC::current_t >= n_logging_start1 && WLC::current_t < n_logging_end1)) {
-            training_logic_timestamps.emplace_back(WLC::current_t / 65536);
+            training_and_prediction_logic_timestamps.emplace_back(WLC::current_t / 65536);
             for (int i = 0; i < training_data->labels.size(); ++i) {
                 int current_idx = training_data->indptr[i];
                 for (int p = 0; p < WLC::n_feature; ++p) {
                     if (p == training_data->indices[current_idx]) {
-                        trainings.emplace_back(training_data->data[current_idx]);
+                        trainings_and_predictions.emplace_back(training_data->data[current_idx]);
                         if (current_idx < training_data->indptr[i + 1] - 1)
                             ++current_idx;
                     } else
-                        trainings.emplace_back(NAN);
+                        trainings_and_predictions.emplace_back(NAN);
                 }
                 uint32_t future_interval = WLC::future_timestamps.find(training_data->ids[i])->second - WLC::current_t;
-                trainings.emplace_back(future_interval);
+                trainings_and_predictions.emplace_back(future_interval);
+                trainings_and_predictions.emplace_back(NAN);
             }
         }
     }
@@ -455,14 +456,6 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
                               result.data());
 
 
-    {
-        for (int i = 0; i < sample_rate; ++i) {
-            unsigned int prediction = (exp(result[i]) - 1) / (_cacheSize * 1e6 / byte_million_req);
-            prediction = min((unsigned int) 255, prediction);
-            predictions.emplace_back(prediction);
-        }
-    }
-
     if (!(WLC::current_t % 10000))
         inference_time = 0.95 * inference_time +
                          0.05 *
@@ -487,20 +480,20 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
     {
         if ((WLC::current_t >= n_logging_start0 && WLC::current_t < n_logging_end0) ||
             (WLC::current_t >= n_logging_start1 && WLC::current_t < n_logging_end1)) {
-            prediction_logic_timestamps.emplace_back(WLC::current_t / 65536);
+            training_and_prediction_logic_timestamps.emplace_back(WLC::current_t / 65536);
             for (int i = 0; i < sample_rate; ++i) {
                 int current_idx = indptr[i];
                 for (int p = 0; p < WLC::n_feature; ++p) {
                     if (p == indices[current_idx]) {
-                        predictions.emplace_back(training_data->data[current_idx]);
+                        trainings_and_predictions.emplace_back(training_data->data[current_idx]);
                         if (current_idx < indptr[i + 1] - 1)
                             ++current_idx;
                     } else
-                        predictions.emplace_back(NAN);
+                        trainings_and_predictions.emplace_back(NAN);
                 }
                 uint32_t future_interval = WLC::future_timestamps.find(ids[i])->second - WLC::current_t;
-                predictions.emplace_back(future_interval);
-                predictions.emplace_back(result[i]);
+                trainings_and_predictions.emplace_back(future_interval);
+                trainings_and_predictions.emplace_back(result[i]);
             }
         }
     }
