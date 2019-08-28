@@ -1,6 +1,6 @@
 test.tr:
   cache_sizes:
-  - 500
+    - 500
   # trace specific algorithm parameter, which overwrite the default params
   LRUK:
     k: 3
