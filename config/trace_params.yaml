@@ -42,6 +42,9 @@ traceHK_ts.tr:
   segment_window: 1000000
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
+  bloom_filter:
+    - 0
+    - 1
   byte_million_req: 378055367727
   n_req: 453490596
   uni_size: 0
@@ -102,6 +105,9 @@ traceUS_ts.tr:
   segment_window: 1000000
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
+  bloom_filter:
+    - 0
+    - 1
   byte_million_req: 406036951298
   n_req: 410634759
   uni_size: 0
@@ -165,6 +171,9 @@ wc2800m_ts.tr:
   segment_window: 1000000
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
+  bloom_filter:
+    - 0
+    - 1
   byte_million_req: 35234263115
   n_req: 2800000000
   uni_size: 0
@@ -236,6 +245,9 @@ ntg1_base.tr:
   segment_window: 1000000
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
+  bloom_filter:
+    - 0
+    - 1
   byte_million_req: 382836853735
   n_req: 1832408226
   uni_size: 0
@@ -299,6 +311,9 @@ ntg1_200m_base.tr:
   segment_window: 1000000
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
+  bloom_filter:
+    - 0
+    - 1
   byte_million_req: 382836853735
   n_req: 200000000
   uni_size: 0
@@ -367,6 +382,9 @@ ntg2_base.tr:
   segment_window: 1000000
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
+  bloom_filter:
+    - 0
+    - 1
   byte_million_req: 246201729549
   n_req: 2348079768
   uni_size: 0
@@ -435,6 +453,9 @@ ntg3_base.tr:
   segment_window: 1000000
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
+  bloom_filter:
+    - 0
+    - 1
   byte_million_req: 318057140120
   n_req: 1987460177
   uni_size: 0
