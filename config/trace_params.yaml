@@ -43,7 +43,7 @@ traceHK_ts.tr:
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
   bloom_filter:
-    - 0
+    #    - 0
     - 1
   byte_million_req: 378055367727
   n_req: 453490596
@@ -106,7 +106,7 @@ traceUS_ts.tr:
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
   bloom_filter:
-    - 0
+    #    - 0
     - 1
   byte_million_req: 406036951298
   n_req: 410634759
@@ -172,7 +172,7 @@ wc2800m_ts.tr:
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
   bloom_filter:
-    - 0
+    #    - 0
     - 1
   byte_million_req: 35234263115
   n_req: 2800000000
@@ -203,7 +203,6 @@ wc2800m_ts.tr:
 
 ntg1_base.tr:
   cache_sizes:
-    #    - 68719476736
     - 137438953472:
         WLC:
           memory_window:
@@ -240,13 +239,12 @@ ntg1_base.tr:
             - 536870912
             - 1073741824
             - 2147483648
-  #    - 8796093022208
   n_extra_fields: 2
   segment_window: 1000000
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
   bloom_filter:
-    - 0
+    #    - 0
     - 1
   byte_million_req: 382836853735
   n_req: 1832408226
@@ -312,7 +310,7 @@ ntg1_200m_base.tr:
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
   bloom_filter:
-    - 0
+    #    - 0
     - 1
   byte_million_req: 382836853735
   n_req: 200000000
@@ -377,13 +375,12 @@ ntg2_base.tr:
             - 536870912
             - 1073741824
             - 2147483648
-  #    - 8796093022208
   n_extra_fields: 2
   segment_window: 1000000
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
   bloom_filter:
-    - 0
+    #    - 0
     - 1
   byte_million_req: 246201729549
   n_req: 2348079768
@@ -411,7 +408,6 @@ ntg2_base.tr:
 
 ntg3_base.tr:
   cache_sizes:
-    #    - 68719476736
     - 137438953472:
         WLC:
           memory_window:
@@ -448,13 +444,12 @@ ntg3_base.tr:
             - 536870912
             - 1073741824
             - 2147483648
-  #    - 8796093022208
   n_extra_fields: 2
   segment_window: 1000000
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
   bloom_filter:
-    - 0
+    #    - 0
     - 1
   byte_million_req: 318057140120
   n_req: 1987460177
