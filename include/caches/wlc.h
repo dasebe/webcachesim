@@ -19,6 +19,7 @@
 #include "mongocxx/client.hpp"
 #include "mongocxx/uri.hpp"
 #include <mongocxx/gridfs/bucket.hpp>
+#include "bloom_filter.h"
 
 using namespace std;
 using spp::sparse_hash_map;
@@ -323,6 +324,13 @@ public:
     string task_id;
     string dburl;
 
+
+    /*
+     * bloom filter
+     */
+    bool wlc_bloom_filter = false;
+    BloomFilter *filter;
+
     WLCCache()
         : Cache()
     {
@@ -345,6 +353,8 @@ public:
                 n_req = stoull(it.second);
             } else if (it.first == "n_extra_fields") {
                 WLC::n_extra_fields = stoull(it.second);
+            } else if (it.first == "wlc_bloom_filter") {
+                wlc_bloom_filter = static_cast<bool>(stoi(it.second));
             } else if (it.first == "num_iterations") {
                 training_params["num_iterations"] = it.second;
             } else if (it.first == "learning_rate") {
@@ -420,6 +430,9 @@ public:
         }
         n_logging_end0 = n_logging_start0 + 1000000;
         n_logging_end1 = n_logging_start1 + 1000000;
+
+        if (wlc_bloom_filter)
+            filter = new BloomFilter();
     }
 
     bool lookup(SimpleRequest& req);

@@ -165,9 +165,10 @@ WLC:
   #    - object_miss_ratio
   n_edc_feature:
     - 10
-  #    - 12
-  #    - 16
-  version: no_force_eviction
+  wlc_bloom_filter:
+    - 0
+    - 1
+  version: bloom_filter
 Hyperbolic:
   sample_rate: 64
 LeCaR:

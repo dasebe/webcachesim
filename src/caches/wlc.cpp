@@ -321,6 +321,11 @@ void WLCCache::admit(SimpleRequest &req) {
         return;
     }
 
+
+    bool seen = (!wlc_bloom_filter) || filter->exist_or_insert(req._id);
+    if (!seen)
+        return;
+
     auto it = key_map.find(req._id);
     if (it == key_map.end()) {
         //fresh insert
