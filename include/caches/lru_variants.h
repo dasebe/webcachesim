@@ -206,11 +206,12 @@ class BloomFilterCache : public LRUCache {
 protected:
     unordered_set<uint64_t> _filter[2];
     uint8_t current_filter = 0;
+    static const size_t max_n_element = 40000000;
 
 public:
     BloomFilterCache() {
         for (int i = 0; i < 2; ++i)
-            _filter[i].reserve(40000000);
+            _filter[i].reserve(max_n_element);
         LRUCache();
     }
     virtual void admit(SimpleRequest &req);
