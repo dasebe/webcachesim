@@ -63,6 +63,9 @@ FrameWork::FrameWork(const string &trace_file, const string &cache_type, const u
         } else if (it->first == "is_metadata_in_cache_size") {
             is_metadata_in_cache_size = static_cast<bool>(stoi(it->second));
             it = params.erase(it);
+        } else if (it->first == "bloom_filter") {
+            bloom_filter = static_cast<bool>(stoi(it->second));
+            it = params.erase(it);
         } else if (it->first == "segment_window") {
             segment_window = stoull((it->second));
             ++it;
@@ -160,6 +163,9 @@ void FrameWork::simulate() {
     unordered_map<uint64_t, uint32_t> future_timestamps;
     vector<uint8_t> eviction_qualities;
     vector<uint16_t> eviction_logic_timestamps;
+    if (bloom_filter) {
+        filter = new BloomFilter;
+    }
 
     SimpleRequest *req;
     unordered_set<string> offline_algorithms = {"Belady", "BeladySample", "LRUKSample", "LFUSample", "WLC", "LRU",
@@ -194,12 +200,19 @@ void FrameWork::simulate() {
         else
             req->reinit(id, size, seq, &extra_features);
 
-        bool is_hit = webcache->lookup(*req);
-        if (!is_hit) {
+        bool seen = (!bloom_filter) || filter->exist_or_insert(id);
+        if (seen) {
+            bool is_hit = webcache->lookup(*req);
+            if (!is_hit) {
+                update_metric_req(byte_miss, obj_miss, size);
+                update_metric_req(rt_byte_miss, rt_obj_miss, size)
+                webcache->admit(*req);
+            }
+        } else {
             update_metric_req(byte_miss, obj_miss, size);
             update_metric_req(rt_byte_miss, rt_obj_miss, size)
-            webcache->admit(*req);
         }
+
         ++seq;
     }
     //for the residue segment of trace

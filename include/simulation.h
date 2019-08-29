@@ -11,8 +11,10 @@
 #include <fstream>
 #include <vector>
 #include <bsoncxx/builder/basic/document.hpp>
+#include <unordered_set>
 #include "cache.h"
 #include "bsoncxx/document/view.hpp"
+#include "bloom_filter.h"
 
 
 /*
@@ -37,6 +39,12 @@ public:
     std::string _trace_file;
     std::string _cache_type;
     uint64_t _cache_size;
+
+    /*
+     * bloom filter
+     */
+    bool bloom_filter = false;
+    BloomFilter *filter;
 
     //=================================================================
     //simulation parameter

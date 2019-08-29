@@ -202,22 +202,22 @@ static Factory<FIFOCache> factoryFIFO("FIFO");
   BloomFilterCache (admit only after 1 requests), each BloomFilter holds 40 million objects,
   as suggested by Akamai algorithm nugget paper
 */
-class BloomFilterCache : public LRUCache {
-protected:
-    unordered_set<uint64_t> _filter[2];
-    uint8_t current_filter = 0;
-    static const size_t max_n_element = 40000000;
-
-public:
-    BloomFilterCache() {
-        for (int i = 0; i < 2; ++i)
-            _filter[i].reserve(max_n_element);
-        LRUCache();
-    }
-    virtual void admit(SimpleRequest &req);
-};
-
-static Factory<BloomFilterCache> factoryBloomFilter("BloomFilter");
+//class BloomFilterCache : public LRUCache {
+//protected:
+//    unordered_set<uint64_t> _filter[2];
+//    uint8_t current_filter = 0;
+//    static const size_t max_n_element = 40000000;
+//
+//public:
+//    BloomFilterCache() {
+//        for (int i = 0; i < 2; ++i)
+//            _filter[i].reserve(max_n_element);
+//        LRUCache();
+//    }
+//    virtual void admit(SimpleRequest &req);
+//};
+//
+//static Factory<BloomFilterCache> factoryBloomFilter("BloomFilter");
 
 /*
   AdaptSize: ExpLRU with automatic adaption of the _cParam

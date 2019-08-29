@@ -31,7 +31,8 @@ set(LIB_SOURCE
         caches/hyperbolic.cpp caches/lecar.cpp
         simulation_tinylfu.cpp ../include/simulation_tinylfu.h
         caches/lr.cpp
-        rss.cpp ../include/rss.h)
+        rss.cpp ../include/rss.h
+        ../include/bloom_filter.h)
 #message(123)
 
 

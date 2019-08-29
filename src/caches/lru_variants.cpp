@@ -209,24 +209,18 @@ void FIFOCache::hit(lruCacheMapType::const_iterator it, uint64_t size)
 //}
 
 
-void BloomFilterCache::admit(SimpleRequest &req) {
-    auto &id = req._id;
-    if (_filter[current_filter].size() > max_n_element) {
-        //if accumulate more than 40 million, switch
-        if (!_filter[1 - current_filter].empty())
-            _filter[1 - current_filter].clear();
-        current_filter = 1 - current_filter;
-    }
-
-    if ((!_filter[0].count(req._id)) && (!_filter[1].count(req._id))) {
-        _filter[current_filter].insert(req._id);
-        return;
-    }
-
-    if (!_filter[current_filter].count(req._id))
-        _filter[current_filter].insert(req._id);
-    LRUCache::admit(req);
-}
+//void BloomFilterCache::admit(SimpleRequest &req) {
+//    auto &id = req._id;
+//
+//    if ((!_filter[0].count(req._id)) && (!_filter[1].count(req._id))) {
+//        _filter[current_filter].insert(req._id);
+//        return;
+//    }
+//
+//    if (!_filter[current_filter].count(req._id))
+//        _filter[current_filter].insert(req._id);
+//    LRUCache::admit(req);
+//}
 
 AdaptSizeCache::AdaptSizeCache()
         : LRUCache()
