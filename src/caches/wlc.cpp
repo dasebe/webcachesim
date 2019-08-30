@@ -71,7 +71,7 @@ void WLCCache::train() {
 //    cout<<endl;
 
     int64_t len;
-    vector<double > result(training_data->indptr.size()-1);
+    vector<double> result(training_data->indptr.size() - 1);
     LGBM_BoosterPredictForCSR(booster,
                               static_cast<void *>(training_data->indptr.data()),
                               C_API_DTYPE_INT32,
@@ -114,7 +114,7 @@ void WLCCache::train() {
         auto diff = result[i] - training_data->labels[i];
         se += diff * diff;
     }
-    training_loss = training_loss * 0.99 + se/WLC::batch_size*0.01;
+    training_loss = training_loss * 0.99 + se / WLC::batch_size * 0.01;
 
     LGBM_DatasetFree(trainData);
     training_time = 0.95 * training_time +
@@ -132,8 +132,8 @@ void WLCCache::sample() {
     auto n_l1 = static_cast<uint32_t>(out_cache_metas.size());
     auto rand_idx = _distribution(_generator);
     // at least sample 1 from the list, at most size of the list
-    auto n_sample_l0 = min(max(uint32_t (training_sample_interval*n_l0/(n_l0+n_l1)), (uint32_t) 1), n_l0);
-    auto n_sample_l1 = min(max(uint32_t (training_sample_interval - n_sample_l0), (uint32_t) 1), n_l1);
+    auto n_sample_l0 = min(max(uint32_t(training_sample_interval * n_l0 / (n_l0 + n_l1)), (uint32_t) 1), n_l0);
+    auto n_sample_l1 = min(max(uint32_t(training_sample_interval - n_sample_l0), (uint32_t) 1), n_l1);
 
     //sample list 0
     for (uint32_t i = 0; i < n_sample_l0; i++) {
@@ -166,9 +166,9 @@ void WLCCache::print_stats() {
             << "cache size: " << _currentSize << "/" << _cacheSize << " (" << ((double) _currentSize) / _cacheSize
             << ")" << endl
             << "in/out metadata " << in_cache_metas.size() << " / " << out_cache_metas.size() << endl
-//    cerr << "feature overhead: "<<feature_overhead<<endl;
+            //    cerr << "feature overhead: "<<feature_overhead<<endl;
             << "feature overhead per entry: " << feature_overhead / key_map.size() << endl
-//    cerr << "sample overhead: "<<sample_overhead<<endl;
+            //    cerr << "sample overhead: "<<sample_overhead<<endl;
             << "sample overhead per entry: " << sample_overhead / key_map.size() << endl
             << "n_training: " << training_data->labels.size() << endl
             //            << "training loss: " << training_loss << endl
@@ -181,7 +181,7 @@ void WLCCache::print_stats() {
 bool WLCCache::lookup(SimpleRequest &req) {
     bool ret;
     //piggy back
-    if (req._t && !((req._t)%segment_window))
+    if (req._t && !((req._t) % segment_window))
         print_stats();
 
     {
@@ -213,7 +213,7 @@ bool WLCCache::lookup(SimpleRequest &req) {
         //re-request
         if (!meta._sample_times.empty()) {
             //mature
-            for (auto & sample_time: meta._sample_times) {
+            for (auto &sample_time: meta._sample_times) {
                 //don't use label within the first forget window because the data is not static
                 uint32_t future_distance = req._t - sample_time;
                 training_data->emplace_back(meta, sample_time, future_distance);
@@ -271,7 +271,7 @@ void WLCCache::forget() {
         if (!meta._sample_times.empty()) {
             //mature
             uint32_t future_distance = WLC::memory_window * 2;
-            for (auto & sample_time: meta._sample_times) {
+            for (auto &sample_time: meta._sample_times) {
                 //don't use label within the first forget window because the data is not static
                 training_data->emplace_back(meta, sample_time, future_distance);
                 //training
@@ -314,7 +314,7 @@ void WLCCache::forget() {
 }
 
 void WLCCache::admit(SimpleRequest &req) {
-    const uint64_t & size = req._size;
+    const uint64_t &size = req._size;
     // object feasible to store?
     if (size > _cacheSize) {
         LOG("L", _cacheSize, req.get_id(), size);
@@ -347,7 +347,7 @@ void WLCCache::admit(SimpleRequest &req) {
         auto it_lru = in_cache_lru_queue.request(req._id);
         in_cache_metas.emplace_back(out_cache_metas[it->second.list_pos], it_lru);
         uint32_t tail1_pos = out_cache_metas.size() - 1;
-        if (it->second.list_pos !=  tail1_pos) {
+        if (it->second.list_pos != tail1_pos) {
             //swap tail
             out_cache_metas[it->second.list_pos] = out_cache_metas[tail1_pos];
             key_map.find(out_cache_metas[tail1_pos]._key)->second.list_pos = it->second.list_pos;
@@ -403,9 +403,9 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
         if (meta._extra) {
             for (j = 0; j < meta._extra->_past_distance_idx && j < WLC::max_n_past_distances; ++j) {
                 uint8_t past_distance_idx = (meta._extra->_past_distance_idx - 1 - j) % WLC::max_n_past_distances;
-                uint32_t & past_distance = meta._extra->_past_distances[past_distance_idx];
+                uint32_t &past_distance = meta._extra->_past_distances[past_distance_idx];
                 this_past_distance += past_distance;
-                indices[idx_feature] = j+1;
+                indices[idx_feature] = j + 1;
                 data[idx_feature++] = past_distance;
                 if (this_past_distance < WLC::memory_window) {
                     ++n_within;
@@ -424,7 +424,7 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
             data[idx_feature++] = meta._extra_features[k];
         }
 
-        indices[idx_feature] = WLC::max_n_past_timestamps+WLC::n_extra_fields+1;
+        indices[idx_feature] = WLC::max_n_past_timestamps + WLC::n_extra_fields + 1;
         data[idx_feature++] = n_within;
 
         for (uint8_t k = 0; k < WLC::n_edc_feature; ++k) {
@@ -451,7 +451,7 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
                               indices,
                               static_cast<void *>(data),
                               C_API_DTYPE_FLOAT64,
-                              idx_row+1,
+                              idx_row + 1,
                               idx_feature,
                               WLC::n_feature,  //remove future t
                               C_API_PREDICT_NORMAL,
@@ -506,15 +506,15 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
 
     worst_pos = (worst_pos + rand_idx) % in_cache_metas.size();
     auto &meta = in_cache_metas[worst_pos];
-    auto & worst_key = meta._key;
+    auto &worst_key = meta._key;
 
     return {worst_key, worst_pos};
 }
 
 void WLCCache::evict() {
     auto epair = rank();
-    uint64_t & key = epair.first;
-    uint32_t & old_pos = epair.second;
+    uint64_t &key = epair.first;
+    uint32_t &old_pos = epair.second;
 
 //    cout<<t<<" "<<key<<endl;
 

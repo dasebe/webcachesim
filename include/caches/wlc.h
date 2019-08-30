@@ -30,14 +30,15 @@ namespace WLC {
     uint8_t max_n_past_distances = 31;
     uint8_t base_edc_window = 10;
     const uint8_t n_edc_feature = 10;
-    vector<uint32_t > edc_windows;
-    vector<double > hash_edc;
+    vector<uint32_t> edc_windows;
+    vector<double> hash_edc;
     uint32_t max_hash_edc_idx;
     uint32_t memory_window = 67108864;
     uint32_t n_extra_fields = 0;
     uint32_t batch_size = 131072;
     const uint max_n_extra_feature = 4;
     uint32_t n_feature;
+    //TODO: interval clock should tick by event instead of following incoming packet time
     uint32_t current_t;
     unordered_map<uint64_t, uint32_t> future_timestamps;
 }
@@ -50,16 +51,16 @@ struct WLCMetaExtra {
     //the next index to put the distance
     uint8_t _past_distance_idx = 1;
 
-    WLCMetaExtra(const uint32_t & distance) {
+    WLCMetaExtra(const uint32_t &distance) {
         _past_distances = vector<uint32_t>(1, distance);
         for (uint8_t i = 0; i < WLC::n_edc_feature; ++i) {
-            uint32_t _distance_idx = min(uint32_t (distance/WLC::edc_windows[i]), WLC:: max_hash_edc_idx);
+            uint32_t _distance_idx = min(uint32_t(distance / WLC::edc_windows[i]), WLC::max_hash_edc_idx);
             _edc[i] = WLC::hash_edc[_distance_idx] + 1;
         }
     }
 
-    void update(const uint32_t & distance) {
-        uint8_t distance_idx = _past_distance_idx%WLC::max_n_past_distances;
+    void update(const uint32_t &distance) {
+        uint8_t distance_idx = _past_distance_idx % WLC::max_n_past_distances;
         if (_past_distances.size() < WLC::max_n_past_distances)
             _past_distances.emplace_back(distance);
         else
@@ -69,7 +70,7 @@ struct WLCMetaExtra {
         if (_past_distance_idx >= WLC::max_n_past_distances * 2)
             _past_distance_idx -= WLC::max_n_past_distances;
         for (uint8_t i = 0; i < WLC::n_edc_feature; ++i) {
-            uint32_t _distance_idx = min(uint32_t (distance/WLC::edc_windows[i]), WLC:: max_hash_edc_idx);
+            uint32_t _distance_idx = min(uint32_t(distance / WLC::edc_windows[i]), WLC::max_hash_edc_idx);
             _edc[i] = _edc[i] * WLC::hash_edc[_distance_idx] + 1;
         }
     }
@@ -82,11 +83,11 @@ public:
     uint32_t _size;
     uint32_t _past_timestamp;
     uint16_t _extra_features[WLC::max_n_extra_feature];
-    WLCMetaExtra * _extra = nullptr;
+    WLCMetaExtra *_extra = nullptr;
     vector<uint32_t> _sample_times;
 
-    WLCMeta(const uint64_t & key, const uint64_t & size, const uint64_t & past_timestamp,
-            const vector<uint16_t> & extra_features) {
+    WLCMeta(const uint64_t &key, const uint64_t &size, const uint64_t &past_timestamp,
+            const vector<uint16_t> &extra_features) {
         _key = key;
         _size = size;
         _past_timestamp = past_timestamp;
@@ -94,7 +95,7 @@ public:
             _extra_features[i] = extra_features[i];
     }
 
-    void emplace_sample(uint32_t & sample_t) {
+    void emplace_sample(uint32_t &sample_t) {
         _sample_times.emplace_back(sample_t);
     }
 
@@ -117,7 +118,7 @@ public:
     int feature_overhead() {
         int ret = sizeof(WLCMeta);
         if (_extra)
-            ret += sizeof(WLCMetaExtra) - sizeof(_sample_times) + _extra->_past_distances.capacity()*sizeof(uint32_t);
+            ret += sizeof(WLCMetaExtra) - sizeof(_sample_times) + _extra->_past_distances.capacity() * sizeof(uint32_t);
         return ret;
     }
 
@@ -177,18 +178,18 @@ public:
 
     WLCTrainingData() {
         labels.reserve(WLC::batch_size);
-        indptr.reserve(WLC::batch_size+1);
+        indptr.reserve(WLC::batch_size + 1);
         indptr.emplace_back(0);
-        indices.reserve(WLC::batch_size*WLC::n_feature);
-        data.reserve(WLC::batch_size*WLC::n_feature);
+        indices.reserve(WLC::batch_size * WLC::n_feature);
+        data.reserve(WLC::batch_size * WLC::n_feature);
         ids.reserve(WLC::batch_size);
     }
 
-    void emplace_back(WLCMeta &meta, uint32_t & sample_timestamp, uint32_t & future_interval) {
+    void emplace_back(WLCMeta &meta, uint32_t &sample_timestamp, uint32_t &future_interval) {
         int32_t counter = indptr.back();
 
         indices.emplace_back(0);
-        data.emplace_back(sample_timestamp-meta._past_timestamp);
+        data.emplace_back(sample_timestamp - meta._past_timestamp);
         ++counter;
 
         uint32_t this_past_distance = 0;
@@ -197,10 +198,10 @@ public:
         if (meta._extra) {
             for (; j < meta._extra->_past_distance_idx && j < WLC::max_n_past_distances; ++j) {
                 uint8_t past_distance_idx = (meta._extra->_past_distance_idx - 1 - j) % WLC::max_n_past_distances;
-                const uint32_t & past_distance = meta._extra->_past_distances[past_distance_idx];
+                const uint32_t &past_distance = meta._extra->_past_distances[past_distance_idx];
                 this_past_distance += past_distance;
-                    indices.emplace_back(j+1);
-                    data.emplace_back(past_distance);
+                indices.emplace_back(j + 1);
+                data.emplace_back(past_distance);
                 if (this_past_distance < WLC::memory_window) {
                     ++n_within;
                 }
@@ -219,7 +220,7 @@ public:
         }
         counter += WLC::n_extra_fields;
 
-        indices.push_back(WLC::max_n_past_timestamps+WLC::n_extra_fields+1);
+        indices.push_back(WLC::max_n_past_timestamps + WLC::n_extra_fields + 1);
         data.push_back(n_within);
         ++counter;
 
@@ -228,7 +229,7 @@ public:
                 indices.push_back(WLC::max_n_past_timestamps + WLC::n_extra_fields + 2 + k);
                 uint32_t _distance_idx = std::min(
                         uint32_t(sample_timestamp - meta._past_timestamp) / WLC::edc_windows[k],
-                        WLC:: max_hash_edc_idx);
+                        WLC::max_hash_edc_idx);
                 data.push_back(meta._extra->_edc[k] * WLC::hash_edc[_distance_idx]);
             }
         } else {
@@ -236,7 +237,7 @@ public:
                 indices.push_back(WLC::max_n_past_timestamps + WLC::n_extra_fields + 2 + k);
                 uint32_t _distance_idx = std::min(
                         uint32_t(sample_timestamp - meta._past_timestamp) / WLC::edc_windows[k],
-                        WLC:: max_hash_edc_idx);
+                        WLC::max_hash_edc_idx);
                 data.push_back(WLC::hash_edc[_distance_idx]);
             }
         }
@@ -264,8 +265,7 @@ struct KeyMapEntryT {
     unsigned int list_pos: 31;
 };
 
-class WLCCache : public Cache
-{
+class WLCCache : public Cache {
 public:
     //key -> (0/1 list, idx)
     sparse_hash_map<uint64_t, KeyMapEntryT> key_map;
@@ -276,7 +276,7 @@ public:
     InCacheLRUQueue in_cache_lru_queue;
     //TODO: negative queue should have a better abstraction, at least hide the round-up
     sparse_hash_map<uint32_t, uint64_t> negative_candidate_queue;
-    WLCTrainingData * training_data;
+    WLCTrainingData *training_data;
 
     // sample_size
     uint sample_rate = 64;
@@ -292,7 +292,7 @@ public:
     BoosterHandle booster = nullptr;
 
     unordered_map<string, string> training_params = {
-    //don't use alias here. C api may not recongize
+            //don't use alias here. C api may not recongize
             {"boosting",         "gbdt"},
             {"objective",        "regression"},
             {"num_iterations",   "32"},
@@ -307,7 +307,9 @@ public:
 
     unordered_map<string, string> inference_params;
 
-    enum ObjectiveT: uint8_t {byte_miss_ratio=0, object_miss_ratio=1};
+    enum ObjectiveT : uint8_t {
+        byte_miss_ratio = 0, object_miss_ratio = 1
+    };
     ObjectiveT objective = byte_miss_ratio;
 
     default_random_engine _generator = default_random_engine();
@@ -332,13 +334,12 @@ public:
     BloomFilter *filter;
 
     WLCCache()
-        : Cache()
-    {
+            : Cache() {
     }
 
     void init_with_params(map<string, string> params) override {
         //set params
-        for (auto& it: params) {
+        for (auto &it: params) {
             if (it.first == "sample_rate") {
                 sample_rate = stoul(it.second);
             } else if (it.first == "memory_window") {
@@ -392,14 +393,14 @@ public:
         }
 
         negative_candidate_queue.reserve(WLC::memory_window);
-        WLC::max_n_past_distances = WLC::max_n_past_timestamps-1;
+        WLC::max_n_past_distances = WLC::max_n_past_timestamps - 1;
         //init
-        WLC::edc_windows = vector<uint32_t >(WLC::n_edc_feature);
+        WLC::edc_windows = vector<uint32_t>(WLC::n_edc_feature);
         for (uint8_t i = 0; i < WLC::n_edc_feature; ++i) {
-            WLC::edc_windows[i] = pow(2, WLC::base_edc_window+i);
+            WLC::edc_windows[i] = pow(2, WLC::base_edc_window + i);
         }
         WLC::max_hash_edc_idx = (uint64_t) (WLC::memory_window / pow(2, WLC::base_edc_window)) - 1;
-        WLC::hash_edc = vector<double >(WLC:: max_hash_edc_idx+1);
+        WLC::hash_edc = vector<double>(WLC::max_hash_edc_idx + 1);
         for (int i = 0; i < WLC::hash_edc.size(); ++i)
             WLC::hash_edc[i] = pow(0.5, i);
 
@@ -411,9 +412,9 @@ public:
                         + " extra fields because of static allocation" << endl;
                 abort();
             }
-            string categorical_feature = to_string(WLC::max_n_past_timestamps+1);
-            for (uint i = 0; i < WLC::n_extra_fields-1; ++i) {
-                categorical_feature += ","+to_string(WLC::max_n_past_timestamps+2+i);
+            string categorical_feature = to_string(WLC::max_n_past_timestamps + 1);
+            for (uint i = 0; i < WLC::n_extra_fields - 1; ++i) {
+                categorical_feature += "," + to_string(WLC::max_n_past_timestamps + 2 + i);
             }
             training_params["categorical_feature"] = categorical_feature;
         }
@@ -435,20 +436,26 @@ public:
             filter = new BloomFilter();
     }
 
-    bool lookup(SimpleRequest& req);
-    void admit(SimpleRequest& req);
+    bool lookup(SimpleRequest &req);
+
+    void admit(SimpleRequest &req);
 
     void evict();
-    void evict(SimpleRequest & req) {};
+
+    void evict(SimpleRequest &req) {};
 
     void forget();
+
     //sample, rank the 1st and return
     pair<uint64_t, uint32_t> rank();
+
     void train();
 
     void sample();
+
     void print_stats();
-    bool has(const uint64_t& id) {
+
+    bool has(const uint64_t &id) {
         auto it = key_map.find(id);
         if (it == key_map.end())
             return false;
