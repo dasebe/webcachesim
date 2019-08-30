@@ -174,7 +174,6 @@ public:
     vector<int32_t> indptr;
     vector<int32_t> indices;
     vector<double> data;
-    vector<uint64_t> ids;
 
     WLCTrainingData() {
         labels.reserve(WLC::batch_size);
@@ -182,7 +181,6 @@ public:
         indptr.emplace_back(0);
         indices.reserve(WLC::batch_size * WLC::n_feature);
         data.reserve(WLC::batch_size * WLC::n_feature);
-        ids.reserve(WLC::batch_size);
     }
 
     void emplace_back(WLCMeta &meta, uint32_t &sample_timestamp, uint32_t &future_interval) {
@@ -246,8 +244,6 @@ public:
 
         labels.push_back(log1p(future_interval));
         indptr.push_back(counter);
-
-        ids.emplace_back(meta._key);
     }
 
     void clear() {
@@ -255,7 +251,6 @@ public:
         indptr.resize(1);
         indices.clear();
         data.clear();
-        ids.clear();
     }
 };
 

@@ -304,14 +304,14 @@ ntg1_200m_base.tr:
         WLC:
           memory_window:
             - 33554432
-            - 67108864
+  #            - 67108864
   n_extra_fields: 2
   segment_window: 1000000
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
   bloom_filter:
-    #    - 0
-    - 1
+    - 0
+  #    - 1
   byte_million_req: 382836853735
   n_req: 200000000
   uni_size: 0

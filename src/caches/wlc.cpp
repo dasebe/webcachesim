@@ -101,8 +101,7 @@ void WLCCache::train() {
                     } else
                         trainings_and_predictions.emplace_back(NAN);
                 }
-                uint32_t future_interval = WLC::future_timestamps.find(training_data->ids[i])->second - WLC::current_t;
-                trainings_and_predictions.emplace_back(future_interval);
+                trainings_and_predictions.emplace_back(training_data->labels[i]);
                 trainings_and_predictions.emplace_back(NAN);
             }
         }
@@ -235,7 +234,7 @@ bool WLCCache::lookup(SimpleRequest &req) {
             assert(negative_candidate_queue.find((req._t + WLC::memory_window) % WLC::memory_window) !=
                    negative_candidate_queue.end());
         } else {
-            InCacheMeta *p = static_cast<InCacheMeta *>(&meta);
+            auto *p = static_cast<InCacheMeta *>(&meta);
             p->p_last_request = in_cache_lru_queue.re_request(p->p_last_request);
         }
         //update negative_candidate_queue
@@ -546,6 +545,7 @@ void WLCCache::evict() {
             meta._sample_times.shrink_to_fit();
         }
 
+        meta.free();
         _currentSize -= meta._size;
         key_map.erase(key);
         in_cache_lru_queue.dq.pop_back();
