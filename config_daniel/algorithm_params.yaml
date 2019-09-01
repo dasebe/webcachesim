@@ -167,7 +167,7 @@ WLC:
     - 10
   wlc_bloom_filter:
     - 0
-    - 1
+  #    - 1
   version: bloom_filter
 Hyperbolic:
   sample_rate: 64
