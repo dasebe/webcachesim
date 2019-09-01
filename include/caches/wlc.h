@@ -95,6 +95,8 @@ public:
             _extra_features[i] = extra_features[i];
     }
 
+    virtual ~WLCMeta() = default;
+
     void emplace_sample(uint32_t &sample_t) {
         _sample_times.emplace_back(sample_t);
     }
