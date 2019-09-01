@@ -234,7 +234,7 @@ bool WLCCache::lookup(SimpleRequest &req) {
             assert(negative_candidate_queue.find((req._t + WLC::memory_window) % WLC::memory_window) !=
                    negative_candidate_queue.end());
         } else {
-            auto *p = static_cast<InCacheMeta *>(&meta);
+            auto *p = dynamic_cast<InCacheMeta *>(&meta);
             p->p_last_request = in_cache_lru_queue.re_request(p->p_last_request);
         }
         //update negative_candidate_queue
@@ -269,6 +269,7 @@ void WLCCache::forget() {
         //timeout mature
         if (!meta._sample_times.empty()) {
             //mature
+            //todo: potential to overfill
             uint32_t future_distance = WLC::memory_window * 2;
             for (auto &sample_time: meta._sample_times) {
                 //don't use label within the first forget window because the data is not static
@@ -369,7 +370,7 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
         auto it = key_map.find(candidate_key);
         auto pos = it->second.list_pos;
         auto &meta = in_cache_metas[pos];
-        if ((!booster) || (meta._past_timestamp + WLC::memory_window <= WLC::current_t))
+        if ((!booster) || (WLC::memory_window <= WLC::current_t - meta._past_timestamp))
             return {meta._key, pos};
     }
 
@@ -527,7 +528,7 @@ void WLCCache::evict() {
     }
 
     auto &meta = in_cache_metas[old_pos];
-    if (meta._past_timestamp + WLC::memory_window <= WLC::current_t) {
+    if (WLC::memory_window <= WLC::current_t - meta._past_timestamp) {
         //must be the tail of lru
         if (!meta._sample_times.empty()) {
             //mature
@@ -545,10 +546,14 @@ void WLCCache::evict() {
             meta._sample_times.shrink_to_fit();
         }
 
+
+        in_cache_lru_queue.dq.erase(meta.p_last_request);
+        meta.p_last_request = in_cache_lru_queue.dq.end();
+        //above is suppose to be below, but to make sure the action is correct
+//        in_cache_lru_queue.dq.pop_back();
         meta.free();
         _currentSize -= meta._size;
         key_map.erase(key);
-        in_cache_lru_queue.dq.pop_back();
 
         uint32_t activate_tail_idx = in_cache_metas.size() - 1;
         if (old_pos != activate_tail_idx) {
@@ -560,8 +565,8 @@ void WLCCache::evict() {
 
     } else {
         //bring list 0 to list 1
-        auto &meta = in_cache_metas[old_pos];
         in_cache_lru_queue.dq.erase(meta.p_last_request);
+        meta.p_last_request = in_cache_lru_queue.dq.end();
         _currentSize -= meta._size;
         negative_candidate_queue.insert({(meta._past_timestamp + WLC::memory_window) % WLC::memory_window, meta._key});
 
