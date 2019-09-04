@@ -88,8 +88,7 @@ void WLCCache::train() {
                               result.data());
 
     {
-        if ((WLC::current_t >= n_logging_start0 && WLC::current_t < n_logging_end0) ||
-            (WLC::current_t >= n_logging_start1 && WLC::current_t < n_logging_end1)) {
+        if (WLC::current_t >= n_logging_start0) {
             training_and_prediction_logic_timestamps.emplace_back(WLC::current_t / 65536);
             for (int i = 0; i < training_data->labels.size(); ++i) {
                 int current_idx = training_data->indptr[i];
@@ -483,8 +482,7 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
         }
 
     {
-        if ((WLC::current_t >= n_logging_start0 && WLC::current_t < n_logging_end0) ||
-            (WLC::current_t >= n_logging_start1 && WLC::current_t < n_logging_end1)) {
+        if (WLC::current_t >= n_logging_start0) {
             training_and_prediction_logic_timestamps.emplace_back(WLC::current_t / 65536);
             for (int i = 0; i < sample_rate; ++i) {
                 int current_idx = indptr[i];

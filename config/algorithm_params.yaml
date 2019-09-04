@@ -168,7 +168,7 @@ WLC:
   wlc_bloom_filter:
     - 0
   #    - 1
-  version: bloom_filter
+  version: tuning
 Hyperbolic:
   sample_rate: 64
 LeCaR:

@@ -317,7 +317,7 @@ public:
     uint64_t byte_million_req;
     uint32_t n_req;
     int64_t n_early_stop = -1;
-    uint32_t n_logging_start0, n_logging_end0, n_logging_start1, n_logging_end1;
+    uint32_t n_logging_start0;
     vector<float> trainings_and_predictions;
     vector<uint16_t> training_and_prediction_logic_timestamps;
     string task_id;
@@ -418,16 +418,12 @@ public:
         inference_params = training_params;
         training_data = new WLCTrainingData();
 
-        //logging at 50%, 75% requests
+        //logging at 90% requests
         if (n_early_stop < 0) {
-            n_logging_start0 = n_req * 0.5;
-            n_logging_start1 = n_req * 0.75;
+            n_logging_start0 = n_req * 0.9;
         } else {
-            n_logging_start0 = n_early_stop * 0.5;
-            n_logging_start1 = n_early_stop * 0.75;
+            n_logging_start0 = n_early_stop * 0.9;
         }
-        n_logging_end0 = n_logging_start0 + 1000000;
-        n_logging_end1 = n_logging_start1 + 1000000;
 
         if (wlc_bloom_filter)
             filter = new BloomFilter();
