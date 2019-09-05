@@ -15,15 +15,18 @@
 #include <assert.h>
 #include <fstream>
 #include <list>
-#include <bsoncxx/builder/basic/document.hpp>
 #include "mongocxx/client.hpp"
 #include "mongocxx/uri.hpp"
 #include <mongocxx/gridfs/bucket.hpp>
 #include "bloom_filter.h"
+#include <bsoncxx/builder/basic/document.hpp>
+#include "bsoncxx/json.hpp"
 
 using namespace std;
 using spp::sparse_hash_map;
 typedef uint64_t WLCKey;
+using bsoncxx::builder::basic::kvp;
+using bsoncxx::builder::basic::sub_array;
 
 namespace WLC {
     uint8_t max_n_past_timestamps = 32;
@@ -456,23 +459,38 @@ public:
     }
 
     void update_stat(bsoncxx::v_noabi::builder::basic::document &doc) override {
-        //TODO: finish
-//        uint64_t feature_overhead = 0;
-//        uint64_t sample_overhead = 0;
-//        for (auto &m: in_cache_metas) {
-//            feature_overhead += m.feature_overhead();
-//            sample_overhead += m.sample_overhead();
-//        }
-//        for (auto &m: out_cache_metas) {
-//            feature_overhead += m.feature_overhead();
-//            sample_overhead += m.sample_overhead();
-//        }
-//
-//        res["n_metadata"] = to_string(key_map.size());
-//        res["feature_overhead"] = to_string(feature_overhead);
-//        res["sample overhead"] = to_string(sample_overhead);
-//        res["n_force_eviction"] = to_string(n_force_eviction);
-//
+        uint64_t feature_overhead = 0;
+        uint64_t sample_overhead = 0;
+        for (auto &m: in_cache_metas) {
+            feature_overhead += m.feature_overhead();
+            sample_overhead += m.sample_overhead();
+        }
+        for (auto &m: out_cache_metas) {
+            feature_overhead += m.feature_overhead();
+            sample_overhead += m.sample_overhead();
+        }
+
+        doc.append(kvp("n_metadata", to_string(key_map.size())));
+        doc.append(kvp("feature_overhead", to_string(feature_overhead)));
+        doc.append(kvp("sample ", to_string(sample_overhead)));
+
+        int res;
+        auto importances = vector<double>(WLC::n_feature);
+
+        res = LGBM_BoosterFeatureImportance(booster,
+                                            0,
+                                            1,
+                                            importances.data());
+        if (res == -1) {
+            cerr << "error: get model importance fail" << endl;
+            abort();
+        }
+        doc.append(kvp("model_importance", [importances](sub_array child) {
+            for (const auto &element : importances)
+                child.append(element);
+        }));
+
+
         try {
             mongocxx::client client = mongocxx::client{mongocxx::uri(dburl)};
             mongocxx::database db = client["webcachesim"];

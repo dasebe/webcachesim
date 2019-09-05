@@ -46,30 +46,6 @@ void WLCCache::train() {
         }
     }
 
-
-//    int res;
-//    auto importances = vector<double >(WLC::n_feature);
-//
-//    res = LGBM_BoosterFeatureImportance(booster,
-//                          0,
-//                          1,
-//                          importances.data());
-//    if (res == -1)
-//        abort();
-//    for (int i = 0; i < WLC::n_feature; ++i) {
-//        if (i<32)
-//            cout<<"delta"<<i<<" "<<importances[i]<<endl;
-//        else if (i<33)
-//            cout<<"size "<<importances[i]<<endl;
-//        else if (i<37)
-//            cout<<"extra"<<i-33<<" "<<importances[i]<<endl;
-//        else if (i<38)
-//            cout<<"n_delta "<<importances[i]<<endl;
-//        else
-//            cout<<"edc"<<i-38<<" "<<importances[i]<<endl;
-//    }
-//    cout<<endl;
-
     int64_t len;
     vector<double> result(training_data->indptr.size() - 1);
     LGBM_BoosterPredictForCSR(booster,
@@ -284,18 +260,6 @@ void WLCCache::forget() {
         }
 
         assert(meta._key == forget_key);
-//        if (!meta_id) {
-//            ++n_force_eviction;
-//            _currentSize -= meta._size;
-//            {
-//                auto it = WLC::future_timestamps.find(meta._key);
-//                unsigned int decision_qulity =
-//                        static_cast<double>(it->second - WLC::current_t) / (_cacheSize * 1e6 / byte_million_req);
-//                decision_qulity = min((unsigned int) 255, decision_qulity);
-//                eviction_qualities.emplace_back(decision_qulity);
-//                eviction_logic_timestamps.emplace_back(WLC::current_t / 10000);
-//            }
-//        }
         //free the actual content
         meta.free();
         //TODO: can add a function to delete from a queue with (key, pos)
