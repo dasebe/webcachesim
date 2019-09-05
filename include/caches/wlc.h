@@ -418,11 +418,11 @@ public:
         inference_params = training_params;
         training_data = new WLCTrainingData();
 
-        //logging at 90% requests
+        //logging the training and inference happened in the last 1 million
         if (n_early_stop < 0) {
-            n_logging_start0 = n_req * 0.9;
+            n_logging_start0 = n_req - 1000000;
         } else {
-            n_logging_start0 = n_early_stop * 0.9;
+            n_logging_start0 = n_early_stop - 1000000;
         }
 
         if (wlc_bloom_filter)
