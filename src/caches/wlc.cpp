@@ -488,7 +488,7 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
                 int current_idx = indptr[i];
                 for (int p = 0; p < WLC::n_feature; ++p) {
                     if (p == indices[current_idx]) {
-                        trainings_and_predictions.emplace_back(training_data->data[current_idx]);
+                        trainings_and_predictions.emplace_back(data[current_idx]);
                         if (current_idx < indptr[i + 1] - 1)
                             ++current_idx;
                     } else
