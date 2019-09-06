@@ -321,8 +321,8 @@ public:
     uint32_t n_req;
     int64_t n_early_stop = -1;
     uint32_t n_logging_start0;
-    vector<double> trainings_and_predictions;
-    vector<uint16_t> training_and_prediction_logic_timestamps;
+    vector<float> trainings_and_predictions;
+//    vector<uint16_t> training_and_prediction_logic_timestamps;
     string task_id;
     string dburl;
 
@@ -506,12 +506,12 @@ public:
             uploader.close();
             uploader = bucket.open_upload_stream(task_id + ".trainings_and_predictions");
             for (auto &b: trainings_and_predictions)
-                uploader.write((uint8_t *) (&b), sizeof(double));
+                uploader.write((uint8_t *) (&b), sizeof(float));
             uploader.close();
-            uploader = bucket.open_upload_stream(task_id + ".training_and_prediction_timestamps");
-            for (auto &b: training_and_prediction_logic_timestamps)
-                uploader.write((uint8_t *) (&b), sizeof(uint16_t));
-            uploader.close();
+//            uploader = bucket.open_upload_stream(task_id + ".training_and_prediction_timestamps");
+//            for (auto &b: training_and_prediction_logic_timestamps)
+//                uploader.write((uint8_t *) (&b), sizeof(uint16_t));
+//            uploader.close();
         } catch (const std::exception &xcp) {
             cerr << "error: db connection failed: " << xcp.what() << std::endl;
             //continue to upload the simulation summaries
