@@ -152,6 +152,10 @@ WLC:
     #    - 16
     - 32
   #    - 64
+  num_leaves:
+    - 8
+    - 16
+    - 32
   num_threads:
     #    - 1
     #    - 2
@@ -168,7 +172,7 @@ WLC:
   wlc_bloom_filter:
     - 0
   #    - 1
-  version: mini_tuning
+  version: log1p_variable_leaves
 Hyperbolic:
   sample_rate: 64
 LeCaR:

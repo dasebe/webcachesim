@@ -362,6 +362,8 @@ public:
                 training_params["learning_rate"] = it.second;
             } else if (it.first == "num_threads") {
                 training_params["num_threads"] = it.second;
+            } else if (it.first == "num_leaves") {
+                training_params["num_leaves"] = it.second;
             } else if (it.first == "byte_million_req") {
                 byte_million_req = stoull(it.second);
             } else if (it.first == "dburl") {
