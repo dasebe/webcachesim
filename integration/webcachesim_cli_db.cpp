@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
     key_builder.append(kvp("cache_size", argv[3]));
 
     for (auto &k: params)
-        if (!unordered_set<string>({"dbcollection", "dburl", "version", "task_id"}).count(k.first))
+        if (!unordered_set<string>({"dbcollection", "dburl", "task_id"}).count(k.first))
             key_builder.append(kvp(k.first, k.second));
         else
             value_builder.append(kvp(k.first, k.second));
