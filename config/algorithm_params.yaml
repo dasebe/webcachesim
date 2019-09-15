@@ -153,8 +153,8 @@ WLC:
     - 32
   #    - 64
   num_leaves:
-    - 8
-    - 16
+    #    - 8
+    #    - 16
     - 32
   num_threads:
     #    - 1
