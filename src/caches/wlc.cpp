@@ -63,24 +63,24 @@ void WLCCache::train() {
                               &len,
                               result.data());
 
-    {
-        if (WLC::current_t >= n_logging_start0) {
-//            training_and_prediction_logic_timestamps.emplace_back(WLC::current_t / 65536);
-            for (int i = 0; i < training_data->labels.size(); ++i) {
-                int current_idx = training_data->indptr[i];
-                for (int p = 0; p < WLC::n_feature; ++p) {
-                    if (p == training_data->indices[current_idx]) {
-                        trainings_and_predictions.emplace_back(training_data->data[current_idx]);
-                        if (current_idx < training_data->indptr[i + 1] - 1)
-                            ++current_idx;
-                    } else
-                        trainings_and_predictions.emplace_back(NAN);
-                }
-                trainings_and_predictions.emplace_back(training_data->labels[i]);
-                trainings_and_predictions.emplace_back(NAN);
-            }
-        }
-    }
+//    {
+//        if (WLC::current_t >= n_logging_start0) {
+////            training_and_prediction_logic_timestamps.emplace_back(WLC::current_t / 65536);
+//            for (int i = 0; i < training_data->labels.size(); ++i) {
+//                int current_idx = training_data->indptr[i];
+//                for (int p = 0; p < WLC::n_feature; ++p) {
+//                    if (p == training_data->indices[current_idx]) {
+//                        trainings_and_predictions.emplace_back(training_data->data[current_idx]);
+//                        if (current_idx < training_data->indptr[i + 1] - 1)
+//                            ++current_idx;
+//                    } else
+//                        trainings_and_predictions.emplace_back(NAN);
+//                }
+//                trainings_and_predictions.emplace_back(training_data->labels[i]);
+//                trainings_and_predictions.emplace_back(NAN);
+//            }
+//        }
+//    }
 
 
     double se = 0;
@@ -113,14 +113,14 @@ void WLCCache::sample() {
     for (uint32_t i = 0; i < n_sample_l0; i++) {
         uint32_t pos = (uint32_t) (i + rand_idx) % n_l0;
         auto &meta = in_cache_metas[pos];
-        meta.emplace_sample(WLC::current_t);
+        meta.emplace_sample(t_counter);
     }
 
     //sample list 1
     for (uint32_t i = 0; i < n_sample_l1; i++) {
         uint32_t pos = (uint32_t) (i + rand_idx) % n_l1;
         auto &meta = out_cache_metas[pos];
-        meta.emplace_sample(WLC::current_t);
+        meta.emplace_sample(t_counter);
     }
 }
 
@@ -154,20 +154,20 @@ void WLCCache::print_stats() {
 
 bool WLCCache::lookup(SimpleRequest &req) {
     bool ret;
+    ++t_counter;
     //piggy back
     if (req._t && !((req._t) % segment_window))
         print_stats();
 
-    {
-        AnnotatedRequest *_req = (AnnotatedRequest *) &req;
-        auto it = WLC::future_timestamps.find(_req->_id);
-        if (it == WLC::future_timestamps.end()) {
-            WLC::future_timestamps.insert({_req->_id, _req->_next_seq});
-        } else {
-            it->second = _req->_next_seq;
-        }
-        WLC::current_t = req._t;
-    }
+//    {
+//        AnnotatedRequest *_req = (AnnotatedRequest *) &req;
+//        auto it = WLC::future_timestamps.find(_req->_id);
+//        if (it == WLC::future_timestamps.end()) {
+//            WLC::future_timestamps.insert({_req->_id, _req->_next_seq});
+//        } else {
+//            it->second = _req->_next_seq;
+//        }
+//    }
     forget();
 
     //first update the metadata: insert/update, which can trigger pending data.mature
@@ -231,7 +231,7 @@ void WLCCache::forget() {
      * object is request at time 0 with memory window = 5, and will be forgotten exactly at the start of time 5.
      * */
     //remove item from forget table, which is not going to be affect from update
-    auto it = negative_candidate_queue.find(WLC::current_t % WLC::memory_window);
+    auto it = negative_candidate_queue.find(t_counter % WLC::memory_window);
     if (it != negative_candidate_queue.end()) {
         auto forget_key = it->second;
         auto pos = key_map.find(forget_key)->second.list_pos;
@@ -272,22 +272,22 @@ void WLCCache::forget() {
         }
         out_cache_metas.pop_back();
         key_map.erase(forget_key);
-        negative_candidate_queue.erase(WLC::current_t % WLC::memory_window);
+        negative_candidate_queue.erase(t_counter % WLC::memory_window);
     }
 }
 
 void WLCCache::admit(SimpleRequest &req) {
     const uint64_t &size = req._size;
     // object feasible to store?
-    if (size > _cacheSize) {
+    if (size > 16777216) {
         LOG("L", _cacheSize, req.get_id(), size);
         return;
     }
 
 
-    bool seen = (!wlc_bloom_filter) || filter->exist_or_insert(req._id);
-    if (!seen)
-        return;
+//    bool seen = (!wlc_bloom_filter) || filter->exist_or_insert(req._id);
+//    if (!seen)
+//        return;
 
     auto it = key_map.find(req._id);
     if (it == key_map.end()) {
@@ -333,7 +333,7 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
         auto it = key_map.find(candidate_key);
         auto pos = it->second.list_pos;
         auto &meta = in_cache_metas[pos];
-        if ((!booster) || (WLC::memory_window <= WLC::current_t - meta._past_timestamp))
+        if ((!booster) || (WLC::memory_window <= t_counter - meta._past_timestamp))
             return {meta._key, pos};
     }
 
@@ -357,7 +357,7 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
         ids[i] = meta._key;
         //fill in past_interval
         indices[idx_feature] = 0;
-        data[idx_feature++] = WLC::current_t - meta._past_timestamp;
+        data[idx_feature++] = t_counter - meta._past_timestamp;
         past_timestamps[idx_row] = meta._past_timestamp;
 
         uint8_t j = 0;
@@ -382,17 +382,17 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
         data[idx_feature++] = meta._size;
         sizes[idx_row] = meta._size;
 
-        for (uint k = 0; k < WLC::n_extra_fields; ++k) {
-            indices[idx_feature] = WLC::max_n_past_timestamps + k + 1;
-            data[idx_feature++] = meta._extra_features[k];
-        }
+//        for (uint k = 0; k < WLC::n_extra_fields; ++k) {
+//            indices[idx_feature] = WLC::max_n_past_timestamps + k + 1;
+//            data[idx_feature++] = meta._extra_features[k];
+//        }
 
-        indices[idx_feature] = WLC::max_n_past_timestamps + WLC::n_extra_fields + 1;
+        indices[idx_feature] = WLC::max_n_past_timestamps + 1;
         data[idx_feature++] = n_within;
 
         for (uint8_t k = 0; k < WLC::n_edc_feature; ++k) {
-            indices[idx_feature] = WLC::max_n_past_timestamps + WLC::n_extra_fields + 2 + k;
-            uint32_t _distance_idx = min(uint32_t(WLC::current_t - meta._past_timestamp) / WLC::edc_windows[k],
+            indices[idx_feature] = WLC::max_n_past_timestamps + 2 + k;
+            uint32_t _distance_idx = min(uint32_t(t_counter - meta._past_timestamp) / WLC::edc_windows[k],
                                          WLC::max_hash_edc_idx);
             if (meta._extra)
                 data[idx_feature++] = meta._extra->_edc[k] * WLC::hash_edc[_distance_idx];
@@ -406,7 +406,7 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
     vector<double> result(sample_rate);
     system_clock::time_point timeBegin;
     //sample to measure inference time
-    if (!(WLC::current_t % 10000))
+    if (!(t_counter % 10000))
         timeBegin = chrono::system_clock::now();
     LGBM_BoosterPredictForCSR(booster,
                               static_cast<void *>(indptr),
@@ -424,7 +424,7 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
                               result.data());
 
 
-    if (!(WLC::current_t % 10000))
+    if (!(t_counter % 10000))
         inference_time = 0.95 * inference_time +
                          0.05 *
                          chrono::duration_cast<chrono::microseconds>(chrono::system_clock::now() - timeBegin).count();
@@ -445,25 +445,25 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
             min_past_timestamp = past_timestamps[i];
         }
 
-    {
-        if (WLC::current_t >= n_logging_start0) {
-//            training_and_prediction_logic_timestamps.emplace_back(WLC::current_t / 65536);
-            for (int i = 0; i < sample_rate; ++i) {
-                int current_idx = indptr[i];
-                for (int p = 0; p < WLC::n_feature; ++p) {
-                    if (p == indices[current_idx]) {
-                        trainings_and_predictions.emplace_back(data[current_idx]);
-                        if (current_idx < indptr[i + 1] - 1)
-                            ++current_idx;
-                    } else
-                        trainings_and_predictions.emplace_back(NAN);
-                }
-                uint32_t future_interval = WLC::future_timestamps.find(ids[i])->second - WLC::current_t;
-                trainings_and_predictions.emplace_back(future_interval);
-                trainings_and_predictions.emplace_back(result[i]);
-            }
-        }
-    }
+//    {
+//        if (t_counter >= n_logging_start0) {
+////            training_and_prediction_logic_timestamps.emplace_back(t_counter / 65536);
+//            for (int i = 0; i < sample_rate; ++i) {
+//                int current_idx = indptr[i];
+//                for (int p = 0; p < WLC::n_feature; ++p) {
+//                    if (p == indices[current_idx]) {
+//                        trainings_and_predictions.emplace_back(data[current_idx]);
+//                        if (current_idx < indptr[i + 1] - 1)
+//                            ++current_idx;
+//                    } else
+//                        trainings_and_predictions.emplace_back(NAN);
+//                }
+//                uint32_t future_interval = WLC::future_timestamps.find(ids[i])->second - t_counter;
+//                trainings_and_predictions.emplace_back(future_interval);
+//                trainings_and_predictions.emplace_back(result[i]);
+//            }
+//        }
+//    }
 
 
     worst_pos = (worst_pos + rand_idx) % in_cache_metas.size();
@@ -480,21 +480,21 @@ void WLCCache::evict() {
 
 //    cout<<t<<" "<<key<<endl;
 
-    {
-        auto it = WLC::future_timestamps.find(key);
-        unsigned int decision_qulity =
-                static_cast<double>(it->second - WLC::current_t) / (_cacheSize * 1e6 / byte_million_req);
-        decision_qulity = min((unsigned int) 255, decision_qulity);
-        eviction_qualities.emplace_back(decision_qulity);
-        eviction_logic_timestamps.emplace_back(WLC::current_t / 65536);
-    }
+//    {
+//        auto it = WLC::future_timestamps.find(key);
+//        unsigned int decision_qulity =
+//                static_cast<double>(it->second - t_counter) / (_cacheSize * 1e6 / byte_million_req);
+//        decision_qulity = min((unsigned int) 255, decision_qulity);
+//        eviction_qualities.emplace_back(decision_qulity);
+//        eviction_logic_timestamps.emplace_back(t_counter / 65536);
+//    }
 
     auto &meta = in_cache_metas[old_pos];
-    if (WLC::memory_window <= WLC::current_t - meta._past_timestamp) {
+    if (WLC::memory_window <= t_counter - meta._past_timestamp) {
         //must be the tail of lru
         if (!meta._sample_times.empty()) {
             //mature
-            uint32_t future_distance = WLC::current_t - meta._past_timestamp + WLC::memory_window;
+            uint32_t future_distance = t_counter - meta._past_timestamp + WLC::memory_window;
             for (auto &sample_time: meta._sample_times) {
                 //don't use label within the first forget window because the data is not static
                 training_data->emplace_back(meta, sample_time, future_distance);

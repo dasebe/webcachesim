@@ -37,13 +37,11 @@ namespace WLC {
     vector<double> hash_edc;
     uint32_t max_hash_edc_idx;
     uint32_t memory_window = 67108864;
-    uint32_t n_extra_fields = 0;
+//    uint32_t n_extra_fields = 0;
     uint32_t batch_size = 131072;
-    const uint max_n_extra_feature = 4;
+//    const uint max_n_extra_feature = 4;
     uint32_t n_feature;
-    //TODO: interval clock should tick by event instead of following incoming packet time
-    uint32_t current_t;
-    unordered_map<uint64_t, uint32_t> future_timestamps;
+//    unordered_map<uint64_t, uint32_t> future_timestamps;
 }
 
 struct WLCMetaExtra {
@@ -85,7 +83,7 @@ public:
     uint64_t _key;
     uint32_t _size;
     uint32_t _past_timestamp;
-    uint16_t _extra_features[WLC::max_n_extra_feature];
+//    uint16_t _extra_features[WLC::max_n_extra_feature];
     WLCMetaExtra *_extra = nullptr;
     vector<uint32_t> _sample_times;
 
@@ -94,8 +92,8 @@ public:
         _key = key;
         _size = size;
         _past_timestamp = past_timestamp;
-        for (int i = 0; i < WLC::n_extra_fields; ++i)
-            _extra_features[i] = extra_features[i];
+//        for (int i = 0; i < WLC::n_extra_fields; ++i)
+//            _extra_features[i] = extra_features[i];
     }
 
     virtual ~WLCMeta() = default;
@@ -217,19 +215,19 @@ public:
         data.push_back(meta._size);
         ++counter;
 
-        for (int k = 0; k < WLC::n_extra_fields; ++k) {
-            indices.push_back(WLC::max_n_past_timestamps + k + 1);
-            data.push_back(meta._extra_features[k]);
-        }
-        counter += WLC::n_extra_fields;
+//        for (int k = 0; k < WLC::n_extra_fields; ++k) {
+//            indices.push_back(WLC::max_n_past_timestamps + k + 1);
+//            data.push_back(meta._extra_features[k]);
+//        }
+//        counter += WLC::n_extra_fields;
 
-        indices.push_back(WLC::max_n_past_timestamps + WLC::n_extra_fields + 1);
+        indices.push_back(WLC::max_n_past_timestamps + 1);
         data.push_back(n_within);
         ++counter;
 
         if (meta._extra) {
             for (int k = 0; k < WLC::n_edc_feature; ++k) {
-                indices.push_back(WLC::max_n_past_timestamps + WLC::n_extra_fields + 2 + k);
+                indices.push_back(WLC::max_n_past_timestamps + 2 + k);
                 uint32_t _distance_idx = std::min(
                         uint32_t(sample_timestamp - meta._past_timestamp) / WLC::edc_windows[k],
                         WLC::max_hash_edc_idx);
@@ -237,7 +235,7 @@ public:
             }
         } else {
             for (int k = 0; k < WLC::n_edc_feature; ++k) {
-                indices.push_back(WLC::max_n_past_timestamps + WLC::n_extra_fields + 2 + k);
+                indices.push_back(WLC::max_n_past_timestamps + 2 + k);
                 uint32_t _distance_idx = std::min(
                         uint32_t(sample_timestamp - meta._past_timestamp) / WLC::edc_windows[k],
                         WLC::max_hash_edc_idx);
@@ -284,11 +282,11 @@ public:
     unsigned int segment_window = 10000000;
 
     double training_loss = 0;
-    uint64_t n_force_eviction = 0;
 
     double training_time = 0;
     double inference_time = 0;
 
+    uint32_t t_counter = -1;
     BoosterHandle booster = nullptr;
 
     unordered_map<string, string> training_params = {
@@ -315,23 +313,23 @@ public:
     default_random_engine _generator = default_random_engine();
     uniform_int_distribution<std::size_t> _distribution = uniform_int_distribution<std::size_t>();
 
-    vector<uint8_t> eviction_qualities;
-    vector<uint16_t> eviction_logic_timestamps;
-    uint64_t byte_million_req;
-    uint32_t n_req;
-    int64_t n_early_stop = -1;
-    uint32_t n_logging_start0;
-    vector<float> trainings_and_predictions;
+//    vector<uint8_t> eviction_qualities;
+//    vector<uint16_t> eviction_logic_timestamps;
+//    uint64_t byte_million_req;
+//    uint32_t n_req;
+//    int64_t n_early_stop = -1;
+//    uint32_t n_logging_start0;
+//    vector<float> trainings_and_predictions;
 //    vector<uint16_t> training_and_prediction_logic_timestamps;
-    string task_id;
-    string dburl;
+//    string task_id;
+//    string dburl;
 
 
     /*
      * bloom filter
      */
-    bool wlc_bloom_filter = false;
-    BloomFilter *filter;
+//    bool wlc_bloom_filter = false;
+//    BloomFilter *filter;
 
     WLCCache()
             : Cache() {
@@ -348,14 +346,14 @@ public:
                 WLC::max_n_past_timestamps = (uint8_t) stoi(it.second);
             } else if (it.first == "batch_size") {
                 WLC::batch_size = stoull(it.second);
-            } else if (it.first == "n_early_stop") {
-                n_early_stop = stoll((it.second));
-            } else if (it.first == "n_req") {
-                n_req = stoull(it.second);
-            } else if (it.first == "n_extra_fields") {
-                WLC::n_extra_fields = stoull(it.second);
-            } else if (it.first == "wlc_bloom_filter") {
-                wlc_bloom_filter = static_cast<bool>(stoi(it.second));
+//            } else if (it.first == "n_early_stop") {
+//                n_early_stop = stoll((it.second));
+//            } else if (it.first == "n_req") {
+//                n_req = stoull(it.second);
+//            } else if (it.first == "n_extra_fields") {
+//                WLC::n_extra_fields = stoull(it.second);
+//            } else if (it.first == "wlc_bloom_filter") {
+//                wlc_bloom_filter = static_cast<bool>(stoi(it.second));
             } else if (it.first == "num_iterations") {
                 training_params["num_iterations"] = it.second;
             } else if (it.first == "learning_rate") {
@@ -364,12 +362,12 @@ public:
                 training_params["num_threads"] = it.second;
             } else if (it.first == "num_leaves") {
                 training_params["num_leaves"] = it.second;
-            } else if (it.first == "byte_million_req") {
-                byte_million_req = stoull(it.second);
-            } else if (it.first == "dburl") {
-                dburl = it.second;
-            } else if (it.first == "task_id") {
-                task_id = it.second;
+//            } else if (it.first == "byte_million_req") {
+//                byte_million_req = stoull(it.second);
+//            } else if (it.first == "dburl") {
+//                dburl = it.second;
+//            } else if (it.first == "task_id") {
+//                task_id = it.second;
             } else if (it.first == "training_sample_interval") {
                 training_sample_interval = stoull(it.second);
             } else if (it.first == "n_edc_feature") {
@@ -407,31 +405,31 @@ public:
             WLC::hash_edc[i] = pow(0.5, i);
 
         //interval, distances, size, extra_features, n_past_intervals, edwt
-        WLC::n_feature = WLC::max_n_past_timestamps + WLC::n_extra_fields + 2 + WLC::n_edc_feature;
-        if (WLC::n_extra_fields) {
-            if (WLC::n_extra_fields > WLC::max_n_extra_feature) {
-                cerr << "error: only support <= " + to_string(WLC::max_n_extra_feature)
-                        + " extra fields because of static allocation" << endl;
-                abort();
-            }
-            string categorical_feature = to_string(WLC::max_n_past_timestamps + 1);
-            for (uint i = 0; i < WLC::n_extra_fields - 1; ++i) {
-                categorical_feature += "," + to_string(WLC::max_n_past_timestamps + 2 + i);
-            }
-            training_params["categorical_feature"] = categorical_feature;
-        }
+        WLC::n_feature = WLC::max_n_past_timestamps + 2 + WLC::n_edc_feature;
+//        if (WLC::n_extra_fields) {
+//            if (WLC::n_extra_fields > WLC::max_n_extra_feature) {
+//                cerr << "error: only support <= " + to_string(WLC::max_n_extra_feature)
+//                        + " extra fields because of static allocation" << endl;
+//                abort();
+//            }
+//            string categorical_feature = to_string(WLC::max_n_past_timestamps + 1);
+//            for (uint i = 0; i < WLC::n_extra_fields - 1; ++i) {
+//                categorical_feature += "," + to_string(WLC::max_n_past_timestamps + 2 + i);
+//            }
+//            training_params["categorical_feature"] = categorical_feature;
+//        }
         inference_params = training_params;
         training_data = new WLCTrainingData();
 
         //logging the training and inference happened in the last 1 million
-        if (n_early_stop < 0) {
-            n_logging_start0 = n_req - 1000000;
-        } else {
-            n_logging_start0 = n_early_stop - 1000000;
-        }
+//        if (n_early_stop < 0) {
+//            n_logging_start0 = n_req - 1000000;
+//        } else {
+//            n_logging_start0 = n_early_stop - 1000000;
+//        }
 
-        if (wlc_bloom_filter)
-            filter = new BloomFilter();
+//        if (wlc_bloom_filter)
+//            filter = new BloomFilter();
     }
 
     bool lookup(SimpleRequest &req);
@@ -493,32 +491,32 @@ public:
         }));
 
 
-        try {
-            mongocxx::client client = mongocxx::client{mongocxx::uri(dburl)};
-            mongocxx::database db = client["webcachesim"];
-            auto bucket = db.gridfs_bucket();
-
-            auto uploader = bucket.open_upload_stream(task_id + ".evictions");
-            for (auto &b: eviction_qualities)
-                uploader.write((uint8_t *) (&b), sizeof(uint8_t));
-            uploader.close();
-            uploader = bucket.open_upload_stream(task_id + ".eviction_timestamps");
-            for (auto &b: eviction_logic_timestamps)
-                uploader.write((uint8_t *) (&b), sizeof(uint16_t));
-            uploader.close();
-            uploader = bucket.open_upload_stream(task_id + ".trainings_and_predictions");
-            for (auto &b: trainings_and_predictions)
-                uploader.write((uint8_t *) (&b), sizeof(float));
-            uploader.close();
-//            uploader = bucket.open_upload_stream(task_id + ".training_and_prediction_timestamps");
-//            for (auto &b: training_and_prediction_logic_timestamps)
+//        try {
+//            mongocxx::client client = mongocxx::client{mongocxx::uri(dburl)};
+//            mongocxx::database db = client["webcachesim"];
+//            auto bucket = db.gridfs_bucket();
+//
+//            auto uploader = bucket.open_upload_stream(task_id + ".evictions");
+//            for (auto &b: eviction_qualities)
+//                uploader.write((uint8_t *) (&b), sizeof(uint8_t));
+//            uploader.close();
+//            uploader = bucket.open_upload_stream(task_id + ".eviction_timestamps");
+//            for (auto &b: eviction_logic_timestamps)
 //                uploader.write((uint8_t *) (&b), sizeof(uint16_t));
 //            uploader.close();
-        } catch (const std::exception &xcp) {
-            cerr << "error: db connection failed: " << xcp.what() << std::endl;
-            //continue to upload the simulation summaries
-//            abort();
-        }
+//            uploader = bucket.open_upload_stream(task_id + ".trainings_and_predictions");
+//            for (auto &b: trainings_and_predictions)
+//                uploader.write((uint8_t *) (&b), sizeof(float));
+//            uploader.close();
+////            uploader = bucket.open_upload_stream(task_id + ".training_and_prediction_timestamps");
+////            for (auto &b: training_and_prediction_logic_timestamps)
+////                uploader.write((uint8_t *) (&b), sizeof(uint16_t));
+////            uploader.close();
+//        } catch (const std::exception &xcp) {
+//            cerr << "error: db connection failed: " << xcp.what() << std::endl;
+//            //continue to upload the simulation summaries
+////            abort();
+//        }
     }
 
 };
