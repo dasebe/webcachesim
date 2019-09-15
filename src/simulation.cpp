@@ -105,7 +105,7 @@ void FrameWork::check_trace_format() {
     }
     //todo: check the type of each argument
     //format: n_seq t id size [extra]
-    if (counter != 4 + n_extra_fields) {
+    if (counter != 3 + n_extra_fields) {
         cerr << "error: input file column should be 4 + " << n_extra_fields << endl
              << "first line: " << line << endl;
         abort();
