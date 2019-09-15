@@ -40,7 +40,7 @@ FrameWork::FrameWork(const string &trace_file, const string &cache_type, const u
         cerr << "error: field n_extra_fields is required" << endl;
         abort();
     }
-    annotate(trace_file, stoul(params["n_extra_fields"]));
+//    annotate(trace_file, stoul(params["n_extra_fields"]));
 
     _trace_file = trace_file;
     _cache_type = cache_type;
@@ -83,7 +83,7 @@ FrameWork::FrameWork(const string &trace_file, const string &cache_type, const u
         }
     }
     webcache->init_with_params(params);
-    infile.open(trace_file + ".ant");
+    infile.open(trace_file);
     if (!infile) {
         cerr << "Exception opening/reading file" << endl;
         exit(-1);
