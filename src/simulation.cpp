@@ -116,7 +116,7 @@ void FrameWork::check_trace_format() {
 
 void FrameWork::adjust_real_time_offset() {
     // Zhenyu: not assume t start from any constant, so need to compute the first window
-    infile >> next_seq >> t;
+    infile >> t;
     time_window_end =
             real_time_segment_window * (t / real_time_segment_window + (t % real_time_segment_window != 0));
     infile.clear();
@@ -177,7 +177,7 @@ void FrameWork::simulate() {
         req = new SimpleRequest(0, 0, 0);
     t_now = system_clock::now();
 
-    while (infile >> next_seq >> t >> id >> size) {
+    while (infile >> t >> id >> size) {
         if (seq == n_early_stop)
             break;
         for (int i = 0; i < n_extra_fields; ++i)
