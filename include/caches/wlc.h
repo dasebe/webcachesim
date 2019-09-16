@@ -285,6 +285,8 @@ public:
 
     double training_time = 0;
     double inference_time = 0;
+    uint64_t size_total;
+    uint64_t size_larger_16m;
 
     uint32_t t_counter = -1;
     BoosterHandle booster = nullptr;

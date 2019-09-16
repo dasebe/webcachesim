@@ -25,36 +25,36 @@ static inline double oP2(double T, double l, double p) {
 bool LRUCache::lookup(SimpleRequest& req)
 {
 
-
-    {
-        auto &_req = dynamic_cast<AnnotatedRequest &>(req);
-        current_t = req._t;
-
-        if (_cacheMap.find(req._id) != _cacheMap.end()) {
-            //hit
-            auto it = last_timestamps.find(req._id);
-            unsigned int hit =
-                    static_cast<double>(current_t - it->second) / (_cacheSize * 1e6 / byte_million_req);
-            hit = min((unsigned int) 255, hit);
-            hits.emplace_back(hit);
-            hit_timestamps.emplace_back(current_t / 65536);
-        }
-
-        auto it = last_timestamps.find(req._id);
-        if (it == last_timestamps.end()) {
-            last_timestamps.insert({_req._id, current_t});
-        } else {
-            it->second = current_t;
-        }
-
-
-        it = future_timestamps.find(req._id);
-        if (it == future_timestamps.end()) {
-            future_timestamps.insert({_req._id, _req._next_seq});
-        } else {
-            it->second = _req._next_seq;
-        }
-    }
+//
+//    {
+//        auto &_req = dynamic_cast<AnnotatedRequest &>(req);
+//        current_t = req._t;
+//
+//        if (_cacheMap.find(req._id) != _cacheMap.end()) {
+//            //hit
+//            auto it = last_timestamps.find(req._id);
+//            unsigned int hit =
+//                    static_cast<double>(current_t - it->second) / (_cacheSize * 1e6 / byte_million_req);
+//            hit = min((unsigned int) 255, hit);
+//            hits.emplace_back(hit);
+//            hit_timestamps.emplace_back(current_t / 65536);
+//        }
+//
+//        auto it = last_timestamps.find(req._id);
+//        if (it == last_timestamps.end()) {
+//            last_timestamps.insert({_req._id, current_t});
+//        } else {
+//            it->second = current_t;
+//        }
+//
+//
+//        it = future_timestamps.find(req._id);
+//        if (it == future_timestamps.end()) {
+//            future_timestamps.insert({_req._id, _req._next_seq});
+//        } else {
+//            it->second = _req._next_seq;
+//        }
+//    }
 
 
     uint64_t & obj = req._id;
@@ -73,7 +73,7 @@ void LRUCache::admit(SimpleRequest& req)
 {
     const uint64_t size = req.get_size();
     // object feasible to store?
-    if (size > _cacheSize) {
+    if (size > 16777216) {
         LOG("L", _cacheSize, req._id, size);
         return;
     }
@@ -125,14 +125,14 @@ void LRUCache::evict()
         uint64_t obj = *lit;
 
 
-        {
-            auto it = future_timestamps.find(obj);
-            unsigned int decision_qulity =
-                    static_cast<double>(it->second - current_t) / (_cacheSize * 1e6 / byte_million_req);
-            decision_qulity = min((unsigned int) 255, decision_qulity);
-            eviction_qualities.emplace_back(decision_qulity);
-            eviction_logic_timestamps.emplace_back(current_t / 65536);
-        }
+//        {
+//            auto it = future_timestamps.find(obj);
+//            unsigned int decision_qulity =
+//                    static_cast<double>(it->second - current_t) / (_cacheSize * 1e6 / byte_million_req);
+//            decision_qulity = min((unsigned int) 255, decision_qulity);
+//            eviction_qualities.emplace_back(decision_qulity);
+//            eviction_logic_timestamps.emplace_back(current_t / 65536);
+//        }
 
         LOG("e", _currentSize, obj.id, obj.size);
         auto & size = _size_map[obj];

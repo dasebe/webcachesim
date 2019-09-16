@@ -168,7 +168,7 @@ void FrameWork::simulate() {
     }
 
     SimpleRequest *req;
-    unordered_set<string> offline_algorithms = {"Belady", "BeladySample", "LRUKSample", "LFUSample", "LRU",
+    unordered_set<string> offline_algorithms = {"Belady", "BeladySample", "LRUKSample", "LFUSample",
                                                 "LRUK", "LFUDA", "LeCaR", "FIFO", "BloomFilter", "LFU", "S4LRU",
                                                 "AdaptSize", "GDSF"};
     if (offline_algorithms.count(_cache_type))

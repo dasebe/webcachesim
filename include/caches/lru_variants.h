@@ -29,61 +29,61 @@ protected:
     lruCacheMapType _cacheMap;
     unordered_map<uint64_t , uint64_t > _size_map;
     uint32_t current_t;
-    unordered_map<uint64_t, uint32_t> future_timestamps;
-    vector<uint8_t> eviction_qualities;
-    vector<uint16_t> eviction_logic_timestamps;
-    unordered_map<uint64_t, uint32_t> last_timestamps;
-    vector<uint8_t> hits;
-    vector<uint16_t> hit_timestamps;
-    uint64_t byte_million_req;
-    string task_id;
-    string dburl;
+//    unordered_map<uint64_t, uint32_t> future_timestamps;
+//    vector<uint8_t> eviction_qualities;
+//    vector<uint16_t> eviction_logic_timestamps;
+//    unordered_map<uint64_t, uint32_t> last_timestamps;
+//    vector<uint8_t> hits;
+//    vector<uint16_t> hit_timestamps;
+//    uint64_t byte_million_req;
+//    string task_id;
+//    string dburl;
 
 
-    void init_with_params(map<string, string> params) override {
-        //set params
-        for (auto &it: params) {
-            if (it.first == "byte_million_req") {
-                byte_million_req = stoull(it.second);
-            } else if (it.first == "task_id") {
-                task_id = it.second;
-            } else if (it.first == "dburl") {
-                dburl = it.second;
-            } else {
-                cerr << "unrecognized parameter: " << it.first << endl;
-            }
-        }
-    }
+//    void init_with_params(map<string, string> params) override {
+//        //set params
+//        for (auto &it: params) {
+//            if (it.first == "byte_million_req") {
+//                byte_million_req = stoull(it.second);
+//            } else if (it.first == "task_id") {
+//                task_id = it.second;
+//            } else if (it.first == "dburl") {
+//                dburl = it.second;
+//            } else {
+//                cerr << "unrecognized parameter: " << it.first << endl;
+//            }
+//        }
+//    }
 
 
-    void update_stat(bsoncxx::builder::basic::document &doc) override {
-        //Log to GridFs because the value is too big to store in mongodb
-        try {
-            mongocxx::client client = mongocxx::client{mongocxx::uri(dburl)};
-            mongocxx::database db = client["webcachesim"];
-            auto bucket = db.gridfs_bucket();
-
-            auto uploader = bucket.open_upload_stream(task_id + ".evictions");
-            for (auto &b: eviction_qualities)
-                uploader.write((uint8_t *) (&b), sizeof(uint8_t));
-            uploader.close();
-            uploader = bucket.open_upload_stream(task_id + ".eviction_timestamps");
-            for (auto &b: eviction_logic_timestamps)
-                uploader.write((uint8_t *) (&b), sizeof(uint16_t));
-            uploader.close();
-            uploader = bucket.open_upload_stream(task_id + ".hits");
-            for (auto &b: hits)
-                uploader.write((uint8_t *) (&b), sizeof(uint8_t));
-            uploader.close();
-            uploader = bucket.open_upload_stream(task_id + ".hit_timestamps");
-            for (auto &b: hit_timestamps)
-                uploader.write((uint8_t *) (&b), sizeof(uint16_t));
-            uploader.close();
-        } catch (const std::exception &xcp) {
-            cerr << "error: db connection failed: " << xcp.what() << std::endl;
-            abort();
-        }
-    }
+//    void update_stat(bsoncxx::builder::basic::document &doc) override {
+//        //Log to GridFs because the value is too big to store in mongodb
+//        try {
+//            mongocxx::client client = mongocxx::client{mongocxx::uri(dburl)};
+//            mongocxx::database db = client["webcachesim"];
+//            auto bucket = db.gridfs_bucket();
+//
+//            auto uploader = bucket.open_upload_stream(task_id + ".evictions");
+//            for (auto &b: eviction_qualities)
+//                uploader.write((uint8_t *) (&b), sizeof(uint8_t));
+//            uploader.close();
+//            uploader = bucket.open_upload_stream(task_id + ".eviction_timestamps");
+//            for (auto &b: eviction_logic_timestamps)
+//                uploader.write((uint8_t *) (&b), sizeof(uint16_t));
+//            uploader.close();
+//            uploader = bucket.open_upload_stream(task_id + ".hits");
+//            for (auto &b: hits)
+//                uploader.write((uint8_t *) (&b), sizeof(uint8_t));
+//            uploader.close();
+//            uploader = bucket.open_upload_stream(task_id + ".hit_timestamps");
+//            for (auto &b: hit_timestamps)
+//                uploader.write((uint8_t *) (&b), sizeof(uint16_t));
+//            uploader.close();
+//        } catch (const std::exception &xcp) {
+//            cerr << "error: db connection failed: " << xcp.what() << std::endl;
+//            abort();
+//        }
+//    }
 
     virtual void hit(lruCacheMapType::const_iterator it, uint64_t size);
 

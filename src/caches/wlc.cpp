@@ -144,10 +144,17 @@ void WLCCache::print_stats() {
             << "feature overhead per entry: " << feature_overhead / key_map.size() << endl
             //    cerr << "sample overhead: "<<sample_overhead<<endl;
             << "sample overhead per entry: " << sample_overhead / key_map.size() << endl
-            << "n_training: " << training_data->labels.size() << endl
+                                                                                              << "n_training: " << training_data->labels.size() << endl
             //            << "training loss: " << training_loss << endl
             << "training_time: " << training_time << " ms" << endl
-            << "inference_time: " << inference_time << " us" << endl;
+                                                                                              << "inference_time: "
+                                                                                              << inference_time << " us"
+                                                                                              << endl
+                                                                                              << "16MB bypass ratio: "
+                                                                                              <<
+                                                                                              float(size_larger_16m) /
+                                                                                              size_total << endl;
+    size_total = size_larger_16m = 0;
     assert(in_cache_metas.size() + out_cache_metas.size() == key_map.size());
 }
 
@@ -158,6 +165,11 @@ bool WLCCache::lookup(SimpleRequest &req) {
     //piggy back
     if (req._t && !((req._t) % segment_window))
         print_stats();
+
+
+    size_total += req._size;
+    if (req._size > 16777216)
+        size_larger_16m += req._size;
 
 //    {
 //        AnnotatedRequest *_req = (AnnotatedRequest *) &req;
