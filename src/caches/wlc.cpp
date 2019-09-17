@@ -457,27 +457,6 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
             min_past_timestamp = past_timestamps[i];
         }
 
-//    {
-//        if (t_counter >= n_logging_start0) {
-////            training_and_prediction_logic_timestamps.emplace_back(t_counter / 65536);
-//            for (int i = 0; i < sample_rate; ++i) {
-//                int current_idx = indptr[i];
-//                for (int p = 0; p < WLC::n_feature; ++p) {
-//                    if (p == indices[current_idx]) {
-//                        trainings_and_predictions.emplace_back(data[current_idx]);
-//                        if (current_idx < indptr[i + 1] - 1)
-//                            ++current_idx;
-//                    } else
-//                        trainings_and_predictions.emplace_back(NAN);
-//                }
-//                uint32_t future_interval = WLC::future_timestamps.find(ids[i])->second - t_counter;
-//                trainings_and_predictions.emplace_back(future_interval);
-//                trainings_and_predictions.emplace_back(result[i]);
-//            }
-//        }
-//    }
-
-
     worst_pos = (worst_pos + rand_idx) % in_cache_metas.size();
     auto &meta = in_cache_metas[worst_pos];
     auto &worst_key = meta._key;
