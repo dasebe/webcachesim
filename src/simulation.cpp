@@ -169,7 +169,7 @@ void FrameWork::simulate() {
 
     SimpleRequest *req;
     unordered_set<string> offline_algorithms = {"Belady", "BeladySample", "LRUKSample", "LFUSample",
-                                                "LRUK", "LFUDA", "LeCaR", "FIFO", "BloomFilter", "LFU", "S4LRU",
+                                                "LRUK", "LFUDA", "LeCaR", "BloomFilter", "LFU", "S4LRU",
                                                 "AdaptSize", "GDSF"};
     if (offline_algorithms.count(_cache_type))
         req = new AnnotatedRequest(0, 0, 0, 0);
