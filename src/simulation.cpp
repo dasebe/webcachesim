@@ -138,8 +138,10 @@ void FrameWork::update_real_time_stats() {
 
 void FrameWork::update_stats() {
     auto _t_now = chrono::system_clock::now();
-    cerr << "\nsegment id: " << seq / segment_window - 1 << endl;
-    cerr << "delta t: " << chrono::duration_cast<std::chrono::milliseconds>(_t_now - t_now).count() / 1000.
+    cerr << "\nsegment id: " << seq / segment_window - 1 << endl
+         << "cache size: " << webcache->_currentSize << "/" << webcache->_cacheSize
+         << " (" << ((double) webcache->_currentSize) / webcache->_cacheSize << ")" << endl
+         << "delta t: " << chrono::duration_cast<std::chrono::milliseconds>(_t_now - t_now).count() / 1000.
          << endl;
     t_now = _t_now;
     cerr << "segment bmr: " << double(byte_miss) / byte_req << endl;
