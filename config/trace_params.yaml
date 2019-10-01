@@ -176,8 +176,8 @@ wc1400m_ts.tr:
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
   bloom_filter:
-    #    - 0
-    - 1
+    - 0
+  #    - 1
   byte_million_req: 35234263115
   n_req: 1400000000
   uni_size: 0
@@ -619,8 +619,8 @@ ntg1_400m_16mb.tr:
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
   bloom_filter:
-    #    - 0
-    - 1
+    - 0
+  #    - 1
   byte_million_req: 382836853735
   n_req: 403480346
   uni_size: 0
