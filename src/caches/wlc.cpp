@@ -139,8 +139,6 @@ void WLCCache::print_stats() {
         sample_overhead += m.sample_overhead();
     }
     cerr
-            << "cache size: " << _currentSize << "/" << _cacheSize << " (" << ((double) _currentSize) / _cacheSize
-            << ")" << endl
             << "in/out metadata " << in_cache_metas.size() << " / " << out_cache_metas.size() << endl
             //    cerr << "feature overhead: "<<feature_overhead<<endl;
             << "feature overhead per entry: " << feature_overhead / key_map.size() << endl
