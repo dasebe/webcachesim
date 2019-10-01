@@ -153,8 +153,8 @@ WLC:
     - 32
   #    - 64
   num_leaves:
-    - 8
-    - 16
+    #    - 8
+    #    - 16
     - 32
   num_threads:
     #    - 1
@@ -172,7 +172,7 @@ WLC:
   wlc_bloom_filter:
     - 0
   #    - 1
-  version: log1p_variable_leaves
+  version: belady_min_distribution
 Hyperbolic:
   sample_rate: 64
 LeCaR:

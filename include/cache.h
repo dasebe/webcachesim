@@ -54,6 +54,9 @@ public:
     virtual void update_stat(bsoncxx::builder::basic::document &doc) {
     }
 
+    virtual void update_stat_periodic() {
+    }
+
     virtual size_t memory_overhead() {
         return sizeof(Cache);
     }

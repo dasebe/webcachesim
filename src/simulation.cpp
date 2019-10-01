@@ -160,6 +160,7 @@ void FrameWork::update_stats() {
     auto metadata_overhead = get_rss();
     rt_seg_rss.emplace_back(metadata_overhead);
     seg_rss.emplace_back(metadata_overhead);
+    webcache->update_stat_periodic();
     if (is_metadata_in_cache_size)
         webcache->setSize(_cache_size - metadata_overhead);
     cerr << "rss: " << metadata_overhead << endl;

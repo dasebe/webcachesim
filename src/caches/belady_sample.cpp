@@ -10,7 +10,7 @@ using namespace std;
 
 bool BeladySampleCache::lookup(SimpleRequest &_req) {
     auto & req = dynamic_cast<AnnotatedRequest &>(_req);
-
+    current_t = req._t;
     auto it = key_map.find(req._id);
     if (it != key_map.end()) {
         //update past timestamps
@@ -57,7 +57,7 @@ void BeladySampleCache::admit(SimpleRequest &_req) {
         return;
     } else {
         //insert-evict
-        auto epair = rank(req._t);
+        auto epair = rank();
         auto & key0 = epair.first;
         auto & pos0 = epair.second;
         auto & pos1 = it->second.second;
@@ -67,12 +67,12 @@ void BeladySampleCache::admit(SimpleRequest &_req) {
     }
     // check more eviction needed?
     while (_currentSize > _cacheSize) {
-        evict(req._t);
+        evict();
     }
 }
 
 
-pair<uint64_t, uint32_t> BeladySampleCache::rank(const uint64_t & t) {
+pair<uint64_t, uint32_t> BeladySampleCache::rank() {
     uint64_t max_future_interval;
     uint64_t min_past_timetamp;
     uint64_t max_key;
@@ -88,10 +88,10 @@ pair<uint64_t, uint32_t> BeladySampleCache::rank(const uint64_t & t) {
         uint64_t &past_timestamp = meta._past_timestamp;
 
         uint64_t future_interval;
-        if (meta._future_timestamp - t > threshold)
+        if (meta._future_timestamp - current_t > threshold)
             future_interval = 2*threshold;
         else
-            future_interval = meta._future_timestamp - t;
+            future_interval = meta._future_timestamp - current_t;
 
         if (!i || future_interval > max_future_interval ||
             ((future_interval == max_future_interval) && (past_timestamp < min_past_timetamp))) {
@@ -104,9 +104,9 @@ pair<uint64_t, uint32_t> BeladySampleCache::rank(const uint64_t & t) {
     return {max_key, max_pos};
 }
 
-void BeladySampleCache::evict(const uint64_t & t) {
+void BeladySampleCache::evict() {
 //    static uint counter = 0;
-    auto epair = rank(t);
+    auto epair = rank();
     uint64_t & key = epair.first;
     uint32_t & old_pos = epair.second;
 

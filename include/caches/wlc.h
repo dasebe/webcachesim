@@ -40,7 +40,6 @@ namespace WLC {
     const uint max_n_extra_feature = 4;
     uint32_t n_feature;
     //TODO: interval clock should tick by event instead of following incoming packet time
-    uint32_t current_t;
 #ifdef EVICTION_LOGGING
     unordered_map<uint64_t, uint32_t> future_timestamps;
 #endif
@@ -88,7 +87,23 @@ public:
     uint16_t _extra_features[WLC::max_n_extra_feature];
     WLCMetaExtra *_extra = nullptr;
     vector<uint32_t> _sample_times;
+#ifdef EVICTION_LOGGING
+    uint32_t _future_timestamp;
+#endif
 
+
+#ifdef EVICTION_LOGGING
+    WLCMeta(const uint64_t &key, const uint64_t &size, const uint64_t &past_timestamp,
+            const vector<uint16_t> &extra_features, const uint64_t &future_timestamp) {
+        _key = key;
+        _size = size;
+        _past_timestamp = past_timestamp;
+        for (int i = 0; i < WLC::n_extra_fields; ++i)
+            _extra_features[i] = extra_features[i];
+        _future_timestamp = future_timestamp;
+    }
+
+#else
     WLCMeta(const uint64_t &key, const uint64_t &size, const uint64_t &past_timestamp,
             const vector<uint16_t> &extra_features) {
         _key = key;
@@ -97,6 +112,7 @@ public:
         for (int i = 0; i < WLC::n_extra_fields; ++i)
             _extra_features[i] = extra_features[i];
     }
+#endif
 
     virtual ~WLCMeta() = default;
 
@@ -108,6 +124,22 @@ public:
         delete _extra;
     }
 
+#ifdef EVICTION_LOGGING
+
+    void update(const uint32_t &past_timestamp, const uint32_t &future_timestamp) {
+        //distance
+        uint32_t _distance = past_timestamp - _past_timestamp;
+        assert(_distance);
+        if (!_extra) {
+            _extra = new WLCMetaExtra(_distance);
+        } else
+            _extra->update(_distance);
+        //timestamp
+        _past_timestamp = past_timestamp;
+        _future_timestamp = future_timestamp;
+    }
+
+#else
     void update(const uint32_t &past_timestamp) {
         //distance
         uint32_t _distance = past_timestamp - _past_timestamp;
@@ -119,6 +151,7 @@ public:
         //timestamp
         _past_timestamp = past_timestamp;
     }
+#endif
 
     int feature_overhead() {
         int ret = sizeof(WLCMeta);
@@ -139,6 +172,18 @@ public:
     list<WLCKey>::const_iterator p_last_request;
     //any change to functions?
 
+#ifdef EVICTION_LOGGING
+
+    InCacheMeta(const uint64_t &key,
+                const uint64_t &size,
+                const uint64_t &past_timestamp,
+                const vector<uint16_t> &extra_features,
+                const uint64_t &future_timestamp,
+                const list<WLCKey>::const_iterator &it) :
+            WLCMeta(key, size, past_timestamp, extra_features, future_timestamp) {
+        p_last_request = it;
+    };
+#else
     InCacheMeta(const uint64_t &key,
                 const uint64_t &size,
                 const uint64_t &past_timestamp,
@@ -146,6 +191,7 @@ public:
             WLCMeta(key, size, past_timestamp, extra_features) {
         p_last_request = it;
     };
+#endif
 
     InCacheMeta(const WLCMeta &meta, const list<WLCKey>::const_iterator &it) : WLCMeta(meta) {
         p_last_request = it;
@@ -277,6 +323,7 @@ public:
     //TODO: negative queue should have a better abstraction, at least hide the round-up
     sparse_hash_map<uint32_t, uint64_t> negative_candidate_queue;
     WLCTrainingData *training_data;
+    uint32_t current_t;
 
     // sample_size
     uint sample_rate = 64;
@@ -326,6 +373,10 @@ public:
 //    vector<uint16_t> training_and_prediction_logic_timestamps;
     string task_id;
     string dburl;
+    uint64_t belady_boundary;
+    vector<int64_t> near_bytes;
+    vector<int64_t> middle_bytes;
+    vector<int64_t> far_bytes;
 #endif
 
     void init_with_params(map<string, string> params) override {
@@ -339,12 +390,6 @@ public:
                 WLC::max_n_past_timestamps = (uint8_t) stoi(it.second);
             } else if (it.first == "batch_size") {
                 WLC::batch_size = stoull(it.second);
-#ifdef EVICTION_LOGGING
-            } else if (it.first == "n_early_stop") {
-                n_early_stop = stoll((it.second));
-            } else if (it.first == "n_req") {
-                n_req = stoull(it.second);
-#endif
             } else if (it.first == "n_extra_fields") {
                 WLC::n_extra_fields = stoull(it.second);
             } else if (it.first == "num_iterations") {
@@ -356,12 +401,18 @@ public:
             } else if (it.first == "num_leaves") {
                 training_params["num_leaves"] = it.second;
 #ifdef EVICTION_LOGGING
+            } else if (it.first == "n_early_stop") {
+                n_early_stop = stoll((it.second));
+            } else if (it.first == "n_req") {
+                n_req = stoull(it.second);
             } else if (it.first == "byte_million_req") {
                 byte_million_req = stoull(it.second);
             } else if (it.first == "dburl") {
                 dburl = it.second;
             } else if (it.first == "task_id") {
                 task_id = it.second;
+            } else if (it.first == "belady_boundary") {
+                belady_boundary = stoll(it.second);
 #endif
             } else if (it.first == "training_sample_interval") {
                 training_sample_interval = stoull(it.second);
@@ -452,6 +503,26 @@ public:
         return !it->second.list_idx;
     }
 
+#ifdef EVICTION_LOGGING
+
+    void update_stat_periodic() override {
+        int64_t near_byte = 0, middle_byte = 0, far_byte = 0;
+        for (auto &i: in_cache_metas) {
+            if (i._future_timestamp == 0xffffffff) {
+                far_byte += i._size;
+            } else if (i._future_timestamp - current_t > belady_boundary) {
+                middle_byte += i._size;
+            } else {
+                near_byte += i._size;
+            }
+        }
+        near_bytes.emplace_back(near_byte);
+        middle_bytes.emplace_back(middle_byte);
+        far_bytes.emplace_back(far_byte);
+    }
+
+#endif
+
     void update_stat(bsoncxx::v_noabi::builder::basic::document &doc) override {
         uint64_t feature_overhead = 0;
         uint64_t sample_overhead = 0;
@@ -489,6 +560,18 @@ public:
 
 
 #ifdef EVICTION_LOGGING
+        doc.append(kvp("near_bytes", [this](sub_array child) {
+            for (const auto &element : near_bytes)
+                child.append(element);
+        }));
+        doc.append(kvp("middle_bytes", [this](sub_array child) {
+            for (const auto &element : middle_bytes)
+                child.append(element);
+        }));
+        doc.append(kvp("far_bytes", [this](sub_array child) {
+            for (const auto &element : far_bytes)
+                child.append(element);
+        }));
         try {
             mongocxx::client client = mongocxx::client{mongocxx::uri(dburl)};
             mongocxx::database db = client["webcachesim"];

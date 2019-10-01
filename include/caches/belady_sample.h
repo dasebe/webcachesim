@@ -9,8 +9,14 @@
 #include <unordered_map>
 #include <cmath>
 #include <random>
+#include "mongocxx/client.hpp"
+#include "mongocxx/uri.hpp"
+#include <bsoncxx/builder/basic/document.hpp>
+#include "bsoncxx/json.hpp"
 
 using namespace std;
+using bsoncxx::builder::basic::kvp;
+using bsoncxx::builder::basic::sub_array;
 
 class BeladySampleMeta {
 public:
@@ -48,11 +54,13 @@ public:
 
     default_random_engine _generator = default_random_engine();
     uniform_int_distribution<std::size_t> _distribution = uniform_int_distribution<std::size_t>();
+    uint64_t current_t;
 
-    BeladySampleCache()
-        : Cache()
-    {
-    }
+#ifdef EVICTION_LOGGING
+    vector<int64_t> near_bytes;
+    vector<int64_t> middle_bytes;
+    vector<int64_t> far_bytes;
+#endif
 
     void init_with_params(map<string, string> params) override {
         //set params
@@ -67,13 +75,48 @@ public:
         }
     }
 
+#ifdef EVICTION_LOGGING
+
+    void update_stat_periodic() override {
+        int64_t near_byte = 0, middle_byte = 0, far_byte = 0;
+        for (auto &i: meta_holder[0]) {
+            if (i._future_timestamp == 0xffffffff) {
+                far_byte += i._size;
+            } else if (i._future_timestamp - current_t > threshold) {
+                middle_byte += i._size;
+            } else {
+                near_byte += i._size;
+            }
+        }
+        near_bytes.emplace_back(near_byte);
+        middle_bytes.emplace_back(middle_byte);
+        far_bytes.emplace_back(far_byte);
+    }
+
+    virtual void update_stat(bsoncxx::builder::basic::document &doc) {
+        doc.append(kvp("near_bytes", [this](sub_array child) {
+            for (const auto &element : near_bytes)
+                child.append(element);
+        }));
+        doc.append(kvp("middle_bytes", [this](sub_array child) {
+            for (const auto &element : middle_bytes)
+                child.append(element);
+        }));
+        doc.append(kvp("far_bytes", [this](sub_array child) {
+            for (const auto &element : far_bytes)
+                child.append(element);
+        }));
+    }
+
+#endif
+
     virtual bool lookup(SimpleRequest& req);
     virtual void admit(SimpleRequest& req);
-    virtual void evict(const uint64_t & t);
     void evict(SimpleRequest & req) {};
-    void evict() {};
+
+    void evict();
     //sample, rank the 1st and return
-    pair<uint64_t, uint32_t > rank(const uint64_t & t);
+    pair<uint64_t, uint32_t> rank();
 };
 
 static Factory<BeladySampleCache> factoryBeladySample("BeladySample");
