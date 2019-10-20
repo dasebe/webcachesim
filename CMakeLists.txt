@@ -13,8 +13,8 @@ set (CMAKE_CXX_STANDARD 11)
 remove_definitions(-DMISS_DECOUPLE)
 
 #logging eviction information
-#add_definitions(-DEVICTION_LOGGING)
-remove_definitions(-DEVICTION_LOGGING)
+add_definitions(-DEVICTION_LOGGING)
+#remove_definitions(-DEVICTION_LOGGING)
 
 #set this flag to get statistics of cache sizes decouple
 #add_definitions(-DCACHE_SIZE_DECOUPLE)
