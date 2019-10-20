@@ -2,6 +2,8 @@ from pywebcachesim.runner import parser
 import time
 import subprocess
 import sys
+from pygit2 import Repository
+import os
 
 
 def to_task_str(task: dict):
@@ -11,7 +13,7 @@ def to_task_str(task: dict):
 
     params = {}
     for k, v in task.items():
-        if k not in ['debug', 'trace_file', 'cache_type', 'cache_size'] and v is not None:
+        if k not in ['trace_file', 'cache_type', 'cache_size'] and v is not None:
             params[k] = str(v)
     task_id = str(int(time.time() * 1000000))
     # use timestamp as task id
@@ -39,7 +41,18 @@ def runner_run(args: dict, tasks: list):
                 print(f'first task: {task_str}')
             f.write(task_str)
     with open(f'/tmp/{ts}.job') as f:
-        subprocess.run(['parallel', '-v', '--eta', '--shuf', '--sshloginfile', args['nodefile'], '--sshdelay', '0.1'],
+        # update remote
+        current_branch = Repository(os.getcwd()).head.shorthand
+        for n in args['nodes']:
+            command = ['ssh', n, f'cd ${{WEBCACHESIM_ROOT}}/build; '
+                                 f'git fetch origin {current_branch}; git checkout {current_branch}; '
+                                 f'git merge origin/{current_branch}; make -j8']
+            subprocess.run(command,
+                           stdin=f)
+        command = ['parallel', '-v', '--eta', '--shuf', '--sshdelay', '0.1']
+        for n in args['nodes']:
+            command.extend(['-S', n])
+        subprocess.run(command,
                        stdin=f)
 
 
