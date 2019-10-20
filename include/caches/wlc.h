@@ -17,8 +17,6 @@
 #include <list>
 #include "mongocxx/client.hpp"
 #include "mongocxx/uri.hpp"
-#include <mongocxx/gridfs/bucket.hpp>
-#include "bloom_filter.h"
 #include <bsoncxx/builder/basic/document.hpp>
 #include "bsoncxx/json.hpp"
 
@@ -43,7 +41,9 @@ namespace WLC {
     uint32_t n_feature;
     //TODO: interval clock should tick by event instead of following incoming packet time
     uint32_t current_t;
+#ifdef EVICTION_LOGGING
     unordered_map<uint64_t, uint32_t> future_timestamps;
+#endif
 }
 
 struct WLCMetaExtra {
@@ -281,7 +281,7 @@ public:
     // sample_size
     uint sample_rate = 64;
     uint64_t training_sample_interval = 64;
-    unsigned int segment_window = 10000000;
+    unsigned int segment_window = 1000000;
 
     double training_loss = 0;
     uint64_t n_force_eviction = 0;
@@ -315,6 +315,7 @@ public:
     default_random_engine _generator = default_random_engine();
     uniform_int_distribution<std::size_t> _distribution = uniform_int_distribution<std::size_t>();
 
+#ifdef EVICTION_LOGGING
     vector<uint8_t> eviction_qualities;
     vector<uint16_t> eviction_logic_timestamps;
     uint64_t byte_million_req;
@@ -325,17 +326,7 @@ public:
 //    vector<uint16_t> training_and_prediction_logic_timestamps;
     string task_id;
     string dburl;
-
-
-    /*
-     * bloom filter
-     */
-    bool wlc_bloom_filter = false;
-    BloomFilter *filter;
-
-    WLCCache()
-            : Cache() {
-    }
+#endif
 
     void init_with_params(map<string, string> params) override {
         //set params
@@ -348,14 +339,14 @@ public:
                 WLC::max_n_past_timestamps = (uint8_t) stoi(it.second);
             } else if (it.first == "batch_size") {
                 WLC::batch_size = stoull(it.second);
+#ifdef EVICTION_LOGGING
             } else if (it.first == "n_early_stop") {
                 n_early_stop = stoll((it.second));
             } else if (it.first == "n_req") {
                 n_req = stoull(it.second);
+#endif
             } else if (it.first == "n_extra_fields") {
                 WLC::n_extra_fields = stoull(it.second);
-            } else if (it.first == "wlc_bloom_filter") {
-                wlc_bloom_filter = static_cast<bool>(stoi(it.second));
             } else if (it.first == "num_iterations") {
                 training_params["num_iterations"] = it.second;
             } else if (it.first == "learning_rate") {
@@ -364,12 +355,14 @@ public:
                 training_params["num_threads"] = it.second;
             } else if (it.first == "num_leaves") {
                 training_params["num_leaves"] = it.second;
+#ifdef EVICTION_LOGGING
             } else if (it.first == "byte_million_req") {
                 byte_million_req = stoull(it.second);
             } else if (it.first == "dburl") {
                 dburl = it.second;
             } else if (it.first == "task_id") {
                 task_id = it.second;
+#endif
             } else if (it.first == "training_sample_interval") {
                 training_sample_interval = stoull(it.second);
             } else if (it.first == "n_edc_feature") {
@@ -423,15 +416,14 @@ public:
         inference_params = training_params;
         training_data = new WLCTrainingData();
 
+#ifdef EVICTION_LOGGING
         //logging the training and inference happened in the last 1 million
         if (n_early_stop < 0) {
             n_logging_start0 = n_req - 1000000;
         } else {
             n_logging_start0 = n_early_stop - 1000000;
         }
-
-        if (wlc_bloom_filter)
-            filter = new BloomFilter();
+#endif
     }
 
     bool lookup(SimpleRequest &req);
@@ -477,22 +469,26 @@ public:
         doc.append(kvp("sample ", to_string(sample_overhead)));
 
         int res;
-        auto importances = vector<double>(WLC::n_feature);
+        auto importances = vector<double>(WLC::n_feature, 0);
 
-        res = LGBM_BoosterFeatureImportance(booster,
-                                            0,
-                                            1,
-                                            importances.data());
-        if (res == -1) {
-            cerr << "error: get model importance fail" << endl;
-            abort();
+        if (booster) {
+            res = LGBM_BoosterFeatureImportance(booster,
+                                                0,
+                                                1,
+                                                importances.data());
+            if (res == -1) {
+                cerr << "error: get model importance fail" << endl;
+                abort();
+            }
         }
+
         doc.append(kvp("model_importance", [importances](sub_array child) {
             for (const auto &element : importances)
                 child.append(element);
         }));
 
 
+#ifdef EVICTION_LOGGING
         try {
             mongocxx::client client = mongocxx::client{mongocxx::uri(dburl)};
             mongocxx::database db = client["webcachesim"];
@@ -519,6 +515,7 @@ public:
             //continue to upload the simulation summaries
 //            abort();
         }
+#endif
     }
 
 };

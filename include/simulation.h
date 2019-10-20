@@ -27,11 +27,11 @@ bsoncxx::builder::basic::document simulation(std::string trace_file, std::string
 class FrameWork {
 public:
     bool uni_size = false;
-    uint64_t segment_window = 10000000;
+    uint64_t segment_window = 1000000;
     //unit: second
-    uint64_t real_time_segment_window = 3600;
+    uint64_t real_time_segment_window = 600;
     uint n_extra_fields = 0;
-    bool is_metadata_in_cache_size = true;
+    bool is_metadata_in_cache_size = false;
     unique_ptr<Cache> webcache = nullptr;
     std::ifstream infile;
     int64_t n_early_stop = -1;  //-1: no stop
@@ -39,6 +39,8 @@ public:
     std::string _trace_file;
     std::string _cache_type;
     uint64_t _cache_size;
+    const unordered_set<string> offline_algorithms = {"Belady", "BeladySample"};
+    bool is_offline;
 
     /*
      * bloom filter

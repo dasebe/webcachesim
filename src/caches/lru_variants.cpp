@@ -26,6 +26,7 @@ bool LRUCache::lookup(SimpleRequest& req)
 {
 
 
+#ifdef EVICTION_LOGGING
     {
         auto &_req = dynamic_cast<AnnotatedRequest &>(req);
         current_t = req._t;
@@ -55,6 +56,7 @@ bool LRUCache::lookup(SimpleRequest& req)
             it->second = _req._next_seq;
         }
     }
+#endif
 
 
     uint64_t & obj = req._id;
@@ -125,6 +127,7 @@ void LRUCache::evict()
         uint64_t obj = *lit;
 
 
+#ifdef EVICTION_LOGGING
         {
             auto it = future_timestamps.find(obj);
             unsigned int decision_qulity =
@@ -133,6 +136,7 @@ void LRUCache::evict()
             eviction_qualities.emplace_back(decision_qulity);
             eviction_logic_timestamps.emplace_back(current_t / 65536);
         }
+#endif
 
         LOG("e", _currentSize, obj.id, obj.size);
         auto & size = _size_map[obj];
@@ -171,15 +175,16 @@ void FIFOCache::hit(lruCacheMapType::const_iterator it, uint64_t size)
 {
 }
 
-
-/*
-  FilterCache (admit only after N requests)
-*/
+//
+///*
+//  FilterCache (admit only after N requests)
+//*/
 //FilterCache::FilterCache()
-//        : LRUCache(),
-//          _nParam(2) {
+//    : LRUCache(),
+//      _nParam(2)
+//{
 //}
-
+//
 //void FilterCache::setPar(std::string parName, std::string parValue) {
 //    if(parName.compare("n") == 0) {
 //        const uint64_t n = std::stoull(parValue);
@@ -189,36 +194,21 @@ void FIFOCache::hit(lruCacheMapType::const_iterator it, uint64_t size)
 //        std::cerr << "unrecognized parameter: " << parName << std::endl;
 //    }
 //}
-
-
+//
+//
 //bool FilterCache::lookup(SimpleRequest& req)
 //{
 //    CacheObject obj(req);
 //    _filter[obj]++;
 //    return LRUCache::lookup(req);
 //}
-
-//void FilterCache::admit(SimpleRequest &req) {
-//    auto &id = req._id;
-//    _filter[id]++;
 //
-//    if (_filter[id] <= _nParam) {
+//void FilterCache::admit(SimpleRequest& req)
+//{
+//    CacheObject obj(req);
+//    if (_filter[obj] <= _nParam) {
 //        return;
 //    }
-//    LRUCache::admit(req);
-//}
-
-
-//void BloomFilterCache::admit(SimpleRequest &req) {
-//    auto &id = req._id;
-//
-//    if ((!_filter[0].count(req._id)) && (!_filter[1].count(req._id))) {
-//        _filter[current_filter].insert(req._id);
-//        return;
-//    }
-//
-//    if (!_filter[current_filter].count(req._id))
-//        _filter[current_filter].insert(req._id);
 //    LRUCache::admit(req);
 //}
 

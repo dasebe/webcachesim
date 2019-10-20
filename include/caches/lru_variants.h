@@ -7,10 +7,10 @@
 #include <random>
 #include "cache.h"
 #include "adaptsize_const.h" /* AdaptSize constants */
-#include <fstream>
+
+#ifdef EVICTION_LOGGING
 #include "mongocxx/client.hpp"
-#include "mongocxx/uri.hpp"
-#include <mongocxx/gridfs/bucket.hpp>
+#endif
 
 typedef std::list<uint64_t >::iterator ListIteratorType;
 typedef std::unordered_map<uint64_t , ListIteratorType> lruCacheMapType;
@@ -28,6 +28,7 @@ protected:
     // map to find objects in list
     lruCacheMapType _cacheMap;
     unordered_map<uint64_t , uint64_t > _size_map;
+#ifdef EVICTION_LOGGING
     uint32_t current_t;
     unordered_map<uint64_t, uint32_t> future_timestamps;
     vector<uint8_t> eviction_qualities;
@@ -38,8 +39,10 @@ protected:
     uint64_t byte_million_req;
     string task_id;
     string dburl;
+#endif
 
 
+#ifdef EVICTION_LOGGING
     void init_with_params(map<string, string> params) override {
         //set params
         for (auto &it: params) {
@@ -54,8 +57,10 @@ protected:
             }
         }
     }
+#endif
 
 
+#ifdef EVICTION_LOGGING
     void update_stat(bsoncxx::builder::basic::document &doc) override {
         //Log to GridFs because the value is too big to store in mongodb
         try {
@@ -84,6 +89,7 @@ protected:
             abort();
         }
     }
+#endif
 
     virtual void hit(lruCacheMapType::const_iterator it, uint64_t size);
 
@@ -166,58 +172,24 @@ static Factory<FIFOCache> factoryFIFO("FIFO");
 ///*
 //  FilterCache (admit only after N requests)
 //*/
-//class FilterCache : public LRUCache {
+//class FilterCache : public LRUCache
+//{
 //protected:
 //    uint64_t _nParam;
-//    std::unordered_map<uint64_t, uint64_t> _filter;
+//    std::unordered_map<CacheObject, uint64_t> _filter;
 //
 //public:
 //    FilterCache();
-//
-//    virtual ~FilterCache() {
+//    virtual ~FilterCache()
+//    {
 //    }
 //
-////    virtual void setPar(std::string parName, std::string parValue);
-////    virtual bool lookup(SimpleRequest& req);
-//    virtual void admit(SimpleRequest &req);
-//
-//    void init_with_params(map<string, string> params) override {
-//        //set params
-//        for (auto &it: params) {
-//            if (it.first == "n") {
-//                _nParam = stoull(it.second);
-//            } else {
-//                cerr << "unrecognized parameter: " << it.first << endl;
-//            }
-//        }
-//        LRUCache::init_with_params(params);
-//    };
+//    virtual void setPar(std::string parName, std::string parValue);
+//    virtual bool lookup(SimpleRequest& req);
+//    virtual void admit(SimpleRequest& req);
 //};
 //
 //static Factory<FilterCache> factoryFilter("Filter");
-
-
-
-/*
-  BloomFilterCache (admit only after 1 requests), each BloomFilter holds 40 million objects,
-  as suggested by Akamai algorithm nugget paper
-*/
-//class BloomFilterCache : public LRUCache {
-//protected:
-//    unordered_set<uint64_t> _filter[2];
-//    uint8_t current_filter = 0;
-//    static const size_t max_n_element = 40000000;
-//
-//public:
-//    BloomFilterCache() {
-//        for (int i = 0; i < 2; ++i)
-//            _filter[i].reserve(max_n_element);
-//        LRUCache();
-//    }
-//    virtual void admit(SimpleRequest &req);
-//};
-//
-//static Factory<BloomFilterCache> factoryBloomFilter("BloomFilter");
 
 /*
   AdaptSize: ExpLRU with automatic adaption of the _cParam

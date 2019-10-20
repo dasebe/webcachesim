@@ -9,12 +9,10 @@
 #include <utils.h>
 #include <unordered_map>
 #include <map>
-#include <fstream>
-#include <algorithm>
-#include <bsoncxx/builder/basic/document.hpp>
+
+#ifdef EVICTION_LOGGING
 #include "mongocxx/client.hpp"
-#include "mongocxx/uri.hpp"
-#include <mongocxx/gridfs/bucket.hpp>
+#endif
 
 using namespace std;
 
@@ -28,6 +26,7 @@ protected:
     multimap<uint64_t , uint64_t, greater<uint64_t >> _valueMap;
     // only store in-cache object, value is size
     unordered_map<uint64_t, uint64_t> _cacheMap;
+#ifdef EVICTION_LOGGING
     // how far an evicted object will access again
     vector<uint8_t> eviction_qualities;
     vector<uint16_t> eviction_logic_timestamps;
@@ -35,14 +34,11 @@ protected:
     unsigned int current_t;
     string task_id;
     string dburl;
-
+#endif
 
 public:
-    BeladyCache()
-            : Cache()
-    {
-    }
 
+#ifdef EVICTION_LOGGING
     void init_with_params(map<string, string> params) override {
         for (auto &it: params) {
             if (it.first == "byte_million_req") {
@@ -56,6 +52,7 @@ public:
             }
         }
     }
+#endif
 
     virtual bool lookup(SimpleRequest& req);
     virtual void admit(SimpleRequest& req);
@@ -65,6 +62,7 @@ public:
     virtual void evict();
     bool has(const uint64_t& id) {return _cacheMap.find(id) != _cacheMap.end();}
 
+#ifdef EVICTION_LOGGING
     void update_stat(bsoncxx::v_noabi::builder::basic::document &doc) override {
         //Log to GridFs because the value is too big to store in mongodb
         try {
@@ -85,6 +83,7 @@ public:
             abort();
         }
     }
+#endif
 };
 
 static Factory<BeladyCache> factoryBelady("Belady");

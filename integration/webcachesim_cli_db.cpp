@@ -28,8 +28,10 @@ string current_timestamp() {
 int main(int argc, char *argv[]) {
     // output help if insufficient params
     if (argc < 4) {
-        cerr << "webcachesim traceFile cacheType cacheSizeBytes [cacheParams]" << endl;
-        abort();
+        cerr
+                << "webcachesim_cli_db traceFile cacheType cacheSize [param_1 value_1] [param_2 value_2] ... [param_n value_n]"
+                << endl;
+        return 1;
     }
 
     map<string, string> params;
@@ -75,9 +77,11 @@ int main(int argc, char *argv[]) {
     value_builder.append(kvp("simulation_time", to_string(simulation_time)));
     value_builder.append(kvp("simulation_timestamp", simulation_timestamp));
 
+    cout << bsoncxx::to_json(value_builder.view()) << endl;
+
     try {
         mongocxx::client client = mongocxx::client{mongocxx::uri(params["dburl"])};
-        mongocxx::database db = client["webcachesim"];
+        auto db = client[mongocxx::uri(params["dburl"]).database()];
         mongocxx::options::replace option;
         db[params["dbcollection"]].replace_one(key_builder.extract(), value_builder.extract(), option.upsert(true));
         return EXIT_SUCCESS;

@@ -63,6 +63,7 @@ void WLCCache::train() {
                               &len,
                               result.data());
 
+#ifdef EVICTION_LOGGING
     {
         if (WLC::current_t >= n_logging_start0) {
 //            training_and_prediction_logic_timestamps.emplace_back(WLC::current_t / 65536);
@@ -81,6 +82,7 @@ void WLCCache::train() {
             }
         }
     }
+#endif
 
 
     double se = 0;
@@ -158,6 +160,7 @@ bool WLCCache::lookup(SimpleRequest &req) {
     if (req._t && !((req._t) % segment_window))
         print_stats();
 
+#ifdef EVICTION_LOGGING
     {
         AnnotatedRequest *_req = (AnnotatedRequest *) &req;
         auto it = WLC::future_timestamps.find(_req->_id);
@@ -168,6 +171,7 @@ bool WLCCache::lookup(SimpleRequest &req) {
         }
         WLC::current_t = req._t;
     }
+#endif
     forget();
 
     //first update the metadata: insert/update, which can trigger pending data.mature
@@ -283,11 +287,6 @@ void WLCCache::admit(SimpleRequest &req) {
         LOG("L", _cacheSize, req.get_id(), size);
         return;
     }
-
-
-    bool seen = (!wlc_bloom_filter) || filter->exist_or_insert(req._id);
-    if (!seen)
-        return;
 
     auto it = key_map.find(req._id);
     if (it == key_map.end()) {
@@ -445,6 +444,7 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
             min_past_timestamp = past_timestamps[i];
         }
 
+#ifdef EVICTION_LOGGING
     {
         if (WLC::current_t >= n_logging_start0) {
 //            training_and_prediction_logic_timestamps.emplace_back(WLC::current_t / 65536);
@@ -464,6 +464,7 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
             }
         }
     }
+#endif
 
 
     worst_pos = (worst_pos + rand_idx) % in_cache_metas.size();
@@ -478,8 +479,7 @@ void WLCCache::evict() {
     uint64_t &key = epair.first;
     uint32_t &old_pos = epair.second;
 
-//    cout<<t<<" "<<key<<endl;
-
+#ifdef EVICTION_LOGGING
     {
         auto it = WLC::future_timestamps.find(key);
         unsigned int decision_qulity =
@@ -488,6 +488,7 @@ void WLCCache::evict() {
         eviction_qualities.emplace_back(decision_qulity);
         eviction_logic_timestamps.emplace_back(WLC::current_t / 65536);
     }
+#endif
 
     auto &meta = in_cache_metas[old_pos];
     if (WLC::memory_window <= WLC::current_t - meta._past_timestamp) {

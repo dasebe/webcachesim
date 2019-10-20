@@ -5,6 +5,7 @@ set(LIB_SOURCE
         ../include/caches/wlc.h
         caches/gd_variants.cpp
         caches/random_variants.cpp
+        ../include/caches/belady.h
         caches/belady.cpp
         caches/lhd_competitors/lhd_competitors.cpp
         caches/lhd/lhd_variants.cpp
@@ -24,8 +25,6 @@ set(LIB_SOURCE
         #        caches/lfu_sample.cpp
         #        simulation_lr_belady.cpp
         #        simulation_belady_static.cpp
-        #        simulation_bins.cpp
-        caches/bins.cpp
         #        caches/belady_truncate.cpp
         caches/wlc.cpp
         caches/hyperbolic.cpp caches/lecar.cpp
@@ -45,13 +44,21 @@ target_include_directories(webcachesim PRIVATE ${LIBMONGOCXX_INCLUDE_DIRS})
 target_link_libraries(webcachesim PRIVATE ${LIBMONGOCXX_LIBRARIES})
 target_compile_definitions(webcachesim PRIVATE ${LIBMONGOCXX_DEFINITIONS})
 
-find_package(Boost)
+find_package(Boost REQUIRED)
 target_include_directories(webcachesim PRIVATE ${Boost_INCLUDE_DIR})
-target_link_libraries(webcachesim LINK_PUBLIC ${Boost_LIBRARIES} ${LIGHTGBM_LIB})
+target_link_libraries(webcachesim LINK_PUBLIC ${Boost_LIBRARIES})
+
+find_path(LIGHTGBM_PATH LightGBM)
+if (NOT LIGHTGBM_PATH)
+    message(FATAL_ERROR "LIGHTGBM_PATH not found")
+endif ()
+target_include_directories(webcachesim PUBLIC ${LIGHTGBM_PATH})
 
 find_library(LIGHTGBM_LIB lib_lightgbm.so)
-find_path(LIGHTGBM_PATH LightGBM)
-target_include_directories(webcachesim PUBLIC ${LIGHTGBM_PATH})
+if (NOT LIGHTGBM_LIB)
+    message(FATAL_ERROR "LIGHTGBM_LIB not found")
+endif ()
+target_link_libraries(webcachesim LINK_PUBLIC ${LIGHTGBM_LIB})
 
 find_library(PROCPS_LIB procps)
 find_path(PROCPS_PATH proc)

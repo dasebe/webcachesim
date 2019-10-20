@@ -3,14 +3,8 @@
 //
 
 #include "simulation.h"
-//#include <string>
-//#include "request.h"
 #include "annotate.h"
 #include "simulation_tinylfu.h"
-//#include "cache.h"
-////#include "simulation_lr_belady.h"
-////#include "simulation_belady_static.h"
-////#include "simulation_bins.h"
 ////#include "simulation_truncate.h"
 #include <sstream>
 #include "utils.h"
@@ -18,17 +12,15 @@
 ////remove the code related with decouple because not using it for a long time
 ////#include "miss_decouple.h"
 ////#include "cache_size_decouple.h"
-//#include "nlohmann/json.hpp"
 #include "rss.h"
 #include <cstdint>
 #include <unordered_map>
-#include <unordered_set>
+#include <numeric>
 #include "bsoncxx/builder/basic/document.hpp"
 #include "bsoncxx/json.hpp"
 
 using namespace std;
 using namespace chrono;
-//using json = nlohmann::json;
 using bsoncxx::builder::basic::kvp;
 using bsoncxx::builder::basic::sub_array;
 
@@ -40,11 +32,16 @@ FrameWork::FrameWork(const string &trace_file, const string &cache_type, const u
         cerr << "error: field n_extra_fields is required" << endl;
         abort();
     }
-    annotate(trace_file, stoul(params["n_extra_fields"]));
 
     _trace_file = trace_file;
     _cache_type = cache_type;
     _cache_size = cache_size;
+    is_offline = offline_algorithms.count(_cache_type);
+#ifdef EVICTION_LOGGING
+    is_offline = true;
+#endif
+    if (is_offline)
+        annotate(trace_file, stoul(params["n_extra_fields"]));
 
     // create cache
     webcache = move(Cache::create_unique(cache_type));
@@ -83,9 +80,13 @@ FrameWork::FrameWork(const string &trace_file, const string &cache_type, const u
         }
     }
     webcache->init_with_params(params);
-    infile.open(trace_file + ".ant");
+    auto trace_filename = trace_file;
+    if (is_offline)
+        trace_filename = trace_file + ".ant";
+
+    infile.open(trace_filename);
     if (!infile) {
-        cerr << "Exception opening/reading file" << endl;
+        cerr << "Exception opening/reading file " << trace_filename << endl;
         exit(-1);
     }
     check_trace_format();
@@ -105,8 +106,13 @@ void FrameWork::check_trace_format() {
     }
     //todo: check the type of each argument
     //format: n_seq t id size [extra]
-    if (counter != 4 + n_extra_fields) {
-        cerr << "error: input file column should be 4 + " << n_extra_fields << endl
+    int n_base_field;
+    if (is_offline)
+        n_base_field = 4;
+    else
+        n_base_field = 3;
+    if (counter != n_base_field + n_extra_fields) {
+        cerr << "error: input file column should be " << n_base_field << " + " << n_extra_fields << endl
              << "first line: " << line << endl;
         abort();
     }
@@ -168,16 +174,21 @@ void FrameWork::simulate() {
     }
 
     SimpleRequest *req;
-    unordered_set<string> offline_algorithms = {"Belady", "BeladySample", "LRUKSample", "LFUSample", "WLC", "LRU",
-                                                "LRUK", "LFUDA", "LeCaR", "FIFO", "BloomFilter", "LFU", "S4LRU",
-                                                "AdaptSize", "GDSF"};
-    if (offline_algorithms.count(_cache_type))
+    if (is_offline)
         req = new AnnotatedRequest(0, 0, 0, 0);
     else
         req = new SimpleRequest(0, 0, 0);
     t_now = system_clock::now();
 
-    while (infile >> next_seq >> t >> id >> size) {
+    while (true) {
+        if (is_offline) {
+            if (!(infile >> next_seq >> t >> id >> size))
+                break;
+        } else {
+            if (!(infile >> t >> id >> size))
+                break;
+        }
+
         if (seq == n_early_stop)
             break;
         for (int i = 0; i < n_extra_fields; ++i)
@@ -195,7 +206,7 @@ void FrameWork::simulate() {
         update_metric_req(byte_req, obj_req, size);
         update_metric_req(rt_byte_req, rt_obj_req, size)
 
-        if (offline_algorithms.count(_cache_type))
+        if (is_offline)
             dynamic_cast<AnnotatedRequest *>(req)->reinit(id, size, seq, next_seq, &extra_features);
         else
             req->reinit(id, size, seq, &extra_features);
@@ -224,6 +235,12 @@ void FrameWork::simulate() {
 
 bsoncxx::builder::basic::document FrameWork::simulation_results() {
     bsoncxx::builder::basic::document value_builder{};
+    value_builder.append(kvp("no_warmup_byte_miss_ratio",
+                             accumulate<vector<int64_t>::const_iterator, double>(seg_byte_miss.begin(),
+                                                                                 seg_byte_miss.end(), 0) /
+                             accumulate<vector<int64_t>::const_iterator, double>(seg_byte_req.begin(),
+                                                                                 seg_byte_req.end(), 0)
+    ));
     value_builder.append(kvp("segment_byte_miss", [this](sub_array child) {
         for (const auto &element : seg_byte_miss)
             child.append(element);

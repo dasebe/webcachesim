@@ -12,9 +12,11 @@ bool BeladyCache::lookup(SimpleRequest& _req) {
     //time to delete the past next_seq
     _valueMap.erase(_req._t);
 
+#ifdef EVICTION_LOGGING
     {
         current_t = req._t;
     }
+#endif
 
     return if_hit;
 }
@@ -43,6 +45,7 @@ void BeladyCache::evict() {
     auto it = _valueMap.begin();
     auto iit = _cacheMap.find(it->second);
     if (iit != _cacheMap.end()) {
+#ifdef EVICTION_LOGGING
         {   //record eviction decision quality
             unsigned int decision_qulity =
                     static_cast<double>(it->first - current_t) / (_cacheSize * 1e6 / byte_million_req);
@@ -50,6 +53,7 @@ void BeladyCache::evict() {
             eviction_qualities.emplace_back(decision_qulity);
             eviction_logic_timestamps.emplace_back(current_t / 65536);
         }
+#endif
         _currentSize -= iit->second;
         _cacheMap.erase(iit);
     }
