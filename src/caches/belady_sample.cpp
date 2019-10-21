@@ -88,7 +88,7 @@ pair<uint64_t, uint32_t> BeladySampleCache::rank(const uint64_t & t) {
         uint64_t &past_timestamp = meta._past_timestamp;
 
         uint64_t future_interval;
-        if (meta._future_timestamp - past_timestamp > threshold)
+        if (meta._future_timestamp - t > threshold)
             future_interval = 2*threshold;
         else
             future_interval = meta._future_timestamp - t;
