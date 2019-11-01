@@ -14,6 +14,7 @@
 #include <boost/bimap/multiset_of.hpp>
 
 using namespace std;
+using namespace webcachesim;
 
 class RandomCache : public Cache
 {

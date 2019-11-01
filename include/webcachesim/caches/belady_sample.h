@@ -17,6 +17,7 @@
 using namespace std;
 using bsoncxx::builder::basic::kvp;
 using bsoncxx::builder::basic::sub_array;
+using namespace webcachesim;
 
 class BeladySampleMeta {
 public:

@@ -15,6 +15,7 @@
 #endif
 
 using namespace std;
+using namespace webcachesim;
 
 /*
   Belady: Optimal for unit size

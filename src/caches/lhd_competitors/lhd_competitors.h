@@ -6,6 +6,7 @@
 #include "cache.h"
 //#include "cache_object.h"
 
+using namespace webcachesim;
 namespace cache_competitors {
     class Cache;
 }

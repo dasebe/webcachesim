@@ -17,6 +17,7 @@ typedef std::unordered_map<uint64_t , ListIteratorType> lruCacheMapType;
 
 
 using namespace std;
+using namespace webcachesim;
 /*
   LRU: Least Recently Used eviction
 */

@@ -8,21 +8,23 @@
 
 #include <memory>
 
-class Cache;
+namespace webcachesim {
 
-class Interface {
-public:
-    Interface(std::string cache_type, int cache_size, int memory_window);
+    class Cache;
 
-    ~Interface() = default;
+    class Interface {
+    public:
+        Interface(std::string cache_type, int cache_size, int memory_window);
 
-    void admit(const uint64_t &key, const int64_t &size);
+        ~Interface() = default;
 
-    uint64_t lookup(const uint64_t &key);
+        void admit(const uint64_t &key, const int64_t &size);
 
-private:
-    std::unique_ptr<Cache> pimpl;
-};
+        uint64_t lookup(const uint64_t &key);
 
+    private:
+        std::unique_ptr<Cache> pimpl;
+    };
+}
 
 #endif //WEBCACHESIM_API_H

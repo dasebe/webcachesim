@@ -11,6 +11,7 @@ namespace cache {
 }
 
 
+using namespace webcachesim;
 class LHD : public Cache
 {
 protected:

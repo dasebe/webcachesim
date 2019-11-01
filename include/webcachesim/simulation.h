@@ -23,6 +23,7 @@
 bsoncxx::builder::basic::document simulation(std::string trace_file, std::string cache_type,
                                              uint64_t cache_size, std::map<std::string, std::string> params);
 
+using namespace webcachesim;
 
 class FrameWork {
 public:

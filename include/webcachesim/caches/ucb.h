@@ -15,6 +15,7 @@
 typedef uint64_t KeyT;
 
 using namespace std;
+using namespace webcachesim;
 
 class UCBCache : public Cache
 {

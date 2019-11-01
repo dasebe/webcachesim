@@ -20,6 +20,7 @@
 #include <bsoncxx/builder/basic/document.hpp>
 #include "bsoncxx/json.hpp"
 
+using namespace webcachesim;
 using namespace std;
 using spp::sparse_hash_map;
 typedef uint64_t WLCKey;
