@@ -5,6 +5,8 @@ set(LIB_SOURCE
         simulation_lfo.cpp
         ${WEBCACHESIM_HEADER_DIR}/webcachesim/simulation_tinylfu.h
         simulation_tinylfu.cpp
+        ${WEBCACHESIM_HEADER_DIR}/webcachesim/api.h
+        api.cpp
 
         ${WEBCACHESIM_HEADER_DIR}/webcachesim/annotate.h
         caches/annotate.cpp
