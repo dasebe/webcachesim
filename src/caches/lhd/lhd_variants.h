@@ -23,7 +23,6 @@ public:
     virtual void setSize(uint64_t cs);
     virtual bool lookup(SimpleRequest& req);
     virtual void admit(SimpleRequest& req);
-    virtual void evict(SimpleRequest& req);
     virtual void evict();
 };
 

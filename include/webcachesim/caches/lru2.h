@@ -58,8 +58,7 @@ public:
         }
     }
 
-    void evict(SimpleRequest& req) override {};
-    void evict() override {};
+    void evict(SimpleRequest &req) {};
 
 private:
     std::list<key_value_pair_t> _cache_items_list;

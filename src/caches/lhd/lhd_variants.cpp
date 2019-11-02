@@ -43,11 +43,6 @@ void LHD::admit(SimpleRequest& req)
     // nop
 }
 
-void LHD::evict(SimpleRequest& req)
-{
-    // nop
-}
-
 void LHD::evict()
 {
     // nop

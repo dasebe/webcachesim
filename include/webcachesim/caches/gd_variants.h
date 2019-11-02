@@ -59,10 +59,13 @@ public:
     {
     }
 
-    virtual bool lookup(SimpleRequest& req);
-    virtual void admit(SimpleRequest& req);
-    virtual void evict(SimpleRequest& req);
-    virtual void evict();
+    bool lookup(SimpleRequest &req) override;
+
+    void admit(SimpleRequest &req) override;
+
+    void evict(SimpleRequest &req);
+
+    void evict();
 };
 
 static Factory<GreedyDualBase> factoryGD("GD");
@@ -174,9 +177,11 @@ public:
     }
 #endif
 
-    virtual bool lookup(SimpleRequest& req);
-    virtual void evict(SimpleRequest& req);
-    virtual void evict();
+    bool lookup(SimpleRequest &req) override;
+
+    void evict(SimpleRequest &req);
+
+    void evict();
 };
 
 static Factory<LRUKCache> factoryLRUK("LRUK");

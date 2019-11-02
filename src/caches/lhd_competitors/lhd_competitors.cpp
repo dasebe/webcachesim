@@ -39,11 +39,6 @@ void LHDBase::admit(SimpleRequest& req)
     // nop
 }
 
-void LHDBase::evict(SimpleRequest& req)
-{
-    // nop
-}
-
 void LHDBase::evict()
 {
     // nop

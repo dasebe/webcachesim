@@ -113,7 +113,6 @@ public:
 
     virtual bool lookup(SimpleRequest& req);
     virtual void admit(SimpleRequest& req);
-    void evict(SimpleRequest & req) {};
 
     void evict();
     //sample, rank the 1st and return

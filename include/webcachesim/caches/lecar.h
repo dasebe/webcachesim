@@ -96,10 +96,9 @@ public:
     }
 #endif
 
-    bool lookup(SimpleRequest& req);
-    virtual void admit(SimpleRequest& req);
-    virtual void evict(SimpleRequest& req){};
-    virtual void evict(){};
+    bool lookup(SimpleRequest &req) override;
+
+    void admit(SimpleRequest &req) override;
     void evict(uint64_t & t, uint64_t & counter);
     bool has(const uint64_t& id) {return size_map.find(id) != size_map.end();}
 };

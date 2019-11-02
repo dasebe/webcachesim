@@ -49,10 +49,6 @@ public:
 
     virtual bool lookup(SimpleRequest& req);
     virtual void admit(SimpleRequest& req);
-    virtual void evict(SimpleRequest& req) {
-        //no need to use it
-    };
-    virtual void evict() {};
     void evict(uint64_t & t);
 
     void train();
@@ -138,8 +134,8 @@ public:
 
     virtual bool lookup(SimpleRequest& req);
     virtual void admit(SimpleRequest& req);
-    virtual void evict(SimpleRequest& req) {}
-    virtual void evict() {}
+
+    void evict(SimpleRequest &req) {}
     void evict(const uint64_t & t);
     pair<uint64_t, uint32_t > rank(const uint64_t & t);
 };

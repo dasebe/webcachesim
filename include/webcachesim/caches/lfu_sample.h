@@ -53,9 +53,8 @@ public:
 
     virtual bool lookup(SimpleRequest& req);
     virtual void admit(SimpleRequest& req);
-    virtual void evict(const uint64_t & t);
-    void evict(SimpleRequest & req) {};
-    void evict() {};
+
+    void evict(const uint64_t &t);
     //sample, rank the 1st and return
     pair<uint64_t, uint32_t > rank(const uint64_t & t);
 };

@@ -32,10 +32,8 @@ public:
 
     virtual bool lookup(SimpleRequest& req);
     virtual void admit(SimpleRequest& req);
-    virtual void evict();
-    virtual void evict(SimpleRequest& req) {
-        //no need to use it
-    };
+
+    void evict();
 };
 
 static Factory<RandomCache> factoryRandom("Random");

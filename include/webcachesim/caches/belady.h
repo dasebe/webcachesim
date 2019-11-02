@@ -55,13 +55,13 @@ public:
     }
 #endif
 
-    virtual bool lookup(SimpleRequest& req);
-    virtual void admit(SimpleRequest& req);
-    virtual void evict(SimpleRequest& req) {
-        //no need to use it
-    };
-    virtual void evict();
-    bool has(const uint64_t& id) {return _cacheMap.find(id) != _cacheMap.end();}
+    bool lookup(SimpleRequest &req) override;
+
+    void admit(SimpleRequest &req) override;
+
+    void evict();
+
+    bool has(const uint64_t &id) override { return _cacheMap.find(id) != _cacheMap.end(); }
 
 #ifdef EVICTION_LOGGING
     void update_stat(bsoncxx::v_noabi::builder::basic::document &doc) override {

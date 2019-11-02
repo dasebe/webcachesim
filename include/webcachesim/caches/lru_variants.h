@@ -105,8 +105,10 @@ public:
 
     virtual bool lookup(SimpleRequest& req);
     virtual void admit(SimpleRequest& req);
-    virtual void evict(SimpleRequest& req);
-    virtual void evict();
+
+    void evict(SimpleRequest &req);
+
+    void evict();
     virtual const SimpleRequest & evict_return();
 };
 
@@ -127,10 +129,10 @@ public:
     {
     }
 
-    virtual bool lookup(SimpleRequest& req);
-    virtual void admit(SimpleRequest& req);
-    virtual void evict(SimpleRequest& req){};
-    virtual void evict(){};
+    bool lookup(SimpleRequest &req) override;
+
+    void admit(SimpleRequest &req) override;
+
     size_t memory_overhead() override {
         //the estimation of unordered_setq not very accurate
         size_t count = 0;
@@ -266,9 +268,12 @@ public:
     virtual void setSize(uint64_t cs);
     virtual bool lookup(SimpleRequest& req);
     virtual void admit(SimpleRequest& req);
-    virtual void segment_admit(uint8_t idx, SimpleRequest& req);
-    virtual void evict(SimpleRequest& req);
-    virtual void evict();
+
+    void segment_admit(uint8_t idx, SimpleRequest &req);
+
+    void evict(SimpleRequest &req);
+
+    void evict();
 };
 
 static Factory<S4LRUCache> factoryS4LRU("S4LRU");

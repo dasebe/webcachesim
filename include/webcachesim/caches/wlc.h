@@ -484,8 +484,6 @@ public:
 
     void evict();
 
-    void evict(SimpleRequest &req) {};
-
     void forget();
 
     //sample, rank the 1st and return
