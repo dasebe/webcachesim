@@ -1,30 +1,30 @@
 set(LIB_SOURCE
-        ${WEBCACHESIM_HEADER_DIR}/webcachesim/simulation.h
+        ${WEBCACHESIM_HEADER_DIR}/simulation.h
         simulation.cpp
-        ${WEBCACHESIM_HEADER_DIR}/webcachesim/simulation_lfo.h
+        ${WEBCACHESIM_HEADER_DIR}/simulation_lfo.h
         simulation_lfo.cpp
-        ${WEBCACHESIM_HEADER_DIR}/webcachesim/simulation_tinylfu.h
+        ${WEBCACHESIM_HEADER_DIR}/simulation_tinylfu.h
         simulation_tinylfu.cpp
-        ${WEBCACHESIM_HEADER_DIR}/webcachesim/api.h
+        ${WEBCACHESIM_HEADER_DIR}/api.h
         api.cpp
 
-        ${WEBCACHESIM_HEADER_DIR}/webcachesim/annotate.h
+        ${WEBCACHESIM_HEADER_DIR}/annotate.h
         caches/annotate.cpp
-        ${WEBCACHESIM_HEADER_DIR}/webcachesim/rss.h
+        ${WEBCACHESIM_HEADER_DIR}/rss.h
         rss.cpp
-        ${WEBCACHESIM_HEADER_DIR}/webcachesim/bloom_filter.h
-        ${WEBCACHESIM_HEADER_DIR}/webcachesim/random_helper.h
+        ${WEBCACHESIM_HEADER_DIR}/bloom_filter.h
+        ${WEBCACHESIM_HEADER_DIR}/random_helper.h
         random_helper.cpp
-        ${WEBCACHESIM_HEADER_DIR}/webcachesim/bloom_filter.h
+        ${WEBCACHESIM_HEADER_DIR}/bloom_filter.h
 
-        ${WEBCACHESIM_HEADER_DIR}/webcachesim/caches/lru_variants.h
+        ${WEBCACHESIM_HEADER_DIR}/caches/lru_variants.h
         caches/lru_variants.cpp
-        ${WEBCACHESIM_HEADER_DIR}/webcachesim/caches/belady.h
+        ${WEBCACHESIM_HEADER_DIR}/caches/belady.h
         caches/belady.cpp
-        ${WEBCACHESIM_HEADER_DIR}/webcachesim/caches/lru2.h
-        ${WEBCACHESIM_HEADER_DIR}/webcachesim/caches/gd_variants.h
+        ${WEBCACHESIM_HEADER_DIR}/caches/lru2.h
+        ${WEBCACHESIM_HEADER_DIR}/caches/gd_variants.h
         caches/gd_variants.cpp
-        ${WEBCACHESIM_HEADER_DIR}/webcachesim/caches/random_variants.h
+        ${WEBCACHESIM_HEADER_DIR}/caches/random_variants.h
         caches/random_variants.cpp
         caches/lhd_competitors/lhd_competitors.h
         caches/lhd_competitors/lhd_competitors.cpp
@@ -32,18 +32,20 @@ set(LIB_SOURCE
         caches/lhd/lhd_variants.cpp
         caches/lhd/lhd.hpp
         caches/lhd/lhd.cpp
-        ${WEBCACHESIM_HEADER_DIR}/webcachesim/caches/ucb.h
+        ${WEBCACHESIM_HEADER_DIR}/caches/ucb.h
         caches/ucb.cpp
-        ${WEBCACHESIM_HEADER_DIR}/webcachesim/caches/belady_sample.h
+        ${WEBCACHESIM_HEADER_DIR}/caches/belady_sample.h
         caches/belady_sample.cpp
-        ${WEBCACHESIM_HEADER_DIR}/webcachesim/caches/wlc.h
+        ${WEBCACHESIM_HEADER_DIR}/caches/wlc.h
         caches/wlc.cpp
-        ${WEBCACHESIM_HEADER_DIR}/webcachesim/caches/hyperbolic.h
+        ${WEBCACHESIM_HEADER_DIR}/caches/hyperbolic.h
         caches/hyperbolic.cpp
-        ${WEBCACHESIM_HEADER_DIR}/webcachesim/caches/lecar.h
+        ${WEBCACHESIM_HEADER_DIR}/caches/lecar.h
         caches/lecar.cpp
-        ${WEBCACHESIM_HEADER_DIR}/webcachesim/caches/lr.h
+        ${WEBCACHESIM_HEADER_DIR}/caches/lr.h
         caches/lr.cpp
+        ${WEBCACHESIM_HEADER_DIR}/caches/parallel_lru.h
+        caches/parallel_lru.cpp
         #        caches/lfo.cpp
         #        caches/lruk_sample.cpp
         #        caches/lfu_sample.cpp
@@ -57,8 +59,8 @@ set(LIB_SOURCE
 
 
 add_library(webcachesim SHARED ${LIB_SOURCE})
-target_include_directories(webcachesim PUBLIC ${WEBCACHESIM_HEADER_DIR}/webcachesim)
-target_include_directories(webcachesim PUBLIC ${WEBCACHESIM_HEADER_DIR}/webcachesim/caches)
+target_include_directories(webcachesim PUBLIC ${WEBCACHESIM_HEADER_DIR})
+target_include_directories(webcachesim PUBLIC ${WEBCACHESIM_HEADER_DIR}/caches)
 target_include_directories(webcachesim PUBLIC ../lib)
 
 find_package(libmongocxx REQUIRED)
@@ -93,4 +95,4 @@ install(TARGETS webcachesim
         ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
         )
 
-install(DIRECTORY ${WEBCACHESIM_HEADER_DIR}/webcachesim DESTINATION ${CMAKE_INSTALL_PREFIX}/include)
+install(DIRECTORY ${WEBCACHESIM_HEADER_DIR} DESTINATION ${CMAKE_INSTALL_PREFIX}/include)

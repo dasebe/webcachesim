@@ -3,7 +3,7 @@
 #add_executable(webcachesim_cli ${SOURCE_FILES})
 #target_link_libraries(webcachesim_cli webcachesim)
 
-set(SOURCE_FILES webcachesim_cli.cpp ${WEBCACHESIM_HEADER_DIR}/webcachesim/simulation.h)
+set(SOURCE_FILES webcachesim_cli.cpp ${WEBCACHESIM_HEADER_DIR}/simulation.h)
 add_executable(webcachesim_cli ${SOURCE_FILES})
 
 find_package(libmongocxx REQUIRED)
