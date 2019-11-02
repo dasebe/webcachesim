@@ -14,6 +14,7 @@
 
 
 using namespace std;
+using namespace webcachesim;
 
 namespace LR {
     uint8_t max_n_past_timestamps = 4;

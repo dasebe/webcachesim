@@ -10,6 +10,7 @@
 #include <random>
 
 using namespace std;
+using namespace webcachesim;
 
 class HyperbolicMeta {
 public:

@@ -17,6 +17,7 @@ typedef std::unordered_map<uint64_t, uint64_t> CacheStatsMapType;
 #endif
 
 using namespace std;
+using namespace webcachesim;
 
 /*
   GD: greedy dual eviction (base class)

@@ -17,6 +17,7 @@
 
 using namespace std;
 using namespace boost;
+using namespace webcachesim;
 
 class LeCaRCache : public Cache
 {
