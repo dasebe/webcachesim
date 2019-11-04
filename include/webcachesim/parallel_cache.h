@@ -81,11 +81,10 @@ namespace webcachesim {
     protected:
         std::thread lookup_get_thread;
         std::atomic_flag keep_running = ATOMIC_FLAG_INIT;
-    private:
         //op queue
         std::queue<OpT> op_queue;
         std::mutex op_queue_mutex;
-
+    private:
         void async_lookup_get() {
             while (keep_running.test_and_set()) {
                 op_queue_mutex.lock();
