@@ -1,4 +1,6 @@
 set(LIB_SOURCE
+        ${WEBCACHESIM_HEADER_DIR}/cache.h
+        ${WEBCACHESIM_HEADER_DIR}/parallel_cache.h
         ${WEBCACHESIM_HEADER_DIR}/simulation.h
         simulation.cpp
         ${WEBCACHESIM_HEADER_DIR}/simulation_lfo.h

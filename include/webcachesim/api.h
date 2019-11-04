@@ -10,7 +10,7 @@
 
 namespace webcachesim {
 
-    class Cache;
+    class ParallelCache;
 
     class Interface {
     public:
@@ -23,7 +23,7 @@ namespace webcachesim {
         uint64_t lookup(const uint64_t &key);
 
     private:
-        std::unique_ptr<Cache> pimpl;
+        ParallelCache *pimpl;
     };
 }
 

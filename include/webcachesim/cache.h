@@ -37,11 +37,6 @@ namespace webcachesim {
 
         virtual void admit(SimpleRequest &req) = 0;
 
-        // for parallel lib
-        virtual void parallel_admit(uint64_t &key, int64_t &size) {};
-
-        virtual uint64_t parallel_lookup(uint64_t &key) { return 0; };
-
         // configure cache parameters
         virtual void setSize(uint64_t cs) {
             _cacheSize = cs;

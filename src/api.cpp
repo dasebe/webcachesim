@@ -3,7 +3,7 @@
 //
 
 #include "api.h"
-#include "cache.h"
+#include "parallel_cache.h"
 
 #include <utility>
 
@@ -11,7 +11,7 @@ using namespace webcachesim;
 
 Interface::Interface(string cache_type, int cache_size, int memory_window) {
     //TODO: use string name
-    pimpl = move(Cache::create_unique(std::move(cache_type)));
+    pimpl = dynamic_cast<ParallelCache *>(Cache::create_unique(std::move(cache_type)).get());
 }
 
 
