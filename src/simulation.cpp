@@ -229,6 +229,7 @@ void FrameWork::simulate() {
 
         ++seq;
     }
+    delete req;
     //for the residue segment of trace
     update_real_time_stats();
     update_stats();
