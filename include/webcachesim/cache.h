@@ -51,7 +51,7 @@ namespace webcachesim {
 //        }
         }
 
-        virtual void init_with_params(std::map<std::string, std::string> params) {}
+        virtual void init_with_params(const map<string, string> &params) {}
 
         virtual bool has(const uint64_t &id) {
 //        cerr<<"has() interface is not implemented for this cache algorithm, "

@@ -43,7 +43,7 @@ public:
     default_random_engine _generator = default_random_engine();
     uniform_int_distribution<std::size_t> _distribution = uniform_int_distribution<std::size_t>();
 
-    void init_with_params(map<string, string> params) override {
+    void init_with_params(const map<string, string> &params) override {
         //set params
         for (auto& it: params) {
             if (it.first == "sample_rate") {

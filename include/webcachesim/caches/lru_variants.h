@@ -103,8 +103,9 @@ public:
     {
     }
 
-    virtual bool lookup(SimpleRequest& req);
-    virtual void admit(SimpleRequest& req);
+    bool lookup(SimpleRequest &req) override;
+
+    void admit(SimpleRequest &req) override;
 
     void evict(SimpleRequest &req);
 
@@ -285,7 +286,7 @@ protected:
     uint64_t _sizeThreshold;
 
 public:
-    void init_with_params(map<string, string> params) override {
+    void init_with_params(const map<string, string> &params) override {
         //set params
         for (auto& it: params) {
             if (it.first == "t") {
@@ -318,7 +319,8 @@ public:
     virtual ~ThLRUCache()
     {
     }
-    void init_with_params(map<string, string> params) override {
+
+    void init_with_params(const map<string, string> &params) override {
         //set params
         for (auto& it: params) {
             if (it.first == "t") {

@@ -31,7 +31,7 @@ public:
     {
     }
 
-    void init_with_params(map<string, string> params) override {
+    void init_with_params(const map<string, string> &params) override {
         //set params
         for (auto& it: params) {
             if (it.first == "sample_rate") {
