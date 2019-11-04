@@ -34,7 +34,7 @@ bool ParallelLRUCache::lookup(SimpleRequest &req) {
 
 void ParallelLRUCache::admit(SimpleRequest &req) {
     int64_t size = req._size;
-    parallel_admit(req._id, size);
+    parallel_admit(req._id, size, req._extra_features.data());
 }
 
 void ParallelLRUCache::async_lookup(const uint64_t &key) {
@@ -45,7 +45,8 @@ void ParallelLRUCache::async_lookup(const uint64_t &key) {
     }
 }
 
-void ParallelLRUCache::async_admit(const uint64_t &key, const int64_t &size) {
+void ParallelLRUCache::async_admit(const uint64_t &key, const int64_t &size,
+                                   const uint16_t extra_features[max_n_extra_feature]) {
     auto it = cache_map.find(key);
     if (it == cache_map.end()) {
         bool seen = filter.exist_or_insert(key);

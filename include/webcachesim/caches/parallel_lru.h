@@ -26,9 +26,16 @@ public:
 
     void async_lookup(const uint64_t &key) override;
 
-    void async_admit(const uint64_t &key, const int64_t &size) override;
+    void
+    async_admit(const uint64_t &key, const int64_t &size, const uint16_t extra_features[max_n_extra_feature]) override;
 
     void evict();
+
+    ~ParallelLRUCache() override {
+        keep_running.clear();
+        if (lookup_get_thread.joinable())
+            lookup_get_thread.join();
+    }
 private:
     AkamaiBloomFilter filter;
     // list for recency order
@@ -36,13 +43,6 @@ private:
     // map to find objects in list
     lruCacheMapType cache_map;
 
-    ~ParallelLRUCache() override {
-        keep_running.clear();
-        lookup_get_thread.join();
-    }
-
     void hit(lruCacheMapType::const_iterator it);
 };
-
-static Factory<ParallelLRUCache> factoryLRU("ParallelLRU");
 #endif //WEBCACHESIM_PARALLEL_LRU_H
