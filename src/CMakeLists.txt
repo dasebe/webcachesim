@@ -80,11 +80,17 @@ if (NOT LIGHTGBM_PATH)
 endif ()
 target_include_directories(webcachesim PUBLIC ${LIGHTGBM_PATH})
 
-find_library(LIGHTGBM_LIB lib_lightgbm.so)
+find_library(LIGHTGBM_LIB lib_lightgbm)
 if (NOT LIGHTGBM_LIB)
     message(FATAL_ERROR "LIGHTGBM_LIB not found")
 endif ()
 target_link_libraries(webcachesim LINK_PUBLIC ${LIGHTGBM_LIB})
+
+find_library(BF_LIB bf)
+if (NOT BF_LIB)
+    message(FATAL_ERROR "BF_LIB not found")
+endif ()
+target_link_libraries(webcachesim LINK_PUBLIC ${BF_LIB})
 
 find_library(PROCPS_LIB procps)
 find_path(PROCPS_PATH proc)

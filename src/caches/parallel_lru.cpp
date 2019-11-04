@@ -48,6 +48,10 @@ void ParallelLRUCache::async_lookup(const uint64_t &key) {
 void ParallelLRUCache::async_admit(const uint64_t &key, const int64_t &size) {
     auto it = cache_map.find(key);
     if (it == cache_map.end()) {
+        bool seen = filter.exist_or_insert(key);
+        if (!seen)
+            goto Lnoop;
+
         cache_list.push_front(key);
         cache_map[key] = cache_list.begin();
         _currentSize += size;

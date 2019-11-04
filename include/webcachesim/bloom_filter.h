@@ -5,28 +5,27 @@
 #ifndef WEBCACHESIM_BLOOM_FILTER_H
 #define WEBCACHESIM_BLOOM_FILTER_H
 
-#include <cstdint>
-#include <unordered_set>
+#include <bf/bloom_filter/basic.hpp>
 
 using namespace std;
 
-class BloomFilter {
+class AkamaiBloomFilter {
+/*
+ * From Algorithm Nugget @ Akamai Paper
+ */
 public:
-    uint8_t current_filter = 0;
-    unordered_set<uint64_t> *_filters;
-    static const size_t max_n_element = 40000000;
 
-    BloomFilter() {
-        _filters = new unordered_set<uint64_t>[2];
-        for (int i = 0; i < 2; ++i)
-            _filters[i].reserve(max_n_element);
+    AkamaiBloomFilter() {
+        for (auto &_filter : _filters)
+            _filter = make_unique<bf::basic_bloom_filter>(fp_rate, max_n_element);
     }
 
-    inline bool exist(uint64_t &key) {
-        return (_filters[0].count(key)) || (_filters[1].count(key));
+    inline bool exist(const uint64_t &key) {
+        return (_filters[0]->lookup(key)) || (_filters[1]->lookup(key));
     }
 
-    inline bool exist_or_insert(uint64_t &key) {
+    inline bool exist_or_insert(const uint64_t &key) {
+        ++n_seen_req;
         if (exist(key))
             return true;
         else
@@ -34,15 +33,23 @@ public:
         return false;
     }
 
-    void insert(uint64_t &key) {
-        if (_filters[current_filter].size() > max_n_element) {
-            //if accumulate more than 40 million, switch
-            if (!_filters[1 - current_filter].empty())
-                _filters[1 - current_filter].clear();
+    void insert(const uint64_t &key) {
+        if (n_seen_req > switch_interval) {
+            _filters[1 - current_filter]->clear();
             current_filter = 1 - current_filter;
+            n_seen_req = 0;
         }
-        _filters[current_filter].insert(key);
+        _filters[current_filter]->add(key);
     }
+
+private:
+    const size_t max_n_element = 40000000;
+    constexpr static const double fp_rate = 0.001;
+    //8 is a magic number
+    const size_t switch_interval = 8 * max_n_element;
+    uint8_t current_filter = 0;
+    int n_seen_req = 0;
+    unique_ptr<bf::basic_bloom_filter> _filters[2];
 };
 
 

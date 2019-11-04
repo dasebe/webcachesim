@@ -173,7 +173,7 @@ void FrameWork::simulate() {
     vector<uint8_t> eviction_qualities;
     vector<uint16_t> eviction_logic_timestamps;
     if (bloom_filter) {
-        filter = new BloomFilter;
+        filter = new AkamaiBloomFilter;
     }
 
     SimpleRequest *req;

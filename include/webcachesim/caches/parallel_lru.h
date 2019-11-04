@@ -7,6 +7,7 @@
 
 #include "parallel_cache.h"
 #include <list>
+#include <bloom_filter.h>
 /*
     ParallelLRU: allowing get/put concurrently. Internally it is still sequential
 */
@@ -18,7 +19,18 @@ typedef std::list<uint64_t>::iterator ListIteratorType;
 typedef std::unordered_map<uint64_t, ListIteratorType> lruCacheMapType;
 
 class ParallelLRUCache : public ParallelCache {
+public:
+    bool lookup(SimpleRequest &req) override;
+
+    void admit(SimpleRequest &req) override;
+
+    void async_lookup(const uint64_t &key) override;
+
+    void async_admit(const uint64_t &key, const int64_t &size) override;
+
+    void evict();
 private:
+    AkamaiBloomFilter filter;
     // list for recency order
     list<uint64_t> cache_list;
     // map to find objects in list
@@ -30,17 +42,6 @@ private:
     }
 
     void hit(lruCacheMapType::const_iterator it);
-
-public:
-    bool lookup(SimpleRequest &req) override;
-
-    void admit(SimpleRequest &req) override;
-
-    void async_lookup(const uint64_t &key) override;
-
-    void async_admit(const uint64_t &key, const int64_t &size) override;
-
-    void evict();
 };
 
 static Factory<ParallelLRUCache> factoryLRU("ParallelLRU");
