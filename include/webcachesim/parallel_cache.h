@@ -5,6 +5,7 @@
 #ifndef WEBCACHESIM_PARALLEL_CACHE_H
 #define WEBCACHESIM_PARALLEL_CACHE_H
 
+#include <api.h>
 #include "cache.h"
 #include <queue>
 #include <mutex>
@@ -15,8 +16,6 @@
 using spp::sparse_hash_map;
 
 namespace webcachesim {
-    const uint max_n_extra_feature = 4;
-
     struct OpT {
         uint64_t key;
         //-1 means get command
@@ -63,7 +62,7 @@ namespace webcachesim {
             }
         }
 
-        uint64_t parallel_lookup(uint64_t &key) {
+        uint64_t parallel_lookup(const uint64_t &key) {
             uint64_t ret = 0;
             size_map_mutex.lock_shared();
             auto it = size_map.find(key);

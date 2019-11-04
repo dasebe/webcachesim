@@ -5,11 +5,10 @@
 #ifndef WEBCACHESIM_API_H
 #define WEBCACHESIM_API_H
 
-
 #include <memory>
 
 namespace webcachesim {
-
+    const uint max_n_extra_feature = 4;
     class ParallelCache;
 
     class Interface {
@@ -18,7 +17,7 @@ namespace webcachesim {
 
         ~Interface() = default;
 
-        void admit(const uint64_t &key, const int64_t &size);
+        void admit(const uint64_t &key, const int64_t &size, const uint16_t extra_features[max_n_extra_feature]);
 
         uint64_t lookup(const uint64_t &key);
 
