@@ -13,7 +13,7 @@ namespace webcachesim {
 
     class Interface {
     public:
-        Interface(std::string cache_type, int cache_size, int memory_window);
+        Interface(const std::string &cache_type, const int &cache_size, const int &memory_window);
 
         ~Interface() = default;
 

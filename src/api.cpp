@@ -9,8 +9,17 @@
 
 using namespace webcachesim;
 
-Interface::Interface(string cache_type, int cache_size, int memory_window) {
-    pimpl = dynamic_cast<ParallelCache *>(Cache::create_unique(std::move(cache_type)).get());
+Interface::Interface(const string &cache_type, const int &cache_size, const int &memory_window) {
+    string webcachesim_cache_type;
+    if (cache_type == "LRU") {
+        webcachesim_cache_type = "ParallelLRU";
+    } else if (cache_type == "FIFO") {
+        webcachesim_cache_type = "ParallelFIFO";
+    } else {
+        cerr << "Vdisk Algorithm not implemented";
+        exit(-1);
+    }
+    pimpl = dynamic_cast<ParallelCache *>(Cache::create_unique(webcachesim_cache_type).release());
     pimpl->setSize(cache_size);
     map<string, string> params;
     params["memory_window"] = to_string(memory_window);
