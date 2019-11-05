@@ -6,14 +6,18 @@
 #define WEBCACHESIM_API_H
 
 #include <memory>
+#include <map>
 
 namespace webcachesim {
     const uint max_n_extra_feature = 4;
+    static const std::string mime_field = "X-extra-fields: ";
+
     class ParallelCache;
 
     class Interface {
     public:
-        Interface(const std::string &cache_type, const int &cache_size, const int &memory_window);
+        Interface(
+                const std::string &cache_type, const int &cache_size, const std::map<std::string, std::string> &params);
 
         ~Interface() = default;
 
@@ -21,9 +25,20 @@ namespace webcachesim {
 
         uint64_t lookup(const uint64_t &key);
 
+        void set_n_extra_features(const int &_n_extra_features) {
+            n_extra_features = _n_extra_features;
+        }
+
+        int get_n_extra_features() {
+            return n_extra_features;
+        }
+
+        int n_extra_features;
+
     private:
         ParallelCache *pimpl;
     };
 }
+
 
 #endif //WEBCACHESIM_API_H

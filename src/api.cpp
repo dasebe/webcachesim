@@ -9,7 +9,7 @@
 
 using namespace webcachesim;
 
-Interface::Interface(const string &cache_type, const int &cache_size, const int &memory_window) {
+Interface::Interface(const string &cache_type, const int &cache_size, const map<string, string> &params) {
     string webcachesim_cache_type;
     if (cache_type == "LRU") {
         webcachesim_cache_type = "ParallelLRU";
@@ -21,8 +21,6 @@ Interface::Interface(const string &cache_type, const int &cache_size, const int 
     }
     pimpl = dynamic_cast<ParallelCache *>(Cache::create_unique(webcachesim_cache_type).release());
     pimpl->setSize(cache_size);
-    map<string, string> params;
-    params["memory_window"] = to_string(memory_window);
     pimpl->init_with_params(params);
 }
 
