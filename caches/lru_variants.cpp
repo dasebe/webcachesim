@@ -598,6 +598,7 @@ void RandomCache::evict()
         LOG("e", _currentSize, obj.id, obj.size);
         _currentSize -= obj.size;
         _cacheSet.erase(obj);
-	_cacheVector.erase(_cacheVector.begin()+index);
+        _cacheVector[index] = _cacheVector.back();
+        _cacheVector.pop_back();
     }
 }
