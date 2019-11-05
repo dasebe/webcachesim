@@ -82,7 +82,7 @@ if (NOT LIGHTGBM_PATH)
 endif ()
 target_include_directories(webcachesim PUBLIC ${LIGHTGBM_PATH})
 
-find_library(LIGHTGBM_LIB lib_lightgbm)
+find_library(LIGHTGBM_LIB _lightgbm)
 if (NOT LIGHTGBM_LIB)
     message(FATAL_ERROR "LIGHTGBM_LIB not found")
 endif ()
