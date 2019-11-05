@@ -45,4 +45,6 @@ private:
 
     void hit(lruCacheMapType::const_iterator it);
 };
+
+static Factory<ParallelLRUCache> factoryLRU("ParallelLRU");
 #endif //WEBCACHESIM_PARALLEL_LRU_H
