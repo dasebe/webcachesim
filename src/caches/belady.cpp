@@ -2,6 +2,7 @@
 // Created by zhenyus on 11/8/18.
 //
 
+#include <assert.h>
 #include "request.h"
 #include "belady.h"
 
@@ -14,6 +15,15 @@ bool BeladyCache::lookup(SimpleRequest& _req) {
 
 #ifdef EVICTION_LOGGING
     {
+        if (if_hit) {
+            auto it = last_req_timestamps.find(req._id);
+            assert(it != last_req_timestamps.end());
+            unsigned int hit_distance =
+                    static_cast<double>(req._t - it->second) / (_cacheSize * 1e6 / byte_million_req);
+            hit_distance = min((unsigned int) 255, hit_distance);
+            hit_distances.emplace_back(hit_distance);
+            it->second = req._id;
+        }
         current_t = req._t;
     }
 #endif
@@ -35,6 +45,10 @@ void BeladyCache::admit(SimpleRequest& _req) {
     _cacheMap.insert({req._id, req._size});
     _currentSize += size;
 
+#ifdef EVICTION_LOGGING
+    last_req_timestamps.insert({req._id, req._t});
+#endif
+
     // check eviction needed
     while (_currentSize > _cacheSize) {
         evict();
@@ -50,8 +64,8 @@ void BeladyCache::evict() {
             unsigned int decision_qulity =
                     static_cast<double>(it->first - current_t) / (_cacheSize * 1e6 / byte_million_req);
             decision_qulity = min((unsigned int) 255, decision_qulity);
-            eviction_qualities.emplace_back(decision_qulity);
-            eviction_logic_timestamps.emplace_back(current_t / 65536);
+            eviction_distances.emplace_back(decision_qulity);
+            last_req_timestamps.erase(it->second);
         }
 #endif
         _currentSize -= iit->second;

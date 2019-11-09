@@ -59,10 +59,20 @@ sudo make -j8
 sudo make install
 cd ../../..
 
-# building webcachesim
+# installing libbf
+cd lib/libbf-dadd48e/build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+make -j8
+sudo make install
+cd ../../..
+
+
+# building webcachesim, install the library with api
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
 make -j8
+sudo make install
+sudo ldconfig
 cd ..
 
 # add binary and trace dir to path
