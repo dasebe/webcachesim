@@ -40,15 +40,15 @@ def runner_run(args: dict, tasks: list):
             if i == 0:
                 print(f'first task: {task_str}')
             f.write(task_str)
+    # update remote
+    current_branch = Repository(os.getcwd()).head.shorthand
+    for n in args['nodes']:
+        hostname = n[n.find('/') + 1:] if '/' in n else n
+        command = ['ssh', hostname, f'cd ${{WEBCACHESIM_ROOT}}/build; '
+                                    f'git fetch origin {current_branch}; git checkout {current_branch}; '
+                                    f'git merge origin/{current_branch}; make -j8']
+        subprocess.run(command)
     with open(f'/tmp/{ts}.job') as f:
-        # update remote
-        current_branch = Repository(os.getcwd()).head.shorthand
-        for n in args['nodes']:
-            command = ['ssh', n, f'cd ${{WEBCACHESIM_ROOT}}/build; '
-                                 f'git fetch origin {current_branch}; git checkout {current_branch}; '
-                                 f'git merge origin/{current_branch}; make -j8']
-            subprocess.run(command,
-                           stdin=f)
         command = ['parallel', '-v', '--eta', '--shuf', '--sshdelay', '0.1']
         for n in args['nodes']:
             command.extend(['-S', n])
