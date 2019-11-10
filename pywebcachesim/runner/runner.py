@@ -20,7 +20,7 @@ def to_task_str(task: dict):
     params['task_id'] = task_id
     params = [f'{k} {v}'for k, v in params.items()]
     params = ' '.join(params)
-    res = f'webcachesim_cli_db {task["trace_file"]} {task["cache_type"]} {task["cache_size"]} {params}'
+    res = f'webcachesim_cli {task["trace_file"]} {task["cache_type"]} {task["cache_size"]} {params}'
     return task_id, res
 
 
@@ -46,7 +46,7 @@ def runner_run(args: dict, tasks: list):
         hostname = n[n.find('/') + 1:] if '/' in n else n
         command = ['ssh', hostname, f'cd ${{WEBCACHESIM_ROOT}}/build; '
                                     f'git fetch origin {current_branch}; git checkout {current_branch}; '
-                                    f'git merge origin/{current_branch}; make -j8']
+                                    f'git merge origin/{current_branch}; make -j8; sudo make install']
         subprocess.run(command)
     with open(f'/tmp/{ts}.job') as f:
         command = ['parallel', '-v', '--eta', '--shuf', '--sshdelay', '0.1']
