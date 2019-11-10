@@ -15,7 +15,7 @@ class SimpleRequest
 public:
     IdType _id; // request object id
     uint64_t _size; // request size in bytes
-    u_int64_t _t;
+    uint64_t _t;
     //category feature. unsigned int. ideally not exceed 2k
     vector<uint16_t > _extra_features;
 

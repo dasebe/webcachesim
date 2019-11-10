@@ -22,7 +22,7 @@ bool BeladyCache::lookup(SimpleRequest& _req) {
                     static_cast<double>(req._t - it->second) / (_cacheSize * 1e6 / byte_million_req);
             hit_distance = min((unsigned int) 255, hit_distance);
             hit_distances.emplace_back(hit_distance);
-            it->second = req._id;
+            it->second = req._t;
         }
         current_t = req._t;
     }
