@@ -61,6 +61,9 @@ public:
     vector<int64_t> near_bytes;
     vector<int64_t> middle_bytes;
     vector<int64_t> far_bytes;
+    vector<int64_t> near_objs;
+    vector<int64_t> middle_objs;
+    vector<int64_t> far_objs;
 #endif
 
     void init_with_params(const map<string, string> &params) override {
@@ -80,18 +83,26 @@ public:
 
     void update_stat_periodic() override {
         int64_t near_byte = 0, middle_byte = 0, far_byte = 0;
+        int64_t near_obj = 0, middle_obj = 0, far_obj = 0;
         for (auto &i: meta_holder[0]) {
             if (i._future_timestamp == 0xffffffff) {
                 far_byte += i._size;
+                ++far_obj;
             } else if (i._future_timestamp - current_t > threshold) {
                 middle_byte += i._size;
+                ++middle_obj;
             } else {
                 near_byte += i._size;
+                ++near_obj;
             }
         }
         near_bytes.emplace_back(near_byte);
         middle_bytes.emplace_back(middle_byte);
         far_bytes.emplace_back(far_byte);
+
+        near_objs.emplace_back(near_obj);
+        middle_objs.emplace_back(middle_obj);
+        far_objs.emplace_back(far_obj);
     }
 
     virtual void update_stat(bsoncxx::builder::basic::document &doc) {
@@ -105,6 +116,20 @@ public:
         }));
         doc.append(kvp("far_bytes", [this](sub_array child) {
             for (const auto &element : far_bytes)
+                child.append(element);
+        }));
+
+
+        doc.append(kvp("near_objs", [this](sub_array child) {
+            for (const auto &element : near_objs)
+                child.append(element);
+        }));
+        doc.append(kvp("middle_objs", [this](sub_array child) {
+            for (const auto &element : middle_objs)
+                child.append(element);
+        }));
+        doc.append(kvp("far_objs", [this](sub_array child) {
+            for (const auto &element : far_objs)
                 child.append(element);
         }));
     }
