@@ -19,9 +19,11 @@ Interface::Interface(const string &cache_type, const int &cache_size, const map<
         cerr << "Vdisk Algorithm not implemented";
         exit(-1);
     }
+    auto _params = params;
+    _params["async_print"] = "1";
     pimpl = dynamic_cast<ParallelCache *>(Cache::create_unique(webcachesim_cache_type).release());
     pimpl->setSize(cache_size);
-    pimpl->init_with_params(params);
+    pimpl->init_with_params(_params);
 }
 
 //allow concurrent access

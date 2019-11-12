@@ -29,6 +29,8 @@ namespace webcachesim {
             keep_running.clear();
             if (lookup_get_thread.joinable())
                 lookup_get_thread.join();
+            if (print_status_thread.joinable())
+                print_status_thread.join();
         }
 
         //try to use less this because it need to grub lock
@@ -82,6 +84,8 @@ namespace webcachesim {
             for (auto &it: params) {
                 if (it.first == "n_extra_fields") {
                     n_extra_fields = stoul(it.second);
+                } else if (it.first == "async_print") {
+                    print_status_thread = std::thread(&ParallelCache::async_print_status, this);
                 }
             }
             keep_running.test_and_set();
@@ -96,6 +100,31 @@ namespace webcachesim {
         std::mutex op_queue_mutex;
     private:
         uint8_t n_extra_fields = 0;
+        std::thread print_status_thread;
+
+        virtual void print_stats() {
+            //no lock because read fail doesn't hurt much
+            std::cerr << "\nop queue length: " << op_queue.size() << std::endl;
+            std::cerr << "async size_map len: " << size_map.size() << std::endl;
+            std::cerr << "cache size: " << _currentSize << "/" << _cacheSize << " ("
+                      << ((double) _currentSize) / _cacheSize
+                      << ")" << std::endl;
+//                      << "in/out metadata " << in_cache_metas.size() << " / " << out_cache_metas.size() << std::endl;
+//            std::cerr << "n_training: "<<training_data->labels.size()<<std::endl;
+
+//        std::cerr << "training loss: " << training_loss << std::endl;
+//        std::cerr << "n_force_eviction: " << n_force_eviction <<std::endl;
+//        std::cerr << "training time: " << training_time <<std::endl;
+//        std::cerr << "inference time: " << inference_time <<std::endl;
+        }
+
+        void async_print_status() {
+            while (true) {
+                std::this_thread::sleep_for(std::chrono::seconds(10));
+                print_stats();
+            }
+        }
+
         void async_lookup_get() {
             while (keep_running.test_and_set()) {
                 op_queue_mutex.lock();
