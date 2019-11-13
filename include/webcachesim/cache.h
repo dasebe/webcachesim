@@ -38,7 +38,7 @@ namespace webcachesim {
         virtual void admit(SimpleRequest &req) = 0;
 
         // configure cache parameters
-        virtual void setSize(uint64_t cs) {
+        virtual void setSize(const uint64_t &cs) {
             _cacheSize = cs;
             //delay eviction because not all algorithms implement such interface
 //        while (_currentSize > _cacheSize) {
