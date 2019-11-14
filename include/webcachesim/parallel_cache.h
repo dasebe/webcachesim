@@ -143,7 +143,7 @@ namespace webcachesim {
         }
 
         void async_print_status() {
-            while (true) {
+            while (keep_running.test_and_set()) {
                 std::this_thread::sleep_for(std::chrono::seconds(10));
                 print_stats();
             }

@@ -466,6 +466,8 @@ public:
             training_params["categorical_feature"] = categorical_feature;
         }
         inference_params = training_params;
+        //can set number of threads, however the inference time will increase a lot (2x~3x) if use 1 thread
+//        inference_params["num_threads"] = "4";
         training_data = new WLCTrainingData();
 
 #ifdef EVICTION_LOGGING
