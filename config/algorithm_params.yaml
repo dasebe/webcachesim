@@ -173,6 +173,32 @@ WLC:
     - 0
   #    - 1
   version: belady_min_distribution
+ParallelWLC:
+  training_sample_interval:
+    - 64
+  sample_rate:
+    - 64
+  batch_size:
+    - 131072
+  max_n_past_timestamps:
+    - 32
+  num_iterations:
+    - 32
+  num_leaves:
+    - 32
+  num_threads:
+    - 4
+  learning_rate:
+    - 0.1
+  objective:
+    - byte_miss_ratio
+  #    - object_miss_ratio
+  n_edc_feature:
+    - 10
+  wlc_bloom_filter:
+    - 0
+  #    - 1
+  version: prototype
 Hyperbolic:
   sample_rate: 64
 LeCaR:

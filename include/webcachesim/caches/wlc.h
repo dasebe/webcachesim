@@ -2,7 +2,7 @@
 // Created by zhenyus on 1/16/19.
 //
 
-#ifndef WEBCACHESIM_WLC_H_
+#ifndef WEBCACHESIM_WLC_H
 #define WEBCACHESIM_WLC_H
 
 #include "cache.h"

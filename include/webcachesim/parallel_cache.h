@@ -37,6 +37,36 @@ namespace webcachesim {
         sparse_hash_map<uint64_t, uint64_t> size_map;
         shared_mutex size_map_mutex;
 
+
+        bool lookup(SimpleRequest &req) override {
+            static int counter = 0;
+            if (!((counter++) % 1000000)) {
+                op_queue_mutex.lock();
+                auto s = op_queue.size();
+                op_queue_mutex.unlock();
+                std::cerr << "op queue length: " << s << std::endl;
+            }
+            //back pressure
+            if (counter % 10000) {
+                while (true) {
+                    op_queue_mutex.lock();
+                    if (op_queue.size() > 1000) {
+                        op_queue_mutex.unlock();
+                        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                    } else {
+                        op_queue_mutex.unlock();
+                        break;
+                    }
+                }
+            }
+            return parallel_lookup(req._id);
+        }
+
+        void admit(SimpleRequest &req) override {
+            int64_t size = req._size;
+            parallel_admit(req._id, size, req._extra_features.data());
+        }
+
         //the cache receive these msgs to update the states, but not need to reply
         virtual void async_lookup(const uint64_t &key) = 0;
 
@@ -98,9 +128,9 @@ namespace webcachesim {
         //op queue
         std::queue<OpT> op_queue;
         std::mutex op_queue_mutex;
+        std::thread print_status_thread;
     private:
         uint8_t n_extra_fields = 0;
-        std::thread print_status_thread;
 
         virtual void print_stats() {
             //no lock because read fail doesn't hurt much

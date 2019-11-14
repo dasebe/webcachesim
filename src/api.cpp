@@ -15,6 +15,8 @@ Interface::Interface(const string &cache_type, const uint64_t &cache_size, const
         webcachesim_cache_type = "ParallelLRU";
     } else if (cache_type == "FIFO") {
         webcachesim_cache_type = "ParallelFIFO";
+    } else if (cache_type == "WLC") {
+        webcachesim_cache_type = "ParallelWLC";
     } else {
         cerr << "Vdisk Algorithm not implemented";
         exit(-1);

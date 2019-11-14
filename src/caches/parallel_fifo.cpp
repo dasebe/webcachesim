@@ -4,35 +4,6 @@
 
 #include "parallel_fifo.h"
 
-bool ParallelFIFOCache::lookup(SimpleRequest &req) {
-    static int counter = 0;
-    if (!((counter++) % 1000000)) {
-        op_queue_mutex.lock();
-        auto s = op_queue.size();
-        op_queue_mutex.unlock();
-        std::cerr << "op queue length: " << s << std::endl;
-    }
-    //back pressure
-    if (counter % 10000) {
-        while (true) {
-            op_queue_mutex.lock();
-            if (op_queue.size() > 1000) {
-                op_queue_mutex.unlock();
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            } else {
-                op_queue_mutex.unlock();
-                break;
-            }
-        }
-    }
-    return parallel_lookup(req._id);
-}
-
-void ParallelFIFOCache::admit(SimpleRequest &req) {
-    int64_t size = req._size;
-    parallel_admit(req._id, size, req._extra_features.data());
-}
-
 void ParallelFIFOCache::async_lookup(const uint64_t &key) {
 }
 

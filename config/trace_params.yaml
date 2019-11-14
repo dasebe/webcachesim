@@ -144,7 +144,14 @@ wc2800m_ts.tr:
 
 wiki_1400m_4mb.tr:
   cache_sizes:
-    - 549755813888
+    - 549755813888:
+        ParallelLRU:
+          bloom_filter: 1
+        ParallelWLC:
+          memory_window:
+            - 469762048
+          sample_rate:
+            - 64
   n_extra_fields: 1
   segment_window: 1000000
   real_time_segment_window: 600
@@ -157,25 +164,6 @@ wiki_1400m_4mb.tr:
   uni_size: 0
   # stop at exactly before req id n, so finish reqs [0, n-1]
   n_early_stop: -1
-  WLC:
-    memory_window:
-      #      - 134217728
-      #- 268435456
-      #     - 536870912
-      #      - 1073741824
-      - 67108864
-      - 134217728
-      - 268435456
-      - 536870912
-      - 1073741824
-    #      - 1342177280
-    #      - 1610612736
-    #      - 1879048192
-    #      - 2147483648
-    sample_rate:
-      - 64
-#      - 128
-#      - 256
 
 
 traceHK_ts.tr:

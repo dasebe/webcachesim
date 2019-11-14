@@ -19,10 +19,6 @@ typedef std::unordered_map<uint64_t, ListIteratorType> lruCacheMapType;
 
 class ParallelFIFOCache : public ParallelCache {
 public:
-    bool lookup(SimpleRequest &req) override;
-
-    void admit(SimpleRequest &req) override;
-
     void async_lookup(const uint64_t &key) override;
 
     void

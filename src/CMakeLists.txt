@@ -50,6 +50,8 @@ set(LIB_SOURCE
         caches/parallel_lru.cpp
         ${WEBCACHESIM_HEADER_DIR}/caches/parallel_fifo.h
         caches/parallel_fifo.cpp
+        ${WEBCACHESIM_HEADER_DIR}/caches/parallel_wlc.h
+        caches/parallel_wlc.cpp
         #        caches/lfo.cpp
         #        caches/lruk_sample.cpp
         #        caches/lfu_sample.cpp
