@@ -39,15 +39,9 @@ namespace webcachesim {
 
 
         bool lookup(SimpleRequest &req) override {
+            //back pressure to prevent op_queue too long
             static int counter = 0;
-            if (!((++counter) % 1000000)) {
-                op_queue_mutex.lock();
-                auto s = op_queue.size();
-                op_queue_mutex.unlock();
-                print_stats();
-            }
-            //back pressure
-            if (counter % 10000) {
+            if ((++counter) % 10000) {
                 while (true) {
                     op_queue_mutex.lock();
                     if (op_queue.size() > 1000) {
@@ -59,6 +53,7 @@ namespace webcachesim {
                     }
                 }
             }
+            ++counter;
             return parallel_lookup(req._id);
         }
 
@@ -114,12 +109,11 @@ namespace webcachesim {
             for (auto &it: params) {
                 if (it.first == "n_extra_fields") {
                     n_extra_fields = stoul(it.second);
-                } else if (it.first == "async_print") {
-                    print_status_thread = std::thread(&ParallelCache::async_print_status, this);
                 }
             }
             keep_running.test_and_set();
             lookup_get_thread = std::thread(&ParallelCache::async_lookup_get, this);
+            print_status_thread = std::thread(&ParallelCache::async_print_status, this);
         }
 
     protected:
