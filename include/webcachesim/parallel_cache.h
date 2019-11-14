@@ -40,11 +40,11 @@ namespace webcachesim {
 
         bool lookup(SimpleRequest &req) override {
             static int counter = 0;
-            if (!((counter++) % 1000000)) {
+            if (!((++counter) % 1000000)) {
                 op_queue_mutex.lock();
                 auto s = op_queue.size();
                 op_queue_mutex.unlock();
-                std::cerr << "op queue length: " << s << std::endl;
+                print_stats();
             }
             //back pressure
             if (counter % 10000) {
