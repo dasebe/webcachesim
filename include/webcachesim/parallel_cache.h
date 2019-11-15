@@ -12,6 +12,7 @@
 #include <thread>
 #include "sparsepp/spp.h"
 #include <shared_mutex>
+#include <atomic>
 
 using spp::sparse_hash_map;
 
@@ -26,7 +27,7 @@ namespace webcachesim {
     class ParallelCache : public Cache {
     public:
         ~ParallelCache() {
-            keep_running.clear();
+            keep_running = false;
             if (lookup_get_thread.joinable())
                 lookup_get_thread.join();
             if (print_status_thread.joinable())
@@ -111,14 +112,13 @@ namespace webcachesim {
                     n_extra_fields = stoul(it.second);
                 }
             }
-            keep_running.test_and_set();
             lookup_get_thread = std::thread(&ParallelCache::async_lookup_get, this);
             print_status_thread = std::thread(&ParallelCache::async_print_status, this);
         }
 
     protected:
         std::thread lookup_get_thread;
-        std::atomic_flag keep_running = ATOMIC_FLAG_INIT;
+        std::atomic<bool> keep_running = true;
         //op queue
         std::queue<OpT> op_queue;
         std::mutex op_queue_mutex;
@@ -143,14 +143,14 @@ namespace webcachesim {
         }
 
         void async_print_status() {
-            while (keep_running.test_and_set()) {
+            while (keep_running) {
                 std::this_thread::sleep_for(std::chrono::seconds(10));
                 print_stats();
             }
         }
 
         void async_lookup_get() {
-            while (keep_running.test_and_set()) {
+            while (keep_running) {
                 op_queue_mutex.lock();
                 if (!op_queue.empty()) {
                     OpT op = op_queue.front();

@@ -27,7 +27,7 @@ public:
     void evict();
 
     ~ParallelFIFOCache() override {
-        keep_running.clear();
+        keep_running = false;
         if (lookup_get_thread.joinable())
             lookup_get_thread.join();
     }

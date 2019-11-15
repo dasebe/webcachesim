@@ -320,7 +320,7 @@ public:
     std::uniform_int_distribution<std::size_t> _distribution = std::uniform_int_distribution<std::size_t>();
 
     ~ParallelWLCCache() {
-        keep_running.clear();
+        keep_running = false;
         if (lookup_get_thread.joinable())
             lookup_get_thread.join();
         if (training_thread.joinable())
@@ -421,7 +421,7 @@ public:
     }
 
     void async_training() {
-        while (true) {
+        while (keep_running) {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
             if (training_data->labels.size() >= ParallelWLC::batch_size) {
                 //assume back ground training data is already clear
