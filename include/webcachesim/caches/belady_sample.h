@@ -58,12 +58,13 @@ public:
     uint64_t current_t;
 
 #ifdef EVICTION_LOGGING
-    vector<int64_t> near_bytes;
-    vector<int64_t> middle_bytes;
-    vector<int64_t> far_bytes;
-    vector<int64_t> near_objs;
-    vector<int64_t> middle_objs;
-    vector<int64_t> far_objs;
+    // how far an evicted object will access again
+    vector<uint8_t> eviction_distances;
+    uint64_t byte_million_req;
+    string task_id;
+    string dburl;
+    vector<double> beyond_byte_ratio;
+    vector<double> beyond_obj_ratio;
 #endif
 
     void init_with_params(const map<string, string> &params) override {
@@ -73,6 +74,14 @@ public:
                 sample_rate = stoul(it.second);
             } else if (it.first == "threshold") {
                 threshold = stoull(it.second);
+#ifdef EVICTION_LOGGING
+            } else if (it.first == "byte_million_req") {
+                byte_million_req = stoull(it.second);
+            } else if (it.first == "task_id") {
+                task_id = it.second;
+            } else if (it.first == "dburl") {
+                dburl = it.second;
+#endif
             } else {
                 cerr << "unrecognized parameter: " << it.first << endl;
             }
@@ -82,62 +91,51 @@ public:
 #ifdef EVICTION_LOGGING
 
     void update_stat_periodic() override {
-        int64_t near_byte = 0, middle_byte = 0, far_byte = 0;
-        int64_t near_obj = 0, middle_obj = 0, far_obj = 0;
+        int64_t within_byte = 0, beyond_byte = 0;
+        int64_t within_obj = 0, beyond_obj = 0;
         for (auto &i: meta_holder[0]) {
-            if (i._future_timestamp == 0xffffffff) {
-                far_byte += i._size;
-                ++far_obj;
-            } else if (i._future_timestamp - current_t > threshold) {
-                middle_byte += i._size;
-                ++middle_obj;
+            if (i._future_timestamp - current_t > threshold) {
+                beyond_byte += i._size;
+                ++beyond_obj;
             } else {
-                near_byte += i._size;
-                ++near_obj;
+                within_byte += i._size;
+                ++within_obj;
             }
         }
-        near_bytes.emplace_back(near_byte);
-        middle_bytes.emplace_back(middle_byte);
-        far_bytes.emplace_back(far_byte);
-
-        near_objs.emplace_back(near_obj);
-        middle_objs.emplace_back(middle_obj);
-        far_objs.emplace_back(far_obj);
+        beyond_byte_ratio.emplace_back(static_cast<double>(beyond_byte) / (beyond_byte + within_byte));
+        beyond_obj_ratio.emplace_back(static_cast<double>(beyond_obj) / (beyond_obj + within_obj));
     }
 
-    virtual void update_stat(bsoncxx::builder::basic::document &doc) {
-        doc.append(kvp("near_bytes", [this](sub_array child) {
-            for (const auto &element : near_bytes)
+    void update_stat(bsoncxx::builder::basic::document &doc) override {
+        doc.append(kvp("beyond_byte_ratio", [this](sub_array child) {
+            for (const auto &element : beyond_byte_ratio)
                 child.append(element);
         }));
-        doc.append(kvp("middle_bytes", [this](sub_array child) {
-            for (const auto &element : middle_bytes)
+        doc.append(kvp("beyond_obj_ratio", [this](sub_array child) {
+            for (const auto &element : beyond_obj_ratio)
                 child.append(element);
         }));
-        doc.append(kvp("far_bytes", [this](sub_array child) {
-            for (const auto &element : far_bytes)
-                child.append(element);
-        }));
+        //Log to GridFs because the value is too big to store in mongodb
+        try {
+            mongocxx::client client = mongocxx::client{mongocxx::uri(dburl)};
+            mongocxx::database db = client["webcachesim"];
+            auto bucket = db.gridfs_bucket();
 
-
-        doc.append(kvp("near_objs", [this](sub_array child) {
-            for (const auto &element : near_objs)
-                child.append(element);
-        }));
-        doc.append(kvp("middle_objs", [this](sub_array child) {
-            for (const auto &element : middle_objs)
-                child.append(element);
-        }));
-        doc.append(kvp("far_objs", [this](sub_array child) {
-            for (const auto &element : far_objs)
-                child.append(element);
-        }));
+            auto uploader = bucket.open_upload_stream(task_id + ".evictions");
+            for (auto &b: eviction_distances)
+                uploader.write((uint8_t *) (&b), sizeof(uint8_t));
+            uploader.close();
+        } catch (const std::exception &xcp) {
+            cerr << "error: db connection failed: " << xcp.what() << std::endl;
+            abort();
+        }
     }
 
 #endif
 
-    virtual bool lookup(SimpleRequest& req);
-    virtual void admit(SimpleRequest& req);
+    bool lookup(SimpleRequest &req) override;
+
+    void admit(SimpleRequest &req) override;
 
     void evict();
     //sample, rank the 1st and return
