@@ -7,13 +7,14 @@
 
 using namespace std;
 
-typedef uint64_t IdType;
+typedef uint64_t KeyT;
+typedef uint64_t SizeT;
 
 // Request information
 class SimpleRequest
 {
 public:
-    IdType _id; // request object id
+    KeyT _id; // request object id
     uint64_t _size; // request size in bytes
     uint64_t _t;
     //category feature. unsigned int. ideally not exceed 2k
@@ -27,22 +28,22 @@ public:
     }
 
     // Create request
-    SimpleRequest(IdType id, uint64_t size)
+    SimpleRequest(KeyT id, uint64_t size)
         : _id(id), _size(size) {
     }
 
-    SimpleRequest(IdType id, uint64_t size, uint64_t t, vector<uint16_t >* extra_features = nullptr)
+    SimpleRequest(KeyT id, uint64_t size, uint64_t t, vector<uint16_t> *extra_features = nullptr)
         : _id(id), _size(size), _t(t) {
         if (extra_features)
             _extra_features = *extra_features;
     };
 
-    inline void reinit(IdType id, uint64_t size) {
+    inline void reinit(KeyT id, uint64_t size) {
         _id = id;
         _size = size;
     }
 
-    inline void reinit(IdType id, uint64_t size, uint64_t t, vector<uint16_t >* extra_features = nullptr) {
+    inline void reinit(KeyT id, uint64_t size, uint64_t t, vector<uint16_t> *extra_features = nullptr) {
         _id = id;
         _size = size;
         _t = t;
@@ -57,7 +58,7 @@ public:
     }
 
     // Get request object id
-    inline IdType get_id() const {
+    inline KeyT get_id() const {
         return _id;
     }
 
@@ -74,8 +75,8 @@ public:
     u_int64_t _next_seq;
 
     // Create request
-    AnnotatedRequest(IdType id, uint64_t size, uint64_t t, uint64_t next_seq,
-            vector<uint16_t >* extra_features = nullptr)
+    AnnotatedRequest(KeyT id, uint64_t size, uint64_t t, uint64_t next_seq,
+                     vector<uint16_t >* extra_features = nullptr)
             : SimpleRequest(id, size),
               _next_seq(next_seq) {
         _t = t;
@@ -83,7 +84,7 @@ public:
             _extra_features = *extra_features;
     }
 
-    inline void reinit(IdType id, uint64_t size, uint64_t t, uint64_t next_seq,
+    inline void reinit(KeyT id, uint64_t size, uint64_t t, uint64_t next_seq,
                        vector<uint16_t >* extra_features = nullptr) {
         SimpleRequest::reinit(id, size);
         _t = t;
@@ -100,13 +101,13 @@ public:
     double rehit_probability;
 
     // Create request
-    ClassifiedRequest(IdType id, uint64_t size, double _rehit_probability)
+    ClassifiedRequest(KeyT id, uint64_t size, double _rehit_probability)
             : SimpleRequest(id, size),
               rehit_probability(_rehit_probability)
     {
     }
 
-    inline void reinit(IdType id, uint64_t size, double _rehit_probability) {
+    inline void reinit(KeyT id, uint64_t size, double _rehit_probability) {
         SimpleRequest::reinit(id, size);
         rehit_probability = _rehit_probability;
     }

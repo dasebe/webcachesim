@@ -25,10 +25,10 @@ class BeladyCache : public Cache
 protected:
     // list for recency order
     multimap<uint64_t , uint64_t, greater<uint64_t >> _valueMap;
-    unordered_map<uint64_t, uint64_t> last_req_timestamps;
     // only store in-cache object, value is size
     unordered_map<uint64_t, uint64_t> _cacheMap;
 #ifdef EVICTION_LOGGING
+    unordered_map<uint64_t, uint64_t> last_req_timestamps;
     // how far an evicted object will access again
     vector<uint8_t> eviction_distances;
     vector<uint8_t> hit_distances;
