@@ -17,7 +17,8 @@ bool RelaxedBeladyCache::lookup(SimpleRequest &_req) {
         auto list_idx = it->second.first;
         if (within_boundary == list_idx) {
             if (req._next_seq - current_t >= belady_boundary) {
-                key_map.insert({req._id, {beyond_boundary, beyond_boundary_meta.size()}});
+                //TODO: should modify instead of insert
+                it->second = {beyond_boundary, beyond_boundary_meta.size()};
                 beyond_boundary_meta.emplace_back(req);
             } else {
                 within_boundary_meta.emplace(req._next_seq, pair(req._id, req._size));
@@ -26,6 +27,7 @@ bool RelaxedBeladyCache::lookup(SimpleRequest &_req) {
         } else {
             auto pos = it->second.second;
             auto &meta = beyond_boundary_meta[pos];
+            assert(meta._key == req._id);
             meta.update(req);
             if (meta._future_timestamp - current_t < belady_boundary) {
                 beyond_meta_remove_and_append(pos);
@@ -98,6 +100,7 @@ void RelaxedBeladyCache::evict() {
 
     if (within_boundary == meta_type) {
         auto it = within_boundary_meta.begin();
+        key_map.erase(it->second.first);
         _currentSize -= it->second.second;
         within_boundary_meta.erase(it);
     } else {
