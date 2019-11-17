@@ -52,6 +52,8 @@ set(LIB_SOURCE
         caches/parallel_fifo.cpp
         ${WEBCACHESIM_HEADER_DIR}/caches/parallel_wlc.h
         caches/parallel_wlc.cpp
+        ${WEBCACHESIM_HEADER_DIR}/caches/binary_relaxed_belady.h
+        caches/binary_relaxed_belady.cpp
         #        caches/lfo.cpp
         #        caches/lruk_sample.cpp
         #        caches/lfu_sample.cpp
