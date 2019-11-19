@@ -13,8 +13,11 @@
 #include "sparsepp/spp.h"
 #include <shared_mutex>
 #include <atomic>
+#include <chrono>
 
 using spp::sparse_hash_map;
+using namespace chrono;
+using namespace std;
 
 namespace webcachesim {
     struct OpT {
@@ -70,7 +73,7 @@ namespace webcachesim {
                 const uint64_t &key, const int64_t &size, const uint16_t extra_features[max_n_extra_feature]) = 0;
 
         //the client call this, expecting fast return
-        void parallel_admit
+        virtual void parallel_admit
                 (const uint64_t &key, const int64_t &size, const uint16_t extra_features[max_n_extra_feature]) {
             if (size > _cacheSize)
                 return;
@@ -90,9 +93,11 @@ namespace webcachesim {
             }
         }
 
-        uint64_t parallel_lookup(const uint64_t &key) {
+        virtual uint64_t parallel_lookup(const uint64_t &key) {
             uint64_t ret = 0;
+//            system_clock::time_point timeBegin;
             size_map_mutex.lock_shared();
+//            timeBegin = chrono::system_clock::now();
             auto it = size_map.find(key);
             if (it != size_map.end()) {
                 ret = it->second;
@@ -103,6 +108,8 @@ namespace webcachesim {
             } else {
                 size_map_mutex.unlock_shared();
             }
+//            auto duration = chrono::duration_cast<chrono::microseconds>(chrono::system_clock::now() - timeBegin).count();
+//            cout<<"d: "<<duration<<endl;
             return ret;
         }
 
