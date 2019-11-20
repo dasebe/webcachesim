@@ -32,7 +32,7 @@ public:
 
     uint64_t parallel_lookup(const uint64_t &key) override {
         //give it 33% miss rate, according to GBDT hit rate from wiki
-        if (!(key%3))
+        if (!(key%4))
             return 0;
         //average size is 33k
         return 33000;
