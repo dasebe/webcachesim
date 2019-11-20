@@ -17,9 +17,6 @@ LHD::LHD()
 {
     lhdcache = new cache::Cache();
 
-    // constants
-    int assoc = 64;
-    int admissionSamples = 8;
     lhdcache->repl = new repl::LHD(assoc, admissionSamples, lhdcache);
 }
 

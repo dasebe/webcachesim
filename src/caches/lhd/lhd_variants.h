@@ -17,7 +17,23 @@ protected:
     cache::Cache *lhdcache;
 
 public:
+    int assoc = 64;
+    int admissionSamples = 8;
+
     LHD();
+    
+    void init_with_params(map<string, string> params) override {
+        //set params
+        for (auto& it: params) {
+            if (it.first == "assoc") {
+                assoc = stoul(it.second);
+            } else if (it.first == "admissionSamples") {
+                admissionSamples = stoull(it.second);
+            } else {
+                cerr << "unrecognized parameter: " << it.first << endl;
+            }
+        }
+    }
 
     void setSize(const uint64_t &cs) override;
 
