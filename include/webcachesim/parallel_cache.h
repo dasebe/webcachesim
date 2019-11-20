@@ -14,6 +14,7 @@
 #include <shared_mutex>
 #include <atomic>
 #include <chrono>
+#include <boost/lockfree/queue.hpp>
 
 using spp::sparse_hash_map;
 using namespace chrono;
@@ -44,21 +45,7 @@ namespace webcachesim {
 
 
         bool lookup(SimpleRequest &req) override {
-            //back pressure to prevent op_queue too long
-            static int counter = 0;
-            if ((++counter) % 10000) {
-                while (true) {
-                    op_queue_mutex.lock();
-                    if (op_queue.size() > 1000) {
-                        op_queue_mutex.unlock();
-                        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                    } else {
-                        op_queue_mutex.unlock();
-                        break;
-                    }
-                }
-            }
-            ++counter;
+            //fixed size freelock queue will block on push when queue is full
             return parallel_lookup(req._id);
         }
 
@@ -87,7 +74,7 @@ namespace webcachesim {
                 for (uint8_t i = 0; i < n_extra_fields; ++i)
                     op._extra_features[i] = extra_features[i];
                 op_queue_mutex.lock();
-                op_queue.push(op);
+                while (! op_queue.push(op));
                 op_queue_mutex.unlock();
             } else {
                 //already inserted
@@ -106,7 +93,7 @@ namespace webcachesim {
                 ret = it->second;
                 size_map_mutex[shard_id].unlock_shared();
                 op_queue_mutex.lock();
-                op_queue.push(OpT{.key=key, .size=-1});
+                while(!op_queue.push(OpT{.key=key, .size=-1}));
                 op_queue_mutex.unlock();
             } else {
                 size_map_mutex[shard_id].unlock_shared();
@@ -130,7 +117,8 @@ namespace webcachesim {
         std::thread lookup_get_thread;
         std::atomic<bool> keep_running = true;
         //op queue
-        std::queue<OpT> op_queue;
+        boost::lockfree::queue<OpT, boost::lockfree::capacity<65535>> op_queue;
+//        std::queue<OpT> op_queue;
         std::mutex op_queue_mutex;
         std::thread print_status_thread;
     private:
@@ -161,19 +149,13 @@ namespace webcachesim {
 
         void async_lookup_get() {
             while (keep_running) {
-                op_queue_mutex.lock();
-                if (!op_queue.empty()) {
-                    OpT op = op_queue.front();
-                    op_queue.pop();
-                    op_queue_mutex.unlock();
+                OpT op;
+                if (op_queue.pop(op)) {
                     if (op.size < 0) {
                         async_lookup(op.key);
                     } else {
                         async_admit(op.key, op.size, op._extra_features);
                     }
-                } else {
-                    op_queue_mutex.unlock();
-                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 }
             }
         }
