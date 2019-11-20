@@ -21,7 +21,7 @@ int main (int argc, char* argv[])
 
   // create cache
   const string cacheType = argv[2];
-  unique_ptr<Cache> webcache = move(Cache::create_unique(cacheType));
+  unique_ptr<Cache> webcache = Cache::create_unique(cacheType);
   if(webcache == nullptr)
     return 1;
 

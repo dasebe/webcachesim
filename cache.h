@@ -76,7 +76,7 @@ public:
             std::cerr << "unkown cacheType" << std::endl;
             return nullptr;
         }
-        Cache_instance = move(get_factory_instance()[name]->create_unique());
+        Cache_instance = get_factory_instance()[name]->create_unique();
         return Cache_instance;
     }
 
