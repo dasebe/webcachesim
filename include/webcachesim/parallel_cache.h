@@ -37,9 +37,10 @@ namespace webcachesim {
                 print_status_thread.join();
         }
 
-        //try to use less this because it need to grub lock
-        sparse_hash_map<uint64_t, uint64_t> size_map;
-        shared_mutex size_map_mutex;
+        //sharded by 32. Assuming 32 threads
+        static const int n_size_map_shard = 32;
+        sparse_hash_map<uint64_t, uint64_t> size_map[n_size_map_shard];
+        shared_mutex size_map_mutex[n_size_map_shard];
 
 
         bool lookup(SimpleRequest &req) override {
@@ -77,10 +78,11 @@ namespace webcachesim {
                 (const uint64_t &key, const int64_t &size, const uint16_t extra_features[max_n_extra_feature]) {
             if (size > _cacheSize)
                 return;
-            size_map_mutex.lock_shared();
-            auto it = size_map.find(key);
-            if (it == size_map.end() || !(it->second)) {
-                size_map_mutex.unlock_shared();
+            auto shard_id = key%n_size_map_shard;
+            size_map_mutex[shard_id].lock_shared();
+            auto it = size_map[shard_id].find(key);
+            if (it == size_map[shard_id].end() || !(it->second)) {
+                size_map_mutex[shard_id].unlock_shared();
                 OpT op = {.key=key, .size=size};
                 for (uint8_t i = 0; i < n_extra_fields; ++i)
                     op._extra_features[i] = extra_features[i];
@@ -89,24 +91,25 @@ namespace webcachesim {
                 op_queue_mutex.unlock();
             } else {
                 //already inserted
-                size_map_mutex.unlock_shared();
+                size_map_mutex[shard_id].unlock_shared();
             }
         }
 
         virtual uint64_t parallel_lookup(const uint64_t &key) {
             uint64_t ret = 0;
 //            system_clock::time_point timeBegin;
-            size_map_mutex.lock_shared();
+            auto shard_id = key%n_size_map_shard;
+            size_map_mutex[shard_id].lock_shared();
 //            timeBegin = chrono::system_clock::now();
-            auto it = size_map.find(key);
-            if (it != size_map.end()) {
+            auto it = size_map[shard_id].find(key);
+            if (it != size_map[shard_id].end()) {
                 ret = it->second;
-                size_map_mutex.unlock_shared();
+                size_map_mutex[shard_id].unlock_shared();
                 op_queue_mutex.lock();
                 op_queue.push(OpT{.key=key, .size=-1});
                 op_queue_mutex.unlock();
             } else {
-                size_map_mutex.unlock_shared();
+                size_map_mutex[shard_id].unlock_shared();
             }
 //            auto duration = chrono::duration_cast<chrono::microseconds>(chrono::system_clock::now() - timeBegin).count();
 //            cout<<"d: "<<duration<<endl;
@@ -135,8 +138,8 @@ namespace webcachesim {
 
         virtual void print_stats() {
             //no lock because read fail doesn't hurt much
-            std::cerr << "\nop queue length: " << op_queue.size() << std::endl;
-            std::cerr << "async size_map len: " << size_map.size() << std::endl;
+//            std::cerr << "\nop queue length: " << op_queue.size() << std::endl;
+//            std::cerr << "async size_map len: " << size_map.size() << std::endl;
             std::cerr << "cache size: " << _currentSize << "/" << _cacheSize << " ("
                       << ((double) _currentSize) / _cacheSize
                       << ")" << std::endl;

@@ -405,8 +405,8 @@ public:
 
 
     void print_stats() override {
-        std::cerr << "\nop queue length: " << op_queue.size() << std::endl;
-        std::cerr << "async size_map len: " << size_map.size() << std::endl;
+//        std::cerr << "\nop queue length: " << op_queue.size() << std::endl;
+//        std::cerr << "async size_map len: " << size_map.size() << std::endl;
         std::cerr << "cache size: " << _currentSize << "/" << _cacheSize << " (" << ((double) _currentSize) / _cacheSize
                   << ")" << std::endl
                   << "in/out metadata " << in_cache_metas.size() << " / " << out_cache_metas.size() << std::endl;
