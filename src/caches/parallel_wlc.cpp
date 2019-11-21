@@ -204,9 +204,10 @@ void ParallelWLCCache::forget() {
         }
         out_cache_metas.pop_back();
         key_map.erase(forget_key);
-        size_map_mutex.lock();
-        size_map.erase(forget_key);
-        size_map_mutex.unlock();
+        auto shard_id = forget_key%n_shard;
+        size_map_mutex[shard_id].lock();
+        size_map[shard_id].erase(forget_key);
+        size_map_mutex[shard_id].unlock();
         negative_candidate_queue.erase(t_counter % ParallelWLC::memory_window);
 
     }
@@ -217,9 +218,10 @@ void ParallelWLCCache::async_admit(const uint64_t &key, const int64_t &size, con
     if (it == key_map.end()) {
         //fresh insert
         key_map.insert({key, KeyMapEntryT{.list_idx=0, .list_pos = (uint32_t) in_cache_metas.size()}});
-        size_map_mutex.lock();
-        size_map.insert({key, size});
-        size_map_mutex.unlock();
+        auto shard_id = key%n_shard;
+        size_map_mutex[shard_id].lock();
+        size_map[shard_id].insert({key, size});
+        size_map_mutex[shard_id].unlock();
 
         auto lru_it = in_cache_lru_queue.request(key);
         in_cache_metas.emplace_back(key, size, t_counter, extra_features, lru_it);
@@ -246,9 +248,10 @@ void ParallelWLCCache::async_admit(const uint64_t &key, const int64_t &size, con
         }
         out_cache_metas.pop_back();
         it->second = {0, tail0_pos};
-        size_map_mutex.lock();
-        size_map.find(key)->second = size;
-        size_map_mutex.unlock();
+        auto shard_id = key%n_shard;
+        size_map_mutex[shard_id].lock();
+        size_map[shard_id].find(key)->second = size;
+        size_map_mutex[shard_id].unlock();
         _currentSize += size;
     }
     // check more eviction needed?
@@ -414,9 +417,10 @@ void ParallelWLCCache::evict() {
         _currentSize -= meta._size;
         key_map.erase(key);
         //remove from metas
-        size_map_mutex.lock();
-        size_map.erase(key);
-        size_map_mutex.unlock();
+        auto shard_id = key%n_shard;
+        size_map_mutex[shard_id].lock();
+        size_map[shard_id].erase(key);
+        size_map_mutex[shard_id].unlock();
 
         uint32_t activate_tail_idx = in_cache_metas.size() - 1;
         if (old_pos != activate_tail_idx) {
@@ -445,9 +449,10 @@ void ParallelWLCCache::evict() {
         in_cache_metas.pop_back();
         key_map.find(key)->second = {1, new_pos};
         //in list 1, can still query
-        size_map_mutex.lock();
-        size_map.find(key)->second = 0;
-        size_map_mutex.unlock();
+        auto shard_id = key%n_shard;
+        size_map_mutex[shard_id].lock();
+        size_map[shard_id].find(key)->second = 0;
+        size_map_mutex[shard_id].unlock();
 
     }
 }

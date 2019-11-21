@@ -15,9 +15,10 @@ void ParallelFIFOCache::async_admit(const uint64_t &key, const int64_t &size,
         cache_map[key] = cache_list.begin();
         _currentSize += size;
         //slow to insert before local metadata, because in the future there will be additional fetch step
-        size_map_mutex.lock();
-        size_map.insert({key, size});
-        size_map_mutex.unlock();
+        auto shard_id = key%n_shard;
+        size_map_mutex[shard_id].lock();
+        size_map[shard_id].insert({key, size});
+        size_map_mutex[shard_id].unlock();
     } else {
         //already in the cache
         goto Lnoop;
@@ -36,11 +37,12 @@ void ParallelFIFOCache::evict() {
     auto lit = --(cache_list.end());
     uint64_t key = *lit;
     //fast to remove before local metadata, because in the future will have async admission
-    size_map_mutex.lock();
-    auto sit = size_map.find(key);
+    auto shard_id = key%n_shard;
+    auto sit = size_map[shard_id].find(key);
     uint64_t size = sit->second;
-    size_map.erase(key);
-    size_map_mutex.unlock();
+    size_map_mutex[shard_id].lock();
+    size_map[shard_id].erase(key);
+    size_map_mutex[shard_id].unlock();
     _currentSize -= size;
     cache_map.erase(key);
     cache_list.erase(lit);

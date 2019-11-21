@@ -1,3 +1,5 @@
+message(${WEBCACHESIM_HEADER_DIR})
+
 set(LIB_SOURCE
         ${WEBCACHESIM_HEADER_DIR}/cache.h
         ${WEBCACHESIM_HEADER_DIR}/parallel_cache.h
@@ -56,6 +58,8 @@ set(LIB_SOURCE
         caches/binary_relaxed_belady.cpp
         ${WEBCACHESIM_HEADER_DIR}/caches/relaxed_belady.h
         caches/relaxed_belady.cpp
+        ${WEBCACHESIM_HEADER_DIR}/caches/static_parallel_cache.h
+        caches/static_parallel_cache.cpp
         #        caches/lfo.cpp
         #        caches/lruk_sample.cpp
         #        caches/lfu_sample.cpp

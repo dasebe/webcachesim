@@ -13,8 +13,12 @@
 #include "sparsepp/spp.h"
 #include <shared_mutex>
 #include <atomic>
+#include <chrono>
+#include <boost/lockfree/queue.hpp>
 
 using spp::sparse_hash_map;
+using namespace chrono;
+using namespace std;
 
 namespace webcachesim {
     struct OpT {
@@ -34,27 +38,14 @@ namespace webcachesim {
                 print_status_thread.join();
         }
 
-        //try to use less this because it need to grub lock
-        sparse_hash_map<uint64_t, uint64_t> size_map;
-        shared_mutex size_map_mutex;
+        //sharded by 32. Assuming 32 threads
+        static const int n_shard = 64;
+        sparse_hash_map<uint64_t, uint64_t> size_map[n_shard];
+        shared_mutex size_map_mutex[n_shard];
 
 
         bool lookup(SimpleRequest &req) override {
-            //back pressure to prevent op_queue too long
-            static int counter = 0;
-            if ((++counter) % 10000) {
-                while (true) {
-                    op_queue_mutex.lock();
-                    if (op_queue.size() > 1000) {
-                        op_queue_mutex.unlock();
-                        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                    } else {
-                        op_queue_mutex.unlock();
-                        break;
-                    }
-                }
-            }
-            ++counter;
+            //fixed size freelock queue will block on push when queue is full
             return parallel_lookup(req._id);
         }
 
@@ -70,39 +61,41 @@ namespace webcachesim {
                 const uint64_t &key, const int64_t &size, const uint16_t extra_features[max_n_extra_feature]) = 0;
 
         //the client call this, expecting fast return
-        void parallel_admit
+        virtual void parallel_admit
                 (const uint64_t &key, const int64_t &size, const uint16_t extra_features[max_n_extra_feature]) {
             if (size > _cacheSize)
                 return;
-            size_map_mutex.lock_shared();
-            auto it = size_map.find(key);
-            if (it == size_map.end() || !(it->second)) {
-                size_map_mutex.unlock_shared();
+            auto shard_id = key%n_shard;
+            size_map_mutex[shard_id].lock_shared();
+            auto it = size_map[shard_id].find(key);
+            if (it == size_map[shard_id].end() || !(it->second)) {
+                size_map_mutex[shard_id].unlock_shared();
                 OpT op = {.key=key, .size=size};
                 for (uint8_t i = 0; i < n_extra_fields; ++i)
                     op._extra_features[i] = extra_features[i];
-                op_queue_mutex.lock();
-                op_queue.push(op);
-                op_queue_mutex.unlock();
+                while (! op_queue.push(op));
             } else {
                 //already inserted
-                size_map_mutex.unlock_shared();
+                size_map_mutex[shard_id].unlock_shared();
             }
         }
 
-        uint64_t parallel_lookup(const uint64_t &key) {
+        virtual uint64_t parallel_lookup(const uint64_t &key) {
             uint64_t ret = 0;
-            size_map_mutex.lock_shared();
-            auto it = size_map.find(key);
-            if (it != size_map.end()) {
+//            system_clock::time_point timeBegin;
+            auto shard_id = key%n_shard;
+            size_map_mutex[shard_id].lock_shared();
+//            timeBegin = chrono::system_clock::now();
+            auto it = size_map[shard_id].find(key);
+            if (it != size_map[shard_id].end()) {
                 ret = it->second;
-                size_map_mutex.unlock_shared();
-                op_queue_mutex.lock();
-                op_queue.push(OpT{.key=key, .size=-1});
-                op_queue_mutex.unlock();
+                size_map_mutex[shard_id].unlock_shared();
+                while(!op_queue.push(OpT{.key=key, .size=-1}));
             } else {
-                size_map_mutex.unlock_shared();
+                size_map_mutex[shard_id].unlock_shared();
             }
+//            auto duration = chrono::duration_cast<chrono::microseconds>(chrono::system_clock::now() - timeBegin).count();
+//            cout<<"d: "<<duration<<endl;
             return ret;
         }
 
@@ -120,16 +113,16 @@ namespace webcachesim {
         std::thread lookup_get_thread;
         std::atomic<bool> keep_running = true;
         //op queue
-        std::queue<OpT> op_queue;
-        std::mutex op_queue_mutex;
+        boost::lockfree::queue<OpT, boost::lockfree::capacity<65535>> op_queue;
+//        std::queue<OpT> op_queue;
         std::thread print_status_thread;
     private:
         uint8_t n_extra_fields = 0;
 
         virtual void print_stats() {
             //no lock because read fail doesn't hurt much
-            std::cerr << "\nop queue length: " << op_queue.size() << std::endl;
-            std::cerr << "async size_map len: " << size_map.size() << std::endl;
+//            std::cerr << "\nop queue length: " << op_queue.size() << std::endl;
+//            std::cerr << "async size_map len: " << size_map.size() << std::endl;
             std::cerr << "cache size: " << _currentSize << "/" << _cacheSize << " ("
                       << ((double) _currentSize) / _cacheSize
                       << ")" << std::endl;
@@ -151,19 +144,13 @@ namespace webcachesim {
 
         void async_lookup_get() {
             while (keep_running) {
-                op_queue_mutex.lock();
-                if (!op_queue.empty()) {
-                    OpT op = op_queue.front();
-                    op_queue.pop();
-                    op_queue_mutex.unlock();
+                OpT op;
+                if (op_queue.pop(op)) {
                     if (op.size < 0) {
                         async_lookup(op.key);
                     } else {
                         async_admit(op.key, op.size, op._extra_features);
                     }
-                } else {
-                    op_queue_mutex.unlock();
-                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 }
             }
         }
