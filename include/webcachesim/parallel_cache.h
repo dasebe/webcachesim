@@ -39,9 +39,9 @@ namespace webcachesim {
         }
 
         //sharded by 32. Assuming 32 threads
-        static const int n_size_map_shard = 32;
-        sparse_hash_map<uint64_t, uint64_t> size_map[n_size_map_shard];
-        shared_mutex size_map_mutex[n_size_map_shard];
+        static const int n_shard = 64;
+        sparse_hash_map<uint64_t, uint64_t> size_map[n_shard];
+        shared_mutex size_map_mutex[n_shard];
 
 
         bool lookup(SimpleRequest &req) override {
@@ -65,7 +65,7 @@ namespace webcachesim {
                 (const uint64_t &key, const int64_t &size, const uint16_t extra_features[max_n_extra_feature]) {
             if (size > _cacheSize)
                 return;
-            auto shard_id = key%n_size_map_shard;
+            auto shard_id = key%n_shard;
             size_map_mutex[shard_id].lock_shared();
             auto it = size_map[shard_id].find(key);
             if (it == size_map[shard_id].end() || !(it->second)) {
@@ -73,9 +73,7 @@ namespace webcachesim {
                 OpT op = {.key=key, .size=size};
                 for (uint8_t i = 0; i < n_extra_fields; ++i)
                     op._extra_features[i] = extra_features[i];
-                op_queue_mutex.lock();
                 while (! op_queue.push(op));
-                op_queue_mutex.unlock();
             } else {
                 //already inserted
                 size_map_mutex[shard_id].unlock_shared();
@@ -85,16 +83,14 @@ namespace webcachesim {
         virtual uint64_t parallel_lookup(const uint64_t &key) {
             uint64_t ret = 0;
 //            system_clock::time_point timeBegin;
-            auto shard_id = key%n_size_map_shard;
+            auto shard_id = key%n_shard;
             size_map_mutex[shard_id].lock_shared();
 //            timeBegin = chrono::system_clock::now();
             auto it = size_map[shard_id].find(key);
             if (it != size_map[shard_id].end()) {
                 ret = it->second;
                 size_map_mutex[shard_id].unlock_shared();
-                op_queue_mutex.lock();
                 while(!op_queue.push(OpT{.key=key, .size=-1}));
-                op_queue_mutex.unlock();
             } else {
                 size_map_mutex[shard_id].unlock_shared();
             }
@@ -119,7 +115,6 @@ namespace webcachesim {
         //op queue
         boost::lockfree::queue<OpT, boost::lockfree::capacity<65535>> op_queue;
 //        std::queue<OpT> op_queue;
-        std::mutex op_queue_mutex;
         std::thread print_status_thread;
     private:
         uint8_t n_extra_fields = 0;

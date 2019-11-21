@@ -29,7 +29,7 @@ void ParallelLRUCache::async_admit(const uint64_t &key, const int64_t &size,
         cache_map[key] = cache_list.begin();
         _currentSize += size;
         //slow to insert before local metadata, because in the future there will be additional fetch step
-        auto shard_id = key%n_size_map_shard;
+        auto shard_id = key%n_shard;
         size_map_mutex[shard_id].lock();
         size_map[shard_id].insert({key, size});
         size_map_mutex[shard_id].unlock();
@@ -51,10 +51,10 @@ void ParallelLRUCache::evict() {
     auto lit = --(cache_list.end());
     uint64_t key = *lit;
     //fast to remove before local metadata, because in the future will have async admission
-    auto shard_id = key%n_size_map_shard;
-    size_map_mutex[shard_id].lock();
+    auto shard_id = key%n_shard;
     auto sit = size_map[shard_id].find(key);
     uint64_t size = sit->second;
+    size_map_mutex[shard_id].lock();
     size_map[shard_id].erase(key);
     size_map_mutex[shard_id].unlock();
     _currentSize -= size;

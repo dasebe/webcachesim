@@ -204,7 +204,7 @@ void ParallelWLCCache::forget() {
         }
         out_cache_metas.pop_back();
         key_map.erase(forget_key);
-        auto shard_id = forget_key%n_size_map_shard;
+        auto shard_id = forget_key%n_shard;
         size_map_mutex[shard_id].lock();
         size_map[shard_id].erase(forget_key);
         size_map_mutex[shard_id].unlock();
@@ -218,7 +218,7 @@ void ParallelWLCCache::async_admit(const uint64_t &key, const int64_t &size, con
     if (it == key_map.end()) {
         //fresh insert
         key_map.insert({key, KeyMapEntryT{.list_idx=0, .list_pos = (uint32_t) in_cache_metas.size()}});
-        auto shard_id = key%n_size_map_shard;
+        auto shard_id = key%n_shard;
         size_map_mutex[shard_id].lock();
         size_map[shard_id].insert({key, size});
         size_map_mutex[shard_id].unlock();
@@ -248,7 +248,7 @@ void ParallelWLCCache::async_admit(const uint64_t &key, const int64_t &size, con
         }
         out_cache_metas.pop_back();
         it->second = {0, tail0_pos};
-        auto shard_id = key%n_size_map_shard;
+        auto shard_id = key%n_shard;
         size_map_mutex[shard_id].lock();
         size_map[shard_id].find(key)->second = size;
         size_map_mutex[shard_id].unlock();
@@ -417,7 +417,7 @@ void ParallelWLCCache::evict() {
         _currentSize -= meta._size;
         key_map.erase(key);
         //remove from metas
-        auto shard_id = key%n_size_map_shard;
+        auto shard_id = key%n_shard;
         size_map_mutex[shard_id].lock();
         size_map[shard_id].erase(key);
         size_map_mutex[shard_id].unlock();
@@ -449,7 +449,7 @@ void ParallelWLCCache::evict() {
         in_cache_metas.pop_back();
         key_map.find(key)->second = {1, new_pos};
         //in list 1, can still query
-        auto shard_id = key%n_size_map_shard;
+        auto shard_id = key%n_shard;
         size_map_mutex[shard_id].lock();
         size_map[shard_id].find(key)->second = 0;
         size_map_mutex[shard_id].unlock();
