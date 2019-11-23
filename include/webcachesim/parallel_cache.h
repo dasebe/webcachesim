@@ -113,7 +113,7 @@ namespace webcachesim {
         std::thread lookup_get_thread;
         std::atomic<bool> keep_running = true;
         //op queue
-        boost::lockfree::queue<OpT, boost::lockfree::capacity<65535>> op_queue;
+        boost::lockfree::queue<OpT, boost::lockfree::capacity<4096>> op_queue;
 //        std::queue<OpT> op_queue;
         std::thread print_status_thread;
     private:
