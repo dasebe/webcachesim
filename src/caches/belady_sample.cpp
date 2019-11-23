@@ -17,6 +17,10 @@ bool BeladySampleCache::lookup(SimpleRequest &_req) {
         uint32_t &pos_idx = it->second;
         meta_holder[pos_idx].update(req._t, req._next_seq);
 
+        if (memorize_sample && memorize_sample_keys.find(req._id) != memorize_sample_keys.end() &&
+            req._next_seq - current_t <= threshold)
+            memorize_sample_keys.erase(req._id);
+
         return true;
     }
     return false;
@@ -47,7 +51,6 @@ void BeladySampleCache::admit(SimpleRequest &_req) {
 
 pair<uint64_t, uint32_t> BeladySampleCache::rank() {
     uint64_t max_future_interval = 0;
-    uint64_t min_past_timetamp = -1;
     uint64_t max_key;
     uint32_t max_pos;
 
@@ -61,10 +64,9 @@ pair<uint64_t, uint32_t> BeladySampleCache::rank() {
                 it = memorize_sample_keys.erase(it);
             } else {
                 auto future_interval = 2 * threshold;
-                if (future_interval > max_future_interval ||
-                    ((future_interval == max_future_interval) && (past_timestamp < min_past_timetamp))) {
+                //select the first one: random one
+                if (future_interval > max_future_interval) {
                     max_future_interval = 2 * threshold;
-                    min_past_timetamp = past_timestamp;
                     max_key = key;
                     max_pos = pos;
                 }
@@ -94,10 +96,9 @@ pair<uint64_t, uint32_t> BeladySampleCache::rank() {
         else
             future_interval = meta._future_timestamp - current_t;
 
-        if (future_interval > max_future_interval ||
-            ((future_interval == max_future_interval) && (past_timestamp < min_past_timetamp))) {
+        //select the first one: random one
+        if (future_interval > max_future_interval) {
             max_future_interval = future_interval;
-            min_past_timetamp = past_timestamp;
             max_key = meta._key;
             max_pos = pos;
         }
