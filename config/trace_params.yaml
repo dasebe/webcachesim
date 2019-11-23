@@ -17,6 +17,11 @@ wc2800m_ts.tr:
             - 21453953
             - 35106469
             - 21453953
+          sample_rate:
+            - 128
+            - 256
+            - 512
+            - 1024
         BinaryRelaxedBelady:
           belady_boundary:
             - 9751797
@@ -60,6 +65,11 @@ wc2800m_ts.tr:
             - 46808625
             - 70212938
             - 46808625
+          sample_rate:
+            - 128
+            - 256
+            - 512
+            - 1024
         BinaryRelaxedBelady:
           belady_boundary:
             - 19503594
@@ -105,6 +115,11 @@ wc2800m_ts.tr:
             - 101418689
             - 156028753
             - 109220127
+          sample_rate:
+            - 128
+            - 256
+            - 512
+            - 1024
         BinaryRelaxedBelady:
           belady_boundary:
             - 46808625
