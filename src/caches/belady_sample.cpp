@@ -46,10 +46,32 @@ void BeladySampleCache::admit(SimpleRequest &_req) {
 
 
 pair<uint64_t, uint32_t> BeladySampleCache::rank() {
-    uint64_t max_future_interval;
-    uint64_t min_past_timetamp;
+    uint64_t max_future_interval = 0;
+    uint64_t min_past_timetamp = -1;
     uint64_t max_key;
     uint32_t max_pos;
+
+    if (memorize_sample) {
+        for (auto it = memorize_sample_keys.cbegin(); it != memorize_sample_keys.end();) {
+            auto &key = *it;
+            auto &pos = key_map.find(key)->second;
+            auto &meta = meta_holder[pos];
+            uint64_t &past_timestamp = meta._past_timestamp;
+            if (meta._future_timestamp - current_t <= threshold) {
+                it = memorize_sample_keys.erase(it);
+            } else {
+                auto future_interval = 2 * threshold;
+                if (future_interval > max_future_interval ||
+                    ((future_interval == max_future_interval) && (past_timestamp < min_past_timetamp))) {
+                    max_future_interval = 2 * threshold;
+                    min_past_timetamp = past_timestamp;
+                    max_key = key;
+                    max_pos = pos;
+                }
+                ++it;
+            }
+        }
+    }
 
     uint32_t rand_idx = _distribution(_generator) % meta_holder.size();
     uint n_sample = min(sample_rate, (uint32_t) meta_holder.size());
@@ -60,13 +82,19 @@ pair<uint64_t, uint32_t> BeladySampleCache::rank() {
         //fill in past_interval
         uint64_t &past_timestamp = meta._past_timestamp;
 
+        if (memorize_sample && memorize_sample_keys.find(meta._key) != memorize_sample_keys.end())
+            continue;
+
         uint64_t future_interval;
-        if (meta._future_timestamp - current_t > threshold)
+        if (meta._future_timestamp - current_t > threshold) {
             future_interval = 2*threshold;
+            if (memorize_sample && memorize_sample_keys.size() < sample_rate)
+                memorize_sample_keys.insert(meta._key);
+        }
         else
             future_interval = meta._future_timestamp - current_t;
 
-        if (!i || future_interval > max_future_interval ||
+        if (future_interval > max_future_interval ||
             ((future_interval == max_future_interval) && (past_timestamp < min_past_timetamp))) {
             max_future_interval = future_interval;
             min_past_timetamp = past_timestamp;
@@ -95,6 +123,9 @@ void BeladySampleCache::evict() {
         eviction_distances.emplace_back(decision_qulity);
     }
 #endif
+
+    if (memorize_sample && memorize_sample_keys.find(key) != memorize_sample_keys.end())
+        memorize_sample_keys.erase(key);
 
     _currentSize -= meta_holder[old_pos]._size;
     uint32_t activate_tail_idx = meta_holder.size() - 1;

@@ -13,6 +13,7 @@
 #include "mongocxx/uri.hpp"
 #include <bsoncxx/builder/basic/document.hpp>
 #include "bsoncxx/json.hpp"
+#include <unordered_set>
 
 using namespace std;
 using bsoncxx::builder::basic::kvp;
@@ -57,6 +58,9 @@ public:
     uniform_int_distribution<std::size_t> _distribution = uniform_int_distribution<std::size_t>();
     uint64_t current_t;
 
+    bool memorize_sample = false;
+    unordered_set<uint64_t> memorize_sample_keys;
+
 #ifdef EVICTION_LOGGING
     // how far an evicted object will access again
     vector<uint8_t> eviction_distances;
@@ -74,13 +78,15 @@ public:
                 sample_rate = stoul(it.second);
             } else if (it.first == "threshold") {
                 threshold = stoull(it.second);
+            } else if (it.first == "memorize_sample") {
+                memorize_sample = static_cast<bool>(stoi(it.second));
 #ifdef EVICTION_LOGGING
-            } else if (it.first == "byte_million_req") {
-                byte_million_req = stoull(it.second);
-            } else if (it.first == "task_id") {
-                task_id = it.second;
-            } else if (it.first == "dburl") {
-                dburl = it.second;
+                } else if (it.first == "byte_million_req") {
+                    byte_million_req = stoull(it.second);
+                } else if (it.first == "task_id") {
+                    task_id = it.second;
+                } else if (it.first == "dburl") {
+                    dburl = it.second;
 #endif
             } else {
                 cerr << "unrecognized parameter: " << it.first << endl;

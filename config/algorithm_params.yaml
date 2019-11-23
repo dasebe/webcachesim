@@ -35,6 +35,9 @@ BeladySample:
     - 64
   threshold:
     - 40000000
+  memorize_sample:
+    - 0
+    - 1
 ThLRU:
   t: 1073741824
 ThS4LRU:
