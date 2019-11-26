@@ -588,6 +588,20 @@ void RandomCache::admit(SimpleRequest* req)
 
 void RandomCache::evict(SimpleRequest* req)
 {
+    CacheObject obj(req);
+    auto it = _cacheSet.find(obj);
+    if (it != _cacheSet.end()) {
+        LOG("e", _currentSize, obj.id, obj.size);
+        _currentSize -= obj.size;
+        _cacheSet.erase(obj);
+        for (size_t i = 0; i < _cacheVector.size(); i++) {
+            if (_cacheVector[i] == obj) {
+                _cacheVector[i] = _cacheVector.back();
+                _cacheVector.pop_back();
+                break;
+            }
+        }
+    }
 }
 
 void RandomCache::evict()
