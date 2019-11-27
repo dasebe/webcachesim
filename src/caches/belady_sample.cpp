@@ -77,8 +77,6 @@ pair<uint64_t, uint32_t> BeladySampleCache::rank() {
         //true random sample
         uint32_t pos = (i + _distribution(_generator)) % meta_holder.size();
         auto &meta = meta_holder[pos];
-        //fill in past_interval
-        uint64_t &past_timestamp = meta._past_timestamp;
 
         if (memorize_sample && memorize_sample_keys.find(meta._key) != memorize_sample_keys.end()) {
             //this key is already in the memorize keys, so we will enumerate it
