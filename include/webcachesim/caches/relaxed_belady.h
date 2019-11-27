@@ -100,51 +100,6 @@ public:
         }
     }
 
-#ifdef EVICTION_LOGGING
-
-    void update_stat_periodic() override {
-        int64_t within_byte = 0, beyond_byte = 0;
-        int64_t within_obj = 0, beyond_obj = 0;
-        for (auto &i: meta_holder[0]) {
-            if (i._future_timestamp - current_t > threshold) {
-                beyond_byte += i._size;
-                ++beyond_obj;
-            } else {
-                within_byte += i._size;
-                ++within_obj;
-            }
-        }
-        beyond_byte_ratio.emplace_back(static_cast<double>(beyond_byte) / (beyond_byte + within_byte));
-        beyond_obj_ratio.emplace_back(static_cast<double>(beyond_obj) / (beyond_obj + within_obj));
-    }
-
-    void update_stat(bsoncxx::builder::basic::document &doc) override {
-        doc.append(kvp("beyond_byte_ratio", [this](sub_array child) {
-            for (const auto &element : beyond_byte_ratio)
-                child.append(element);
-        }));
-        doc.append(kvp("beyond_obj_ratio", [this](sub_array child) {
-            for (const auto &element : beyond_obj_ratio)
-                child.append(element);
-        }));
-        //Log to GridFs because the value is too big to store in mongodb
-        try {
-            mongocxx::client client = mongocxx::client{mongocxx::uri(dburl)};
-            mongocxx::database db = client["webcachesim"];
-            auto bucket = db.gridfs_bucket();
-
-            auto uploader = bucket.open_upload_stream(task_id + ".evictions");
-            for (auto &b: eviction_distances)
-                uploader.write((uint8_t *) (&b), sizeof(uint8_t));
-            uploader.close();
-        } catch (const std::exception &xcp) {
-            cerr << "error: db connection failed: " << xcp.what() << std::endl;
-            abort();
-        }
-    }
-
-#endif
-
     void beyond_meta_remove_and_append(const uint32_t &pos) {
         auto &meta = beyond_boundary_meta[pos];
         auto it = key_map.find(meta._key);

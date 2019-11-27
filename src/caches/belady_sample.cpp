@@ -50,11 +50,13 @@ void BeladySampleCache::admit(SimpleRequest &_req) {
 
 
 pair<uint64_t, uint32_t> BeladySampleCache::rank() {
+    vector<pair<uint64_t, uint32_t >> beyond_boundary_key_pos;
     uint64_t max_future_interval = 0;
     uint64_t max_key;
     uint32_t max_pos;
 
     if (memorize_sample) {
+        //first pass: move near objects out of the set.
         for (auto it = memorize_sample_keys.cbegin(); it != memorize_sample_keys.end();) {
             auto &key = *it;
             auto &pos = key_map.find(key)->second;
@@ -63,38 +65,36 @@ pair<uint64_t, uint32_t> BeladySampleCache::rank() {
             if (meta._future_timestamp - current_t <= threshold) {
                 it = memorize_sample_keys.erase(it);
             } else {
-                auto future_interval = 2 * threshold;
-                //select the first one: random one
-                if (future_interval > max_future_interval) {
-                    max_future_interval = 2 * threshold;
-                    max_key = key;
-                    max_pos = pos;
-                }
+                beyond_boundary_key_pos.emplace_back(pair(key, pos));
                 ++it;
             }
         }
     }
 
-    uint32_t rand_idx = _distribution(_generator) % meta_holder.size();
     uint n_sample = min(sample_rate, (uint32_t) meta_holder.size());
 
     for (uint32_t i = 0; i < n_sample; i++) {
-        uint32_t pos = (i + rand_idx) % meta_holder.size();
+        //true random sample
+        uint32_t pos = (i + _distribution(_generator)) % meta_holder.size();
         auto &meta = meta_holder[pos];
         //fill in past_interval
         uint64_t &past_timestamp = meta._past_timestamp;
 
-        if (memorize_sample && memorize_sample_keys.find(meta._key) != memorize_sample_keys.end())
+        if (memorize_sample && memorize_sample_keys.find(meta._key) != memorize_sample_keys.end()) {
+            //this key is already in the memorize keys, so we will enumerate it
             continue;
+        }
 
         uint64_t future_interval;
-        if (meta._future_timestamp - current_t > threshold) {
-            future_interval = 2*threshold;
-            if (memorize_sample && memorize_sample_keys.size() < sample_rate)
-                memorize_sample_keys.insert(meta._key);
-        }
-        else
+        if (meta._future_timestamp - current_t <= threshold) {
             future_interval = meta._future_timestamp - current_t;
+        } else {
+            beyond_boundary_key_pos.emplace_back(pair(meta._key, pos));
+            if (memorize_sample && memorize_sample_keys.size() < sample_rate) {
+                memorize_sample_keys.insert(meta._key);
+            }
+            continue;
+        }
 
         //select the first one: random one
         if (future_interval > max_future_interval) {
@@ -103,7 +103,14 @@ pair<uint64_t, uint32_t> BeladySampleCache::rank() {
             max_pos = pos;
         }
     }
-    return {max_key, max_pos};
+
+    if (beyond_boundary_key_pos.empty()) {
+        return {max_key, max_pos};
+    } else {
+        auto rand_id = _distribution(_generator) % beyond_boundary_key_pos.size();
+        auto &item = beyond_boundary_key_pos[rand_id];
+        return {item.first, item.second};
+    }
 }
 
 void BeladySampleCache::evict() {
@@ -116,7 +123,7 @@ void BeladySampleCache::evict() {
 
 #ifdef EVICTION_LOGGING
     {
-        auto &meta = meta_holder[0][old_pos];
+        auto &meta = meta_holder[old_pos];
         //record eviction decision quality
         unsigned int decision_qulity =
                 static_cast<double>(meta._future_timestamp - current_t) / (_cacheSize * 1e6 / byte_million_req);

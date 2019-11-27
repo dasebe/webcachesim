@@ -33,6 +33,10 @@ LRUKSample:
 BeladySample:
   sample_rate:
     - 64
+    - 128
+    - 256
+    - 512
+    - 1024
   threshold:
     - 40000000
   memorize_sample:
