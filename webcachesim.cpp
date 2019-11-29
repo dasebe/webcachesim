@@ -38,7 +38,7 @@ void run_simulation(const string path, const string cacheType, const uint64_t ca
             }
             counter += 1;
         }
-        cout << "Hits: " << hits << " Accuracy: " << static_cast<double>(hits)/batch_size << endl;
+        cout << "Hits: " << hits << " Accuracy: " << static_cast<double>(hits) / batch_size << endl;
     }
 }
 
