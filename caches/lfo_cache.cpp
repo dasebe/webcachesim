@@ -4,8 +4,12 @@
 
 #include "lfo_cache.h"
 
+using namespace std;
 
-void update_timegaps(LFOFeature & feature, uint64_t new_time) {
+#define LOG_MSG "[LOG][LFO_CACHE]"
+
+
+void LFOCache::update_timegaps(LFOFeature & feature, uint64_t new_time) {
 
     uint64_t time_diff = new_time - feature.timestamp;
 
@@ -21,7 +25,7 @@ void update_timegaps(LFOFeature & feature, uint64_t new_time) {
     }
 }
 
- LFOFeature LFOCache::get_lfo_feature(SimpleRequest* req) {
+LFOFeature LFOCache::get_lfo_feature(SimpleRequest* req) {
     if (id2feature.find(req->getId()) != id2feature.end()) {
         LFOFeature& feature = id2feature[req->getId()];
         update_timegaps(feature, req->getTimeStamp());
@@ -35,12 +39,18 @@ void update_timegaps(LFOFeature & feature, uint64_t new_time) {
     return id2feature[req->getId()];
 }
 
+void LFOCache::hit(lruCacheMapType::const_iterator it, uint64_t size) {
+
+}
+
 bool LFOCache::lookup(SimpleRequest* req) {
+//    cout << LOG_MSG << "Lookup." << endl;
+    get_lfo_feature(req);
     return true;
 };
 
 void LFOCache::admit(SimpleRequest* req) {
-
+    cout << LOG_MSG << "Admit." << endl;
 };
 
 void LFOCache::evict(SimpleRequest* req) {
@@ -51,3 +61,6 @@ void LFOCache::evict() {
 
 }
 
+SimpleRequest* LFOCache::evict_return() {
+    return nullptr;
+}

@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <memory>
 #include "request.h"
+#include "lfo_features.h"
 
 // uncomment to enable cache debugging:
 // #define CDEBUG 1
@@ -82,6 +83,10 @@ public:
         }
         Cache_instance = get_factory_instance()[name]->create_unique();
         return Cache_instance;
+    }
+
+    LFOFeature get_lfo_feature(SimpleRequest* req) {
+        return LFOFeature();
     }
 
 protected:
