@@ -10,7 +10,7 @@
 using namespace std;
 
 uint64_t run_model(vector<SimpleRequest> & prev_requests,
-               vector<vector<uint8_t>> & prev_features,
+               vector<vector<double>> & prev_features,
                unique_ptr<Cache> & webcache,
                ifstream & infile,
                size_t batch_size) {
@@ -30,7 +30,7 @@ uint64_t run_model(vector<SimpleRequest> & prev_requests,
         SimpleRequest req(id, size, time);
         prev_requests.push_back(req);
 
-        vector<uint8_t> prev_feature = webcache->get_lfo_feature(&req).get_vector();
+        vector<double> prev_feature = webcache->get_lfo_feature(&req).get_vector();
         if (!prev_feature.empty()) {
             prev_features.push_back(prev_feature);
         }
@@ -60,7 +60,7 @@ void run_simulation(const string path, const string cacheType, const uint64_t ca
     bool changed_to_lfo = false;
 
     vector<SimpleRequest> prev_requests;
-    vector<vector<uint8_t >> prev_features;
+    vector<vector<double >> prev_features;
 
 
     infile.open(path);
@@ -69,16 +69,16 @@ void run_simulation(const string path, const string cacheType, const uint64_t ca
 
         cout << "Hit accuracy: " << static_cast<double>(hits)/batch_size << "\n";
 
-        if (!prev_features.empty() && !prev_requests.empty()){
+        if (!prev_features.empty() && !prev_requests.empty()
+            && prev_features.size() == prev_requests.size()){
             vector<double> optimal_decisions = getOptimalDecisions(prev_requests, webcache->getSize());
             cout << "The number of optimal decisions: " << optimal_decisions.size() << endl;
 
             if (!changed_to_lfo) {
-                webcache = Cache::create_unique("LFO");
                 webcache->setSize(cache_size);
                 changed_to_lfo = !changed_to_lfo;
             }
-
+            webcache->train_lightgbm(prev_features, optimal_decisions);
             prev_features.clear();
             prev_requests.clear();
         }

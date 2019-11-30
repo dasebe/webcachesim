@@ -8,11 +8,21 @@ struct CacheObject
 {
     IdType id;
     uint64_t size;
+    uint64_t dvar;
 
     CacheObject(SimpleRequest* req)
         : id(req->getId()),
           size(req->getSize())
     {}
+
+    CacheObject(IdType _id, uint64_t _size)
+            : id(_id),
+              size(_size) {}
+
+    CacheObject(IdType _id, uint64_t _size, uint64_t _dvar)
+            : id(_id),
+              size(_size),
+              dvar(_dvar) {}
 
     // comparison is based on all three properties
     bool operator==(const CacheObject &rhs) const {
