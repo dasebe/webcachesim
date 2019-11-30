@@ -56,7 +56,7 @@ void run_simulation(const string path, const string cacheType, const uint64_t ca
     webcache->setSize(cache_size);
 
     ifstream infile;
-    size_t batch_size = 1000;
+    size_t batch_size = 1000000;
     bool changed_to_lfo = false;
 
     vector<SimpleRequest> prev_requests;
