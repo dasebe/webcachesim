@@ -10,6 +10,8 @@ include_directories(.)
 include_directories("./lib/LightGBM/include")
 include_directories("./lib")
 
+add_subdirectory(lib/dlib/dlib dlib_build)
+
 
 #add_definitions(-ffast-math)
 #add_definitions(-march=native)
@@ -33,3 +35,5 @@ add_executable(bin ${SOURCES})
 
 find_library(LIGHTGBM_LIB lib_lightgbm.dylib LightGBM)
 target_link_libraries(bin ${LIGHTGBM_LIB})
+target_link_libraries(assignment_learning_ex dlib::dlib)
+

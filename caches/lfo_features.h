@@ -8,7 +8,6 @@
 #include <request.h>
 #include <vector>
 
-
 enum OptimizationGoal {
     OBJECT_HIT_RATIO,
     BYTE_HIT_RATIO
