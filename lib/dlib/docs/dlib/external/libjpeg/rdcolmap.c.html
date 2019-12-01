@@ -1,0 +1,256 @@
+<html><!-- Created using the cpp_pretty_printer from the dlib C++ library.  See http://dlib.net for updates. --><head><title>dlib C++ Library - rdcolmap.c</title></head><body bgcolor='white'><pre>
+<font color='#009900'>/*
+ * rdcolmap.c
+ *
+ * Copyright (C) 1994-1996, Thomas G. Lane.
+ * This file is part of the Independent JPEG Group's software.
+ * For conditions of distribution and use, see the accompanying README file.
+ *
+ * This file implements djpeg's "-map file" switch.  It reads a source image
+ * and constructs a colormap to be supplied to the JPEG decompressor.
+ *
+ * Currently, these file formats are supported for the map file:
+ *   GIF: the contents of the GIF's global colormap are used.
+ *   PPM (either text or raw flavor): the entire file is read and
+ *      each unique pixel value is entered in the map.
+ * Note that reading a large PPM file will be horrendously slow.
+ * Typically, a PPM-format map file should contain just one pixel
+ * of each desired color.  Such a file can be extracted from an
+ * ordinary image PPM file with ppmtomap(1).
+ *
+ * Rescaling a PPM that has a maxval unequal to MAXJSAMPLE is not
+ * currently implemented.
+ */</font>
+
+<font color='#0000FF'>#include</font> "<a style='text-decoration:none' href='cdjpeg.h.html'>cdjpeg.h</a>"		<font color='#009900'>/* Common decls for cjpeg/djpeg applications */</font>
+
+<font color='#0000FF'>#ifdef</font> QUANT_2PASS_SUPPORTED	<font color='#009900'>/* otherwise can't quantize to supplied map */</font>
+
+<font color='#009900'>/* Portions of this code are based on the PBMPLUS library, which is:
+**
+** Copyright (C) 1988 by Jef Poskanzer.
+**
+** Permission to use, copy, modify, and distribute this software and its
+** documentation for any purpose and without fee is hereby granted, provided
+** that the above copyright notice appear in all copies and that both that
+** copyright notice and this permission notice appear in supporting
+** documentation.  This software is provided "as is" without express or
+** implied warranty.
+*/</font>
+
+
+<font color='#009900'>/*
+ * Add a (potentially) new color to the color map.
+ */</font>
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='add_map_entry'></a>add_map_entry</b> <font face='Lucida Console'>(</font>j_decompress_ptr cinfo, <font color='#0000FF'><u>int</u></font> R, <font color='#0000FF'><u>int</u></font> G, <font color='#0000FF'><u>int</u></font> B<font face='Lucida Console'>)</font>
+<b>{</b>
+  JSAMPROW colormap0 <font color='#5555FF'>=</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>colormap[<font color='#979000'>0</font>];
+  JSAMPROW colormap1 <font color='#5555FF'>=</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>colormap[<font color='#979000'>1</font>];
+  JSAMPROW colormap2 <font color='#5555FF'>=</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>colormap[<font color='#979000'>2</font>];
+  <font color='#0000FF'><u>int</u></font> ncolors <font color='#5555FF'>=</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>actual_number_of_colors;
+  <font color='#0000FF'><u>int</u></font> index;
+
+  <font color='#009900'>/* Check for duplicate color. */</font>
+  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>index <font color='#5555FF'>=</font> <font color='#979000'>0</font>; index <font color='#5555FF'>&lt;</font> ncolors; index<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>GETJSAMPLE</font><font face='Lucida Console'>(</font>colormap0[index]<font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> R <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+	<font color='#BB00BB'>GETJSAMPLE</font><font face='Lucida Console'>(</font>colormap1[index]<font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> G <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+	<font color='#BB00BB'>GETJSAMPLE</font><font face='Lucida Console'>(</font>colormap2[index]<font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> B<font face='Lucida Console'>)</font>
+      <font color='#0000FF'>return</font>;			<font color='#009900'>/* color is already in map */</font>
+  <b>}</b>
+
+  <font color='#009900'>/* Check for map overflow. */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>ncolors <font color='#5555FF'>&gt;</font><font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>MAXJSAMPLE<font color='#5555FF'>+</font><font color='#979000'>1</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>ERREXIT1</font><font face='Lucida Console'>(</font>cinfo, JERR_QUANT_MANY_COLORS, <font face='Lucida Console'>(</font>MAXJSAMPLE<font color='#5555FF'>+</font><font color='#979000'>1</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* OK, add color to map. */</font>
+  colormap0[ncolors] <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>JSAMPLE<font face='Lucida Console'>)</font> R;
+  colormap1[ncolors] <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>JSAMPLE<font face='Lucida Console'>)</font> G;
+  colormap2[ncolors] <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>JSAMPLE<font face='Lucida Console'>)</font> B;
+  cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>actual_number_of_colors<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;
+<b>}</b>
+
+
+<font color='#009900'>/*
+ * Extract color map from a GIF file.
+ */</font>
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='read_gif_map'></a>read_gif_map</b> <font face='Lucida Console'>(</font>j_decompress_ptr cinfo, FILE <font color='#5555FF'>*</font> infile<font face='Lucida Console'>)</font>
+<b>{</b>
+  <font color='#0000FF'><u>int</u></font> header[<font color='#979000'>13</font>];
+  <font color='#0000FF'><u>int</u></font> i, colormaplen;
+  <font color='#0000FF'><u>int</u></font> R, G, B;
+
+  <font color='#009900'>/* Initial 'G' has already been read by read_color_map */</font>
+  <font color='#009900'>/* Read the rest of the GIF header and logical screen descriptor */</font>
+  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>i <font color='#5555FF'>=</font> <font color='#979000'>1</font>; i <font color='#5555FF'>&lt;</font> <font color='#979000'>13</font>; i<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>header[i] <font color='#5555FF'>=</font> <font color='#BB00BB'>getc</font><font face='Lucida Console'>(</font>infile<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> EOF<font face='Lucida Console'>)</font>
+      <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>cinfo, JERR_BAD_CMAP_FILE<font face='Lucida Console'>)</font>;
+  <b>}</b>
+
+  <font color='#009900'>/* Verify GIF Header */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>header[<font color='#979000'>1</font>] <font color='#5555FF'>!</font><font color='#5555FF'>=</font> '<font color='#FF0000'>I</font>' <font color='#5555FF'>|</font><font color='#5555FF'>|</font> header[<font color='#979000'>2</font>] <font color='#5555FF'>!</font><font color='#5555FF'>=</font> '<font color='#FF0000'>F</font>'<font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>cinfo, JERR_BAD_CMAP_FILE<font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* There must be a global color map. */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>header[<font color='#979000'>10</font>] <font color='#5555FF'>&amp;</font> <font color='#979000'>0x80</font><font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>0</font><font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>cinfo, JERR_BAD_CMAP_FILE<font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* OK, fetch it. */</font>
+  colormaplen <font color='#5555FF'>=</font> <font color='#979000'>2</font> <font color='#5555FF'>&lt;</font><font color='#5555FF'>&lt;</font> <font face='Lucida Console'>(</font>header[<font color='#979000'>10</font>] <font color='#5555FF'>&amp;</font> <font color='#979000'>0x07</font><font face='Lucida Console'>)</font>;
+
+  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>i <font color='#5555FF'>=</font> <font color='#979000'>0</font>; i <font color='#5555FF'>&lt;</font> colormaplen; i<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+    R <font color='#5555FF'>=</font> <font color='#BB00BB'>getc</font><font face='Lucida Console'>(</font>infile<font face='Lucida Console'>)</font>;
+    G <font color='#5555FF'>=</font> <font color='#BB00BB'>getc</font><font face='Lucida Console'>(</font>infile<font face='Lucida Console'>)</font>;
+    B <font color='#5555FF'>=</font> <font color='#BB00BB'>getc</font><font face='Lucida Console'>(</font>infile<font face='Lucida Console'>)</font>;
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>R <font color='#5555FF'>=</font><font color='#5555FF'>=</font> EOF <font color='#5555FF'>|</font><font color='#5555FF'>|</font> G <font color='#5555FF'>=</font><font color='#5555FF'>=</font> EOF <font color='#5555FF'>|</font><font color='#5555FF'>|</font> B <font color='#5555FF'>=</font><font color='#5555FF'>=</font> EOF<font face='Lucida Console'>)</font>
+      <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>cinfo, JERR_BAD_CMAP_FILE<font face='Lucida Console'>)</font>;
+    <font color='#BB00BB'>add_map_entry</font><font face='Lucida Console'>(</font>cinfo,
+		  R <font color='#5555FF'>&lt;</font><font color='#5555FF'>&lt;</font> <font face='Lucida Console'>(</font>BITS_IN_JSAMPLE<font color='#5555FF'>-</font><font color='#979000'>8</font><font face='Lucida Console'>)</font>,
+		  G <font color='#5555FF'>&lt;</font><font color='#5555FF'>&lt;</font> <font face='Lucida Console'>(</font>BITS_IN_JSAMPLE<font color='#5555FF'>-</font><font color='#979000'>8</font><font face='Lucida Console'>)</font>,
+		  B <font color='#5555FF'>&lt;</font><font color='#5555FF'>&lt;</font> <font face='Lucida Console'>(</font>BITS_IN_JSAMPLE<font color='#5555FF'>-</font><font color='#979000'>8</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+  <b>}</b>
+<b>}</b>
+
+
+<font color='#009900'>/* Support routines for reading PPM */</font>
+
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>int</u></font><font face='Lucida Console'>)</font>
+<b><a name='pbm_getc'></a>pbm_getc</b> <font face='Lucida Console'>(</font>FILE <font color='#5555FF'>*</font> infile<font face='Lucida Console'>)</font>
+<font color='#009900'>/* Read next char, skipping over any comments */</font>
+<font color='#009900'>/* A comment/newline sequence is returned as a newline */</font>
+<b>{</b>
+  <font color='#0000FF'>register</font> <font color='#0000FF'><u>int</u></font> ch;
+  
+  ch <font color='#5555FF'>=</font> <font color='#BB00BB'>getc</font><font face='Lucida Console'>(</font>infile<font face='Lucida Console'>)</font>;
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>ch <font color='#5555FF'>=</font><font color='#5555FF'>=</font> '<font color='#FF0000'>#</font>'<font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#0000FF'>do</font> <b>{</b>
+      ch <font color='#5555FF'>=</font> <font color='#BB00BB'>getc</font><font face='Lucida Console'>(</font>infile<font face='Lucida Console'>)</font>;
+    <b>}</b> <font color='#0000FF'>while</font> <font face='Lucida Console'>(</font>ch <font color='#5555FF'>!</font><font color='#5555FF'>=</font> '<font color='#FF0000'>\n</font>' <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font> ch <font color='#5555FF'>!</font><font color='#5555FF'>=</font> EOF<font face='Lucida Console'>)</font>;
+  <b>}</b>
+  <font color='#0000FF'>return</font> ch;
+<b>}</b>
+
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>unsigned</u></font> <font color='#0000FF'><u>int</u></font><font face='Lucida Console'>)</font>
+<b><a name='read_pbm_integer'></a>read_pbm_integer</b> <font face='Lucida Console'>(</font>j_decompress_ptr cinfo, FILE <font color='#5555FF'>*</font> infile<font face='Lucida Console'>)</font>
+<font color='#009900'>/* Read an unsigned decimal integer from the PPM file */</font>
+<font color='#009900'>/* Swallows one trailing character after the integer */</font>
+<font color='#009900'>/* Note that on a 16-bit-int machine, only values up to 64k can be read. */</font>
+<font color='#009900'>/* This should not be a problem in practice. */</font>
+<b>{</b>
+  <font color='#0000FF'>register</font> <font color='#0000FF'><u>int</u></font> ch;
+  <font color='#0000FF'>register</font> <font color='#0000FF'><u>unsigned</u></font> <font color='#0000FF'><u>int</u></font> val;
+  
+  <font color='#009900'>/* Skip any leading whitespace */</font>
+  <font color='#0000FF'>do</font> <b>{</b>
+    ch <font color='#5555FF'>=</font> <font color='#BB00BB'>pbm_getc</font><font face='Lucida Console'>(</font>infile<font face='Lucida Console'>)</font>;
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>ch <font color='#5555FF'>=</font><font color='#5555FF'>=</font> EOF<font face='Lucida Console'>)</font>
+      <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>cinfo, JERR_BAD_CMAP_FILE<font face='Lucida Console'>)</font>;
+  <b>}</b> <font color='#0000FF'>while</font> <font face='Lucida Console'>(</font>ch <font color='#5555FF'>=</font><font color='#5555FF'>=</font> '<font color='#FF0000'> </font>' <font color='#5555FF'>|</font><font color='#5555FF'>|</font> ch <font color='#5555FF'>=</font><font color='#5555FF'>=</font> '<font color='#FF0000'>\t</font>' <font color='#5555FF'>|</font><font color='#5555FF'>|</font> ch <font color='#5555FF'>=</font><font color='#5555FF'>=</font> '<font color='#FF0000'>\n</font>' <font color='#5555FF'>|</font><font color='#5555FF'>|</font> ch <font color='#5555FF'>=</font><font color='#5555FF'>=</font> '<font color='#FF0000'>\r</font>'<font face='Lucida Console'>)</font>;
+  
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>ch <font color='#5555FF'>&lt;</font> '<font color='#FF0000'>0</font>' <font color='#5555FF'>|</font><font color='#5555FF'>|</font> ch <font color='#5555FF'>&gt;</font> '<font color='#FF0000'>9</font>'<font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>cinfo, JERR_BAD_CMAP_FILE<font face='Lucida Console'>)</font>;
+  
+  val <font color='#5555FF'>=</font> ch <font color='#5555FF'>-</font> '<font color='#FF0000'>0</font>';
+  <font color='#0000FF'>while</font> <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>ch <font color='#5555FF'>=</font> <font color='#BB00BB'>pbm_getc</font><font face='Lucida Console'>(</font>infile<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <font color='#5555FF'>&gt;</font><font color='#5555FF'>=</font> '<font color='#FF0000'>0</font>' <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font> ch <font color='#5555FF'>&lt;</font><font color='#5555FF'>=</font> '<font color='#FF0000'>9</font>'<font face='Lucida Console'>)</font> <b>{</b>
+    val <font color='#5555FF'>*</font><font color='#5555FF'>=</font> <font color='#979000'>10</font>;
+    val <font color='#5555FF'>+</font><font color='#5555FF'>=</font> ch <font color='#5555FF'>-</font> '<font color='#FF0000'>0</font>';
+  <b>}</b>
+  <font color='#0000FF'>return</font> val;
+<b>}</b>
+
+
+<font color='#009900'>/*
+ * Extract color map from a PPM file.
+ */</font>
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='read_ppm_map'></a>read_ppm_map</b> <font face='Lucida Console'>(</font>j_decompress_ptr cinfo, FILE <font color='#5555FF'>*</font> infile<font face='Lucida Console'>)</font>
+<b>{</b>
+  <font color='#0000FF'><u>int</u></font> c;
+  <font color='#0000FF'><u>unsigned</u></font> <font color='#0000FF'><u>int</u></font> w, h, maxval, row, col;
+  <font color='#0000FF'><u>int</u></font> R, G, B;
+
+  <font color='#009900'>/* Initial 'P' has already been read by read_color_map */</font>
+  c <font color='#5555FF'>=</font> <font color='#BB00BB'>getc</font><font face='Lucida Console'>(</font>infile<font face='Lucida Console'>)</font>;		<font color='#009900'>/* save format discriminator for a sec */</font>
+
+  <font color='#009900'>/* while we fetch the remaining header info */</font>
+  w <font color='#5555FF'>=</font> <font color='#BB00BB'>read_pbm_integer</font><font face='Lucida Console'>(</font>cinfo, infile<font face='Lucida Console'>)</font>;
+  h <font color='#5555FF'>=</font> <font color='#BB00BB'>read_pbm_integer</font><font face='Lucida Console'>(</font>cinfo, infile<font face='Lucida Console'>)</font>;
+  maxval <font color='#5555FF'>=</font> <font color='#BB00BB'>read_pbm_integer</font><font face='Lucida Console'>(</font>cinfo, infile<font face='Lucida Console'>)</font>;
+
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>w <font color='#5555FF'>&lt;</font><font color='#5555FF'>=</font> <font color='#979000'>0</font> <font color='#5555FF'>|</font><font color='#5555FF'>|</font> h <font color='#5555FF'>&lt;</font><font color='#5555FF'>=</font> <font color='#979000'>0</font> <font color='#5555FF'>|</font><font color='#5555FF'>|</font> maxval <font color='#5555FF'>&lt;</font><font color='#5555FF'>=</font> <font color='#979000'>0</font><font face='Lucida Console'>)</font> <font color='#009900'>/* error check */</font>
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>cinfo, JERR_BAD_CMAP_FILE<font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* For now, we don't support rescaling from an unusual maxval. */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>maxval <font color='#5555FF'>!</font><font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#0000FF'><u>unsigned</u></font> <font color='#0000FF'><u>int</u></font><font face='Lucida Console'>)</font> MAXJSAMPLE<font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>cinfo, JERR_BAD_CMAP_FILE<font face='Lucida Console'>)</font>;
+
+  <font color='#0000FF'>switch</font> <font face='Lucida Console'>(</font>c<font face='Lucida Console'>)</font> <b>{</b>
+  <font color='#0000FF'>case</font> '<font color='#FF0000'>3</font>':			<font color='#009900'>/* it's a text-format PPM file */</font>
+    <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>row <font color='#5555FF'>=</font> <font color='#979000'>0</font>; row <font color='#5555FF'>&lt;</font> h; row<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>col <font color='#5555FF'>=</font> <font color='#979000'>0</font>; col <font color='#5555FF'>&lt;</font> w; col<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+	R <font color='#5555FF'>=</font> <font color='#BB00BB'>read_pbm_integer</font><font face='Lucida Console'>(</font>cinfo, infile<font face='Lucida Console'>)</font>;
+	G <font color='#5555FF'>=</font> <font color='#BB00BB'>read_pbm_integer</font><font face='Lucida Console'>(</font>cinfo, infile<font face='Lucida Console'>)</font>;
+	B <font color='#5555FF'>=</font> <font color='#BB00BB'>read_pbm_integer</font><font face='Lucida Console'>(</font>cinfo, infile<font face='Lucida Console'>)</font>;
+	<font color='#BB00BB'>add_map_entry</font><font face='Lucida Console'>(</font>cinfo, R, G, B<font face='Lucida Console'>)</font>;
+      <b>}</b>
+    <b>}</b>
+    <font color='#0000FF'>break</font>;
+
+  <font color='#0000FF'>case</font> '<font color='#FF0000'>6</font>':			<font color='#009900'>/* it's a raw-format PPM file */</font>
+    <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>row <font color='#5555FF'>=</font> <font color='#979000'>0</font>; row <font color='#5555FF'>&lt;</font> h; row<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>col <font color='#5555FF'>=</font> <font color='#979000'>0</font>; col <font color='#5555FF'>&lt;</font> w; col<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+	R <font color='#5555FF'>=</font> <font color='#BB00BB'>getc</font><font face='Lucida Console'>(</font>infile<font face='Lucida Console'>)</font>;
+	G <font color='#5555FF'>=</font> <font color='#BB00BB'>getc</font><font face='Lucida Console'>(</font>infile<font face='Lucida Console'>)</font>;
+	B <font color='#5555FF'>=</font> <font color='#BB00BB'>getc</font><font face='Lucida Console'>(</font>infile<font face='Lucida Console'>)</font>;
+	<font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>R <font color='#5555FF'>=</font><font color='#5555FF'>=</font> EOF <font color='#5555FF'>|</font><font color='#5555FF'>|</font> G <font color='#5555FF'>=</font><font color='#5555FF'>=</font> EOF <font color='#5555FF'>|</font><font color='#5555FF'>|</font> B <font color='#5555FF'>=</font><font color='#5555FF'>=</font> EOF<font face='Lucida Console'>)</font>
+	  <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>cinfo, JERR_BAD_CMAP_FILE<font face='Lucida Console'>)</font>;
+	<font color='#BB00BB'>add_map_entry</font><font face='Lucida Console'>(</font>cinfo, R, G, B<font face='Lucida Console'>)</font>;
+      <b>}</b>
+    <b>}</b>
+    <font color='#0000FF'>break</font>;
+
+  <font color='#0000FF'>default</font>:
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>cinfo, JERR_BAD_CMAP_FILE<font face='Lucida Console'>)</font>;
+    <font color='#0000FF'>break</font>;
+  <b>}</b>
+<b>}</b>
+
+
+<font color='#009900'>/*
+ * Main entry point from djpeg.c.
+ *  Input: opened input file (from file name argument on command line).
+ *  Output: colormap and actual_number_of_colors fields are set in cinfo.
+ */</font>
+
+<b><a name='GLOBAL'></a>GLOBAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='read_color_map'></a>read_color_map</b> <font face='Lucida Console'>(</font>j_decompress_ptr cinfo, FILE <font color='#5555FF'>*</font> infile<font face='Lucida Console'>)</font>
+<b>{</b>
+  <font color='#009900'>/* Allocate space for a color map of maximum supported size. */</font>
+  cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>colormap <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>alloc_sarray<font face='Lucida Console'>)</font>
+    <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> cinfo, JPOOL_IMAGE,
+     <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> <font face='Lucida Console'>(</font>MAXJSAMPLE<font color='#5555FF'>+</font><font color='#979000'>1</font><font face='Lucida Console'>)</font>, <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> <font color='#979000'>3</font><font face='Lucida Console'>)</font>;
+  cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>actual_number_of_colors <font color='#5555FF'>=</font> <font color='#979000'>0</font>; <font color='#009900'>/* initialize map to empty */</font>
+
+  <font color='#009900'>/* Read first byte to determine file format */</font>
+  <font color='#0000FF'>switch</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>getc</font><font face='Lucida Console'>(</font>infile<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <b>{</b>
+  <font color='#0000FF'>case</font> '<font color='#FF0000'>G</font>':
+    <font color='#BB00BB'>read_gif_map</font><font face='Lucida Console'>(</font>cinfo, infile<font face='Lucida Console'>)</font>;
+    <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>case</font> '<font color='#FF0000'>P</font>':
+    <font color='#BB00BB'>read_ppm_map</font><font face='Lucida Console'>(</font>cinfo, infile<font face='Lucida Console'>)</font>;
+    <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>default</font>:
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>cinfo, JERR_BAD_CMAP_FILE<font face='Lucida Console'>)</font>;
+    <font color='#0000FF'>break</font>;
+  <b>}</b>
+<b>}</b>
+
+<font color='#0000FF'>#endif</font> <font color='#009900'>/* QUANT_2PASS_SUPPORTED */</font>
+
+</pre></body></html>

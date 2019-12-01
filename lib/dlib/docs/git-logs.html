@@ -1,0 +1,299 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
+<u>Revision</u>: 1ac1756923489868aa5b<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Sep 22, 2019
+         (10:57:37 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Created release v19.18</p><pre class="files_changed"> dlib/CMakeLists.txt | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: 2e5cf2e8e4b43038dd1c<br><u>Author</u>: <a href="mailto:schueller@phimeca.com">Julien Schueller</a><br><u>Date</u>: Sep 01, 2019
+         (17:06:38 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Add an option to force static runtime (#1847)</p><pre class="files_changed"> .../tell_visual_studio_to_use_static_runtime.cmake | 41 ++++++++++++----------
+ 1 file changed, 22 insertions(+), 19 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: e89e28b94ea0e34bcaa6<br><u>Author</u>: <a href="mailto:juha.reunanen@tomaattinen.com">Juha Reunanen</a><br><u>Date</u>: Aug 31, 2019
+         (23:10:05 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Clear truth_idxs between samples (#1870)</p><pre class="files_changed"> dlib/dnn/loss.h | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: 170877da88fdd887b940<br><u>Author</u>: <a href="mailto:1671644+arrufat@users.noreply.github.com">Adrià Arrufat</a><br><u>Date</u>: Aug 28, 2019
+         (29:25:08 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">add loss_mean_squared_per_channel (#1863)</p><pre class="files_changed"> dlib/dnn/loss.h          | 144 ++++++++++++++++++++++++++++++++++++++++++++++-
+ dlib/dnn/loss_abstract.h |  63 ++++++++++++++++++++-
+ dlib/test/dnn.cpp        |  61 ++++++++++++++++++++
+ 3 files changed, 266 insertions(+), 2 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: efd4e27488d9291b2efd<br><u>Author</u>: <a href="mailto:migosch@gmail.com">Mischan Toosarani-Hausberger</a><br><u>Date</u>: Aug 24, 2019
+         (19:13:00 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">dpoint mutates x-coord in y-property (see #1794) (#1866)</p><pre class="files_changed"> tools/python/src/vector.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)</pre><hr class="fullhr"><u>Revision</u>: a81fd0c651efbd6cd99b<br><u>Author</u>: <a href="mailto:thomas.d.peters@gmail.com">Thomas Peters</a><br><u>Date</u>: Aug 23, 2019
+         (10:00:24 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">don't cast away constness (#1865)</p><pre class="files_changed"> dlib/image_processing/generic_image.h | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: e8d2407611fc3b9e9559<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Aug 17, 2019
+         (07:27:48 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Simplified the device_global_buffer() code and API.</p><pre class="files_changed"> dlib/cuda/cuda_data_ptr.cpp | 50 ++++++++++++++++++++----
+ dlib/cuda/cuda_data_ptr.h   | 93 +++++++++++++++++++++++++++------------------
+ dlib/cuda/cuda_dlib.h       |  4 +-
+ dlib/cuda/cudnn_dlibapi.cpp |  9 ++---
+ dlib/cuda/cudnn_dlibapi.h   |  1 -
+ 5 files changed, 101 insertions(+), 56 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: d7fb51e60b66048f3021<br><u>Author</u>: <a href="mailto:juha.reunanen@tomaattinen.com">Juha Reunanen</a><br><u>Date</u>: Aug 17, 2019
+         (21:01:00 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Fix #1849 by calling device_global_buffer() unconditionally (#1862)</p><pre class="files_changed"> dlib/cuda/cuda_dlib.h | 9 +++------
+ 1 file changed, 3 insertions(+), 6 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: b02be8c734c55fc9de53<br><u>Author</u>: <a href="mailto:49722543+guydavid@users.noreply.github.com">guydavid</a><br><u>Date</u>: Aug 15, 2019
+         (05:29:04 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Const-correct a LAPACK declaration and add aarch64 as a 64-bit architecture (#1859)</p><pre class="files_changed"> dlib/matrix/lapack/fortran_id.h | 2 +-
+ dlib/matrix/lapack/syevr.h      | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: 7e70a92765aa8d717e75<br><u>Author</u>: <a href="mailto:30628592+notoriou1pig@users.noreply.github.com">notoriousPig</a><br><u>Date</u>: Jul 29, 2019
+         (14:57:50 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">pybind11: cmake: ignore the check between host-python and cross-compiler (#1848)</p><pre class="files_changed"> .../pybind11/tools/FindPythonLibsNew.cmake         | 25 ++++++++++++----------
+ 1 file changed, 14 insertions(+), 11 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: 05cbfc6d646a3f4ba461<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Jul 27, 2019
+         (05:42:36 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Fix the CMake BUILDING_PYTHON_IN_MSVC variable not getting picked up where it should.</p><pre class="files_changed"> dlib/cmake_utils/find_libjpeg.cmake | 6 ++++++
+ dlib/cmake_utils/find_libpng.cmake  | 6 ++++++
+ 2 files changed, 12 insertions(+)</pre><hr class="fullhr"><u>Revision</u>: fced3587f1fc26ea8457<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Jul 27, 2019
+         (05:03:14 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">fixing grammar</p><pre class="files_changed"> examples/matrix_ex.cpp             | 4 ++--
+ examples/matrix_expressions_ex.cpp | 2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: 48b9bf3f93f47f6173e1<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Jul 19, 2019
+         (03:12:27 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Fixed cmake warning</p><pre class="files_changed"> tools/python/CMakeLists.txt | 1 +
+ 1 file changed, 1 insertion(+)</pre><hr class="fullhr"><u>Revision</u>: 2704f3e26df4e7deadd9<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Jul 12, 2019
+         (03:30:18 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">fixed typo in docs</p><pre class="files_changed"> dlib/lsh/hashes_abstract.h | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: 6dec9abffea7a3d5b6ca<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Jul 05, 2019
+         (07:46:32 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Added missing include</p><pre class="files_changed"> dlib/optimization/isotonic_regression.h | 1 +
+ 1 file changed, 1 insertion(+)</pre><hr class="fullhr"><u>Revision</u>: f15e4e58d644f2ec5b0d<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Jul 04, 2019
+         (09:54:35 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Fixed grammar in comments</p><pre class="files_changed"> dlib/optimization/isotonic_regression.h          | 2 +-
+ dlib/optimization/isotonic_regression_abstract.h | 4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: aee97d9d1d8fd302d6b6<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Jun 25, 2019
+         (17:33:31 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Fixed incorrect return type</p><pre class="files_changed"> dlib/image_processing/shape_predictor_trainer.h          | 2 +-
+ dlib/image_processing/shape_predictor_trainer_abstract.h | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: e2293e5cd1e03ad791a7<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Jun 09, 2019
+         (06:36:15 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Push all include and link options needed for dlib to pkg-config.  We do this by getting them from the same list cmake uses.</p><pre class="files_changed"> dlib/CMakeLists.txt         | 12 ++++++++----
+ dlib/cmake_utils/dlib.pc.in |  5 ++---
+ 2 files changed, 10 insertions(+), 7 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: 5d64de24b33a292937dd<br><u>Author</u>: <a href="mailto:tanusmichele@gmail.com">mchelem</a><br><u>Date</u>: Jun 08, 2019
+         (04:08:45 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em"> Fix setting a point's y coordinate changes x instead (Python bindings) (#1795)</p><pre class="files_changed"> tools/python/src/vector.cpp     | 2 +-
+ tools/python/test/test_point.py | 8 ++++++++
+ 2 files changed, 9 insertions(+), 1 deletion(-)</pre><hr class="fullhr"><u>Revision</u>: 6de82e2417ca4014d51e<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Jun 01, 2019
+         (02:29:43 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Added methods for getting keyboard and mouse clicks to image_window's pyhton API.</p><pre class="files_changed"> tools/python/src/gui.cpp | 163 ++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 162 insertions(+), 1 deletion(-)</pre><hr class="fullhr"><u>Revision</u>: 8001b924e63ac920a904<br><u>Author</u>: <a href="mailto:facug91@users.noreply.github.com">Facundo Galán</a><br><u>Date</u>: May 25, 2019
+         (15:18:01 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Add input_grayscale_image_pyramid, issue #354 (#1761)</p><pre class="files_changed"> dlib/dnn/input.h          | 291 ++++++++++++++++++++++++++++++++--------------
+ dlib/dnn/input_abstract.h | 149 ++++++++++++++++++++++++
+ 2 files changed, 354 insertions(+), 86 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: 8746c9d371fb0a8c6f20<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: May 20, 2019
+         (15:13:23 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Stop building parts of libjpeg we don't need.</p><pre class="files_changed"> dlib/CMakeLists.txt | 20 --------------------
+ 1 file changed, 20 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: 572302d4d4fa67e3b665<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: May 20, 2019
+         (15:03:44 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Disable use of non-memory based backing store in libjpeg.  This fixes libjpeg not being able to open some types of jpeg file.</p><pre class="files_changed"> dlib/CMakeLists.txt | 2 --
+ 1 file changed, 2 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: a40a5c6e1a2494fd3cd9<br><u>Author</u>: <a href="mailto:vdevaux@gmail.com">VirgileD</a><br><u>Date</u>: May 20, 2019
+         (18:47:08 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Adds a comprehensive error message when jpeg loading fails.</p><pre class="files_changed"> dlib/image_loader/jpeg_loader.cpp | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)</pre><hr class="fullhr"><u>Revision</u>: dedb7358ba881c98f2f8<br><u>Author</u>: <a href="mailto:vdevaux@gmail.com">virgile devaux</a><br><u>Date</u>: May 17, 2019
+         (14:03:01 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Feature/upgrade libjpeg (#1769)</p><pre class="files_changed"> dlib/CMakeLists.txt                                |  110 +-
+ dlib/external/libjpeg/README                       |  736 ++-
+ dlib/external/libjpeg/cderror.h                    |  134 +
+ dlib/external/libjpeg/cdjpeg.h                     |  187 +
+ dlib/external/libjpeg/jaricom.c                    |  153 +
+ dlib/external/libjpeg/{jcapimin.cpp =&gt; jcapimin.c} |  568 +--
+ dlib/external/libjpeg/{jcapistd.cpp =&gt; jcapistd.c} |  322 +-
+ dlib/external/libjpeg/jcarith.c                    |  937 ++++
+ dlib/external/libjpeg/{jccoefct.cpp =&gt; jccoefct.c} |  903 ++--
+ dlib/external/libjpeg/{jccolor.cpp =&gt; jccolor.c}   |  949 ++--
+ dlib/external/libjpeg/{jcdctmgr.cpp =&gt; jcdctmgr.c} |  869 ++--
+ dlib/external/libjpeg/jchuff.c                     | 1576 ++++++
+ dlib/external/libjpeg/jchuff.cpp                   |  909 ----
+ dlib/external/libjpeg/jchuff.h                     |   47 -
+ dlib/external/libjpeg/{jcinit.cpp =&gt; jcinit.c}     |  137 +-
+ dlib/external/libjpeg/{jcmainct.cpp =&gt; jcmainct.c} |  586 +--
+ dlib/external/libjpeg/{jcmarker.cpp =&gt; jcmarker.c} | 1346 ++---
+ dlib/external/libjpeg/{jcmaster.cpp =&gt; jcmaster.c} | 1448 +++---
+ dlib/external/libjpeg/{jcomapi.cpp =&gt; jcomapi.c}   |  212 +-
+ dlib/external/libjpeg/jconfig.h                    |   88 +-
+ dlib/external/libjpeg/{jcparam.cpp =&gt; jcparam.c}   | 1242 ++---
+ dlib/external/libjpeg/jcphuff.cpp                  |  833 ----
+ dlib/external/libjpeg/{jcprepct.cpp =&gt; jcprepct.c} |  712 +--
+ dlib/external/libjpeg/{jcsample.cpp =&gt; jcsample.c} | 1064 ++--
+ dlib/external/libjpeg/jctrans.c                    |  382 ++
+ dlib/external/libjpeg/{jdapimin.cpp =&gt; jdapimin.c} |  791 +--
+ dlib/external/libjpeg/{jdapistd.cpp =&gt; jdapistd.c} |  550 +--
+ dlib/external/libjpeg/jdarith.c                    |  776 +++
+ dlib/external/libjpeg/{jdatadst.cpp =&gt; jdatadst.c} |  418 +-
+ dlib/external/libjpeg/{jdatasrc.cpp =&gt; jdatasrc.c} |  487 +-
+ dlib/external/libjpeg/{jdcoefct.cpp =&gt; jdcoefct.c} | 1477 +++---
+ dlib/external/libjpeg/{jdcolor.cpp =&gt; jdcolor.c}   |  908 ++--
+ dlib/external/libjpeg/jdct.h                       |  569 ++-
+ dlib/external/libjpeg/{jddctmgr.cpp =&gt; jddctmgr.c} |  653 ++-
+ dlib/external/libjpeg/jdhuff.c                     | 1541 ++++++
+ dlib/external/libjpeg/jdhuff.cpp                   |  654 ---
+ dlib/external/libjpeg/jdhuff.h                     |  201 -
+ dlib/external/libjpeg/jdinput.c                    |  661 +++
+ dlib/external/libjpeg/jdinput.cpp                  |  381 --
+ dlib/external/libjpeg/{jdmainct.cpp =&gt; jdmainct.c} | 1024 ++--
+ dlib/external/libjpeg/{jdmarker.cpp =&gt; jdmarker.c} | 2766 +++++------
+ dlib/external/libjpeg/{jdmaster.cpp =&gt; jdmaster.c} | 1088 ++---
+ dlib/external/libjpeg/{jdmerge.cpp =&gt; jdmerge.c}   |  800 +--
+ dlib/external/libjpeg/jdphuff.cpp                  |  671 ---
+ dlib/external/libjpeg/{jdpostct.cpp =&gt; jdpostct.c} |  580 +--
+ dlib/external/libjpeg/{jdsample.cpp =&gt; jdsample.c} |  839 ++--
+ dlib/external/libjpeg/jdtrans.c                    |  140 +
+ dlib/external/libjpeg/{jerror.cpp =&gt; jerror.c}     |  504 +-
+ dlib/external/libjpeg/jerror.h                     |  595 +--
+ dlib/external/libjpeg/{jfdctflt.cpp =&gt; jfdctflt.c} |  342 +-
+ dlib/external/libjpeg/{jfdctfst.cpp =&gt; jfdctfst.c} |  454 +-
+ dlib/external/libjpeg/jfdctint.c                   | 4348 +++++++++++++++++
+ dlib/external/libjpeg/jfdctint.cpp                 |  283 --
+ dlib/external/libjpeg/{jidctflt.cpp =&gt; jidctflt.c} |  477 +-
+ dlib/external/libjpeg/{jidctfst.cpp =&gt; jidctfst.c} |  736 +--
+ dlib/external/libjpeg/jidctint.c                   | 5137 ++++++++++++++++++++
+ dlib/external/libjpeg/jidctint.cpp                 |  389 --
+ dlib/external/libjpeg/jidctred.cpp                 |  398 --
+ dlib/external/libjpeg/jinclude.h                   |  182 +-
+ dlib/external/libjpeg/jmemansi.c                   |  167 +
+ dlib/external/libjpeg/{jmemmgr.cpp =&gt; jmemmgr.c}   | 2237 ++++-----
+ dlib/external/libjpeg/jmemname.c                   |  276 ++
+ dlib/external/libjpeg/{jmemnobs.cpp =&gt; jmemnobs.c} |  218 +-
+ dlib/external/libjpeg/jmemsys.h                    |  396 +-
+ dlib/external/libjpeg/jmorecfg.h                   |  725 +--
+ dlib/external/libjpeg/jpegint.h                    |  818 ++--
+ dlib/external/libjpeg/jpeglib.h                    | 2256 ++++-----
+ dlib/external/libjpeg/jpegtran.c                   |  560 +++
+ dlib/external/libjpeg/{jquant1.cpp =&gt; jquant1.c}   | 1713 +++----
+ dlib/external/libjpeg/{jquant2.cpp =&gt; jquant2.c}   | 2621 +++++-----
+ dlib/external/libjpeg/{jutils.cpp =&gt; jutils.c}     |  406 +-
+ dlib/external/libjpeg/jversion.h                   |   28 +-
+ dlib/external/libjpeg/makefile.dj                  |  227 +
+ dlib/external/libjpeg/rdbmp.c                      |  480 ++
+ dlib/external/libjpeg/rdcolmap.c                   |  253 +
+ dlib/external/libjpeg/rdgif.c                      |   38 +
+ dlib/external/libjpeg/rdjpgcom.c                   |  515 ++
+ dlib/external/libjpeg/rdppm.c                      |  459 ++
+ dlib/external/libjpeg/rdrle.c                      |  387 ++
+ dlib/external/libjpeg/rdswitch.c                   |  365 ++
+ dlib/external/libjpeg/rdtarga.c                    |  500 ++
+ dlib/external/libjpeg/readme.dos                   |   15 +
+ dlib/external/libjpeg/transupp.c                   | 1597 ++++++
+ dlib/external/libjpeg/transupp.h                   |  213 +
+ dlib/external/libjpeg/wrbmp.c                      |  442 ++
+ dlib/external/libjpeg/wrgif.c                      |  399 ++
+ dlib/external/libjpeg/wrjpgcom.c                   |  583 +++
+ dlib/external/libjpeg/wrppm.c                      |  269 +
+ dlib/external/libjpeg/wrrle.c                      |  305 ++
+ dlib/external/libjpeg/wrtarga.c                    |  253 +
+ dlib/image_loader/jpeg_loader.cpp                  |   60 +-
+ dlib/image_loader/jpeg_loader.h                    |   17 +-
+ dlib/image_loader/jpeg_loader_abstract.h           |   29 +
+ 93 files changed, 44418 insertions(+), 23679 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: f0e1d4e4714cdca3bec7<br><u>Author</u>: <a href="mailto:vdevaux@gmail.com">virgile devaux</a><br><u>Date</u>: May 17, 2019
+         (04:37:11 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">iEnsures DLIB_FALLTHROUGH macro is only set for GCC&gt;=7 (#1770)</p><pre class="files_changed"> dlib/general_hash/murmur_hash3.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)</pre><hr class="fullhr"><u>Revision</u>: f584e787b119da561b6f<br><u>Author</u>: <a href="mailto:1671644+arrufat@users.noreply.github.com">Adrià Arrufat</a><br><u>Date</u>: May 16, 2019
+         (28:07:52 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Even more warning silencing (#1766)</p><pre class="files_changed"> dlib/dnn/layers.h    | 12 ++++++------
+ dlib/dnn/utilities.h |  4 ++--
+ 2 files changed, 8 insertions(+), 8 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: f3f1a826da8bc634cc80<br><u>Author</u>: <a href="mailto:1671644+arrufat@users.noreply.github.com">Adrià Arrufat</a><br><u>Date</u>: May 14, 2019
+         (30:56:21 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">more pedantic silencing (#1763)</p><pre class="files_changed"> dlib/dnn/layers.h                         | 3 +--
+ dlib/image_loader/load_image.h            | 2 +-
+ dlib/image_processing/scan_image_custom.h | 2 +-
+ dlib/svm/sequence_labeler.h               | 2 +-
+ 4 files changed, 4 insertions(+), 5 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: dbe569a1f1808756016b<br><u>Author</u>: <a href="mailto:1671644+arrufat@users.noreply.github.com">Adrià Arrufat</a><br><u>Date</u>: May 06, 2019
+         (10:07:51 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">fix some pedantic warnings (#1756)</p><pre class="files_changed"> .../global_optimization/global_function_search.cpp |  1 -
+ dlib/matrix/matrix_math_functions.h                | 58 +++++++++++-----------
+ 2 files changed, 29 insertions(+), 30 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: 3ce7177a17bd7fdb3b63<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: May 04, 2019
+         (16:36:42 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Make things work in visual studio.</p><pre class="files_changed"> dlib/general_hash/murmur_hash3.h | 41 +++++++++++++++++++++++-----------------
+ 1 file changed, 24 insertions(+), 17 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: 1fd054baae818fa8b69a<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: May 04, 2019
+         (15:47:20 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Suppress compiler warnings</p><pre class="files_changed"> dlib/general_hash/murmur_hash3.h | 36 ++++++++++++++++++------------------
+ 1 file changed, 18 insertions(+), 18 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: 5623810b01134c3b7044<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Apr 27, 2019
+         (04:18:19 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Fixed global_function_search's initialization being wrong if explicitly given an empty list of initial function evaluations.</p><pre class="files_changed"> dlib/global_optimization/global_function_search.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)</pre><hr class="fullhr"><u>Revision</u>: 67d22c48ab7b3054861b<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Apr 26, 2019
+         (03:43:02 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">disable annoying warning</p><pre class="files_changed"> dlib/test/CMakeLists.txt | 3 +++
+ 1 file changed, 3 insertions(+)</pre><hr class="fullhr"><u>Revision</u>: a0d492ae1ca979145ea8<br><u>Author</u>: <a href="mailto:morandidodo@gmail.com">Edoardo Morandi</a><br><u>Date</u>: Apr 26, 2019
+         (15:33:35 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Fixed constness for lapack functions (#1737)</p><pre class="files_changed"> dlib/matrix/lapack/gees.h  | 18 +++++++++---------
+ dlib/matrix/lapack/geev.h  | 18 +++++++++---------
+ dlib/matrix/lapack/geqrf.h |  8 ++++----
+ dlib/matrix/lapack/getrf.h |  8 ++++----
+ dlib/matrix/lapack/ormqr.h | 12 ++++++------
+ dlib/matrix/lapack/pbtrf.h |  8 ++++----
+ dlib/matrix/lapack/potrf.h |  8 ++++----
+ dlib/matrix/lapack/syev.h  |  8 ++++----
+ dlib/matrix/lapack/syevr.h | 20 ++++++++++----------
+ 9 files changed, 54 insertions(+), 54 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: 879202b796ddd8d0118e<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Apr 19, 2019
+         (03:51:03 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Fixed build error in newer clang on OpenBSD.</p><pre class="files_changed"> dlib/test/stack.cpp | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: d9af22e53697d3fe6762<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Apr 14, 2019
+         (09:19:44 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Merge branch 'master' of https://github.com/davisking/dlib</p><pre class="files_changed"></pre><hr class="fullhr"><u>Revision</u>: e1df1968b33ca602b037<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Apr 14, 2019
+         (09:19:00 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Include the Intel MKL's iomp dll in the output folder to reduce confusino for windows users.</p><pre class="files_changed"> dlib/CMakeLists.txt              | 21 +++++++++++++++++++++
+ dlib/cmake_utils/find_blas.cmake | 20 ++++++++++++++++++++
+ 2 files changed, 41 insertions(+)</pre><hr class="fullhr"><u>Revision</u>: 2dd970a1fb71d51db2ea<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Apr 14, 2019
+         (07:19:06 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Fixed compiler warnings</p><pre class="files_changed"> tools/python/src/basic.cpp      | 2 +-
+ tools/python/src/svm_struct.cpp | 2 +-
+ tools/python/src/vector.cpp     | 2 +-
+ 3 files changed, 3 insertions(+), 3 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: ccd8b64f1bb551b73ae3<br><u>Author</u>: <a href="mailto:juha.reunanen@tomaattinen.com">Juha Reunanen</a><br><u>Date</u>: Apr 07, 2019
+         (24:27:03 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Semantic-segmentation loss calculation: fix buffer usage on multi-GPU training (#1717)</p><pre class="files_changed"> dlib/cuda/cuda_dlib.h | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: 9433bfd6ab6a20292354<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Apr 03, 2019
+         (18:47:44 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Switched to non-deprecated way to say destructor might throw.</p><pre class="files_changed"> dlib/sqlite/sqlite_tools.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)</pre><hr class="fullhr"><u>Revision</u>: 64ad6b2591f062c891c7<br><u>Author</u>: <a href="mailto:facug91@users.noreply.github.com">Facundo Galán</a><br><u>Date</u>: Mar 27, 2019
+         (18:41:46 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Change CUDA version check for cudaSync from 10000 to 10010 (#1704)</p><pre class="files_changed"> dlib/cuda/gpu_data.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)</pre><hr class="fullhr"><u>Revision</u>: ae406bf4c119c3f6bfc8<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Mar 19, 2019
+         (04:13:49 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Make dlib.full_object_detection take list of dlib.point or dlib.points.</p><pre class="files_changed"> tools/python/src/shape_predictor.cpp | 25 ++++++++++++++++++-------
+ 1 file changed, 18 insertions(+), 7 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: a0dc35edb0571e5cef8d<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Mar 18, 2019
+         (17:38:45 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">updated python docs</p><pre class="files_changed"> tools/python/src/shape_predictor.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)</pre><hr class="fullhr"><u>Revision</u>: a4fbe356e3719593274f<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Mar 18, 2019
+         (17:30:27 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Try some os x tests on travis again.</p><pre class="files_changed"> dlib/travis/build-and-test.sh | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: 76a65c77b54f710d1b2c<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Mar 18, 2019
+         (17:16:59 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Added option to give --no_ to exclude a unit test from --runall.</p><pre class="files_changed"> dlib/test/main.cpp | 13 +++++++++----
+ 1 file changed, 9 insertions(+), 4 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: b8324f5a3f770aee1254<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Mar 17, 2019
+         (18:18:57 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Try to make bash script work for os x.</p><pre class="files_changed"> dlib/travis/build-and-test.sh | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)</pre><hr class="fullhr"><u>Revision</u>: cc0cbc0248da7092a19d<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Mar 17, 2019
+         (17:33:28 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Fixed typo in travis build script.</p><pre class="files_changed"> dlib/travis/build-and-test.sh | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: 3401b96936799ea0755d<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Mar 17, 2019
+         (17:30:49 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">It's actually fine to call rowm() or colm() with an empty index set.</p><pre class="files_changed"> dlib/matrix/matrix_subexp.h          | 44 +++++++++++++++++++++---------------
+ dlib/matrix/matrix_subexp_abstract.h |  8 +++----
+ dlib/test/matrix.cpp                 |  2 ++
+ 3 files changed, 32 insertions(+), 22 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: ec63baa7a2c8b9ddfd48<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Mar 17, 2019
+         (17:08:08 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Have travis build some tests with DLIB_ASSERT enabled to make sure they work.</p><pre class="files_changed"> dlib/travis/build-and-test.sh | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)</pre><hr class="fullhr"><u>Revision</u>: f8827f6bb3582afbd2d8<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Mar 17, 2019
+         (05:05:08 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Make test deterministic</p><pre class="files_changed"> dlib/test/matrix_chol.cpp | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: 89fb5c2e31806f2cdef6<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Mar 15, 2019
+         (04:46:03 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">cleanup</p><pre class="files_changed"> dlib/cmake_utils/test_for_libpng/libpng_test.cpp | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: 4e4acf794f0d7c0019d6<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Mar 15, 2019
+         (04:44:49 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Make CMake build a test program to see if libjpeg is really available and not broken.</p><pre class="files_changed"> dlib/CMakeLists.txt                                | 12 +---
+ dlib/cmake_utils/find_libjpeg.cmake                | 26 +++++++++
+ dlib/cmake_utils/test_for_libjpeg/CMakeLists.txt   | 11 ++++
+ dlib/cmake_utils/test_for_libjpeg/libjpeg_test.cpp | 64 ++++++++++++++++++++++
+ 4 files changed, 103 insertions(+), 10 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: 7611b3476856ac9b9498<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Mar 15, 2019
+         (04:28:12 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Set png include paths for test.</p><pre class="files_changed"> dlib/cmake_utils/test_for_libpng/CMakeLists.txt | 1 +
+ 1 file changed, 1 insertion(+)</pre><hr class="fullhr"><u>Revision</u>: 0cf422d42a195d6f034a<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Mar 15, 2019
+         (04:23:36 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Have CMake build a little test program to see if the system copy of libpng really works.</p><pre class="files_changed"> dlib/CMakeLists.txt                              | 12 +-----
+ dlib/cmake_utils/find_libpng.cmake               | 25 +++++++++++
+ dlib/cmake_utils/test_for_libpng/CMakeLists.txt  | 10 +++++
+ dlib/cmake_utils/test_for_libpng/libpng_test.cpp | 54 ++++++++++++++++++++++++
+ 4 files changed, 91 insertions(+), 10 deletions(-)</pre><hr class="fullhr"><u>Revision</u>: 579a41d5231990af604d<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Mar 10, 2019
+         (07:09:53 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Record last changeset and set PATCH version to 99</p><pre class="files_changed"> dlib/CMakeLists.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)</pre><hr class="fullhr"><u>Revision</u>: 810ef7937d87c9265bcb<br><u>Author</u>: <a href="mailto:davis@dlib.net">Davis King</a><br><u>Date</u>: Mar 10, 2019
+         (07:04:56 UTC)
+      <br><p xmlns:gcse="googleCustomSearch" style="margin:0.4em">Created release v19.17</p><pre class="files_changed"> dlib/CMakeLists.txt | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)</pre><hr class="fullhr">

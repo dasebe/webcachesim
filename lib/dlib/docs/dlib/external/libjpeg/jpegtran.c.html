@@ -1,0 +1,563 @@
+<html><!-- Created using the cpp_pretty_printer from the dlib C++ library.  See http://dlib.net for updates. --><head><title>dlib C++ Library - jpegtran.c</title></head><body bgcolor='white'><pre>
+<font color='#009900'>/*
+ * jpegtran.c
+ *
+ * Copyright (C) 1995-2011, Thomas G. Lane, Guido Vollbeding.
+ * This file is part of the Independent JPEG Group's software.
+ * For conditions of distribution and use, see the accompanying README file.
+ *
+ * This file contains a command-line user interface for JPEG transcoding.
+ * It is very similar to cjpeg.c, and partly to djpeg.c, but provides
+ * lossless transcoding between different JPEG file formats.  It also
+ * provides some lossless and sort-of-lossless transformations of JPEG data.
+ */</font>
+
+<font color='#0000FF'>#include</font> "<a style='text-decoration:none' href='cdjpeg.h.html'>cdjpeg.h</a>"		<font color='#009900'>/* Common decls for cjpeg/djpeg applications */</font>
+<font color='#0000FF'>#include</font> "<a style='text-decoration:none' href='transupp.h.html'>transupp.h</a>"		<font color='#009900'>/* Support routines for jpegtran */</font>
+<font color='#0000FF'>#include</font> "<a style='text-decoration:none' href='jversion.h.html'>jversion.h</a>"		<font color='#009900'>/* for version message */</font>
+
+<font color='#0000FF'>#ifdef</font> USE_CCOMMAND		<font color='#009900'>/* command-line reader for Macintosh */</font>
+<font color='#0000FF'>#ifdef</font> __MWERKS__
+<font color='#0000FF'>#include</font> <font color='#5555FF'>&lt;</font>SIOUX.h<font color='#5555FF'>&gt;</font>              <font color='#009900'>/* Metrowerks needs this */</font>
+<font color='#0000FF'>#include</font> <font color='#5555FF'>&lt;</font>console.h<font color='#5555FF'>&gt;</font>		<font color='#009900'>/* ... and this */</font>
+<font color='#0000FF'>#endif</font>
+<font color='#0000FF'>#ifdef</font> THINK_C
+<font color='#0000FF'>#include</font> <font color='#5555FF'>&lt;</font>console.h<font color='#5555FF'>&gt;</font>		<font color='#009900'>/* Think declares it here */</font>
+<font color='#0000FF'>#endif</font>
+<font color='#0000FF'>#endif</font>
+
+
+<font color='#009900'>/*
+ * Argument-parsing code.
+ * The switch parser is designed to be useful with DOS-style command line
+ * syntax, ie, intermixed switches and file names, where only the switches
+ * to the left of a given file name affect processing of that file.
+ * The main program in this file doesn't actually use this capability...
+ */</font>
+
+
+<font color='#0000FF'>static</font> <font color='#0000FF'>const</font> <font color='#0000FF'><u>char</u></font> <font color='#5555FF'>*</font> progname;	<font color='#009900'>/* program name for error messages */</font>
+<font color='#0000FF'>static</font> <font color='#0000FF'><u>char</u></font> <font color='#5555FF'>*</font> outfilename;	<font color='#009900'>/* for -outfile switch */</font>
+<font color='#0000FF'>static</font> <font color='#0000FF'><u>char</u></font> <font color='#5555FF'>*</font> scaleoption;	<font color='#009900'>/* -scale switch */</font>
+<font color='#0000FF'>static</font> JCOPY_OPTION copyoption;	<font color='#009900'>/* -copy switch */</font>
+<font color='#0000FF'>static</font> jpeg_transform_info transformoption; <font color='#009900'>/* image transformation options */</font>
+
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='usage'></a>usage</b> <font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<font color='#009900'>/* complain about bad command line */</font>
+<b>{</b>
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>usage: %s [switches] </font>", progname<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#ifdef</font> TWO_FILE_COMMANDLINE
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>inputfile outputfile\n</font>"<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#else</font>
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>[inputfile]\n</font>"<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#endif</font>
+
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>Switches (names may be abbreviated):\n</font>"<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>  -copy none     Copy no extra markers from source file\n</font>"<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>  -copy comments Copy only comment markers (default)\n</font>"<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>  -copy all      Copy all extra markers\n</font>"<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#ifdef</font> ENTROPY_OPT_SUPPORTED
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>  -optimize      Optimize Huffman table (smaller file, but slow compression)\n</font>"<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#endif</font>
+<font color='#0000FF'>#ifdef</font> C_PROGRESSIVE_SUPPORTED
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>  -progressive   Create progressive JPEG file\n</font>"<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#endif</font>
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>Switches for modifying the image:\n</font>"<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#if</font> TRANSFORMS_SUPPORTED
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>  -crop WxH+X+Y  Crop to a rectangular subarea\n</font>"<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>  -grayscale     Reduce to grayscale (omit color data)\n</font>"<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>  -flip [horizontal|vertical]  Mirror image (left-right or top-bottom)\n</font>"<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>  -perfect       Fail if there is non-transformable edge blocks\n</font>"<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>  -rotate [90|180|270]         Rotate image (degrees clockwise)\n</font>"<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#endif</font>
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>  -scale M/N     Scale output image by fraction M/N, eg, 1/8\n</font>"<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#if</font> TRANSFORMS_SUPPORTED
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>  -transpose     Transpose image\n</font>"<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>  -transverse    Transverse transpose image\n</font>"<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>  -trim          Drop non-transformable edge blocks\n</font>"<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#endif</font>
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>Switches for advanced users:\n</font>"<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#ifdef</font> C_ARITH_CODING_SUPPORTED
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>  -arithmetic    Use arithmetic coding\n</font>"<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#endif</font>
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>  -restart N     Set restart interval in rows, or in blocks with B\n</font>"<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>  -maxmemory N   Maximum memory to use (in kbytes)\n</font>"<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>  -outfile name  Specify name for output file\n</font>"<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>  -verbose  or  -debug   Emit debug output\n</font>"<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>Switches for wizards:\n</font>"<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#ifdef</font> C_MULTISCAN_FILES_SUPPORTED
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>  -scans file    Create multi-scan JPEG per script file\n</font>"<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#endif</font>
+  <font color='#BB00BB'>exit</font><font face='Lucida Console'>(</font>EXIT_FAILURE<font face='Lucida Console'>)</font>;
+<b>}</b>
+
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='select_transform'></a>select_transform</b> <font face='Lucida Console'>(</font>JXFORM_CODE transform<font face='Lucida Console'>)</font>
+<font color='#009900'>/* Silly little routine to detect multiple transform options,
+ * which we can't handle.
+ */</font>
+<b>{</b>
+<font color='#0000FF'>#if</font> TRANSFORMS_SUPPORTED
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>transformoption.transform <font color='#5555FF'>=</font><font color='#5555FF'>=</font> JXFORM_NONE <font color='#5555FF'>|</font><font color='#5555FF'>|</font>
+      transformoption.transform <font color='#5555FF'>=</font><font color='#5555FF'>=</font> transform<font face='Lucida Console'>)</font> <b>{</b>
+    transformoption.transform <font color='#5555FF'>=</font> transform;
+  <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+    <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>%s: can only do one image transformation at a time\n</font>",
+	    progname<font face='Lucida Console'>)</font>;
+    <font color='#BB00BB'>usage</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+  <b>}</b>
+<font color='#0000FF'>#else</font>
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>%s: sorry, image transformation was not compiled\n</font>",
+	  progname<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>exit</font><font face='Lucida Console'>(</font>EXIT_FAILURE<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#endif</font>
+<b>}</b>
+
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>int</u></font><font face='Lucida Console'>)</font>
+<b><a name='parse_switches'></a>parse_switches</b> <font face='Lucida Console'>(</font>j_compress_ptr cinfo, <font color='#0000FF'><u>int</u></font> argc, <font color='#0000FF'><u>char</u></font> <font color='#5555FF'>*</font><font color='#5555FF'>*</font>argv,
+		<font color='#0000FF'><u>int</u></font> last_file_arg_seen, boolean for_real<font face='Lucida Console'>)</font>
+<font color='#009900'>/* Parse optional switches.
+ * Returns argv[] index of first file-name argument (== argc if none).
+ * Any file names with indexes &lt;= last_file_arg_seen are ignored;
+ * they have presumably been processed in a previous iteration.
+ * (Pass 0 for last_file_arg_seen on the first or only iteration.)
+ * for_real is FALSE on the first (dummy) pass; we may skip any expensive
+ * processing.
+ */</font>
+<b>{</b>
+  <font color='#0000FF'><u>int</u></font> argn;
+  <font color='#0000FF'><u>char</u></font> <font color='#5555FF'>*</font> arg;
+  boolean simple_progressive;
+  <font color='#0000FF'><u>char</u></font> <font color='#5555FF'>*</font> scansarg <font color='#5555FF'>=</font> NULL;	<font color='#009900'>/* saves -scans parm if any */</font>
+
+  <font color='#009900'>/* Set up default JPEG parameters. */</font>
+  simple_progressive <font color='#5555FF'>=</font> FALSE;
+  outfilename <font color='#5555FF'>=</font> NULL;
+  scaleoption <font color='#5555FF'>=</font> NULL;
+  copyoption <font color='#5555FF'>=</font> JCOPYOPT_DEFAULT;
+  transformoption.transform <font color='#5555FF'>=</font> JXFORM_NONE;
+  transformoption.perfect <font color='#5555FF'>=</font> FALSE;
+  transformoption.trim <font color='#5555FF'>=</font> FALSE;
+  transformoption.force_grayscale <font color='#5555FF'>=</font> FALSE;
+  transformoption.crop <font color='#5555FF'>=</font> FALSE;
+  cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>err<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>trace_level <font color='#5555FF'>=</font> <font color='#979000'>0</font>;
+
+  <font color='#009900'>/* Scan command line options, adjust parameters */</font>
+
+  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>argn <font color='#5555FF'>=</font> <font color='#979000'>1</font>; argn <font color='#5555FF'>&lt;</font> argc; argn<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+    arg <font color='#5555FF'>=</font> argv[argn];
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>arg <font color='#5555FF'>!</font><font color='#5555FF'>=</font> '<font color='#FF0000'>-</font>'<font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#009900'>/* Not a switch, must be a file name argument */</font>
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>argn <font color='#5555FF'>&lt;</font><font color='#5555FF'>=</font> last_file_arg_seen<font face='Lucida Console'>)</font> <b>{</b>
+	outfilename <font color='#5555FF'>=</font> NULL;	<font color='#009900'>/* -outfile applies to just one input file */</font>
+	<font color='#0000FF'>continue</font>;		<font color='#009900'>/* ignore this name if previously processed */</font>
+      <b>}</b>
+      <font color='#0000FF'>break</font>;			<font color='#009900'>/* else done parsing switches */</font>
+    <b>}</b>
+    arg<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;			<font color='#009900'>/* advance past switch marker character */</font>
+
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>keymatch</font><font face='Lucida Console'>(</font>arg, "<font color='#CC0000'>arithmetic</font>", <font color='#979000'>1</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#009900'>/* Use arithmetic coding. */</font>
+<font color='#0000FF'>#ifdef</font> C_ARITH_CODING_SUPPORTED
+      cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>arith_code <font color='#5555FF'>=</font> TRUE;
+<font color='#0000FF'>#else</font>
+      <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>%s: sorry, arithmetic coding not supported\n</font>",
+	      progname<font face='Lucida Console'>)</font>;
+      <font color='#BB00BB'>exit</font><font face='Lucida Console'>(</font>EXIT_FAILURE<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#endif</font>
+
+    <b>}</b> <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>keymatch</font><font face='Lucida Console'>(</font>arg, "<font color='#CC0000'>copy</font>", <font color='#979000'>2</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#009900'>/* Select which extra markers to copy. */</font>
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>+</font><font color='#5555FF'>+</font>argn <font color='#5555FF'>&gt;</font><font color='#5555FF'>=</font> argc<font face='Lucida Console'>)</font>	<font color='#009900'>/* advance to next argument */</font>
+	<font color='#BB00BB'>usage</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>keymatch</font><font face='Lucida Console'>(</font>argv[argn], "<font color='#CC0000'>none</font>", <font color='#979000'>1</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <b>{</b>
+	copyoption <font color='#5555FF'>=</font> JCOPYOPT_NONE;
+      <b>}</b> <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>keymatch</font><font face='Lucida Console'>(</font>argv[argn], "<font color='#CC0000'>comments</font>", <font color='#979000'>1</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <b>{</b>
+	copyoption <font color='#5555FF'>=</font> JCOPYOPT_COMMENTS;
+      <b>}</b> <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>keymatch</font><font face='Lucida Console'>(</font>argv[argn], "<font color='#CC0000'>all</font>", <font color='#979000'>1</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <b>{</b>
+	copyoption <font color='#5555FF'>=</font> JCOPYOPT_ALL;
+      <b>}</b> <font color='#0000FF'>else</font>
+	<font color='#BB00BB'>usage</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+
+    <b>}</b> <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>keymatch</font><font face='Lucida Console'>(</font>arg, "<font color='#CC0000'>crop</font>", <font color='#979000'>2</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#009900'>/* Perform lossless cropping. */</font>
+<font color='#0000FF'>#if</font> TRANSFORMS_SUPPORTED
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>+</font><font color='#5555FF'>+</font>argn <font color='#5555FF'>&gt;</font><font color='#5555FF'>=</font> argc<font face='Lucida Console'>)</font>	<font color='#009900'>/* advance to next argument */</font>
+	<font color='#BB00BB'>usage</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>!</font> <font color='#BB00BB'>jtransform_parse_crop_spec</font><font face='Lucida Console'>(</font><font color='#5555FF'>&amp;</font>transformoption, argv[argn]<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <b>{</b>
+	<font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>%s: bogus -crop argument '%s'\n</font>",
+		progname, argv[argn]<font face='Lucida Console'>)</font>;
+	<font color='#BB00BB'>exit</font><font face='Lucida Console'>(</font>EXIT_FAILURE<font face='Lucida Console'>)</font>;
+      <b>}</b>
+<font color='#0000FF'>#else</font>
+      <font color='#BB00BB'>select_transform</font><font face='Lucida Console'>(</font>JXFORM_NONE<font face='Lucida Console'>)</font>;	<font color='#009900'>/* force an error */</font>
+<font color='#0000FF'>#endif</font>
+
+    <b>}</b> <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>keymatch</font><font face='Lucida Console'>(</font>arg, "<font color='#CC0000'>debug</font>", <font color='#979000'>1</font><font face='Lucida Console'>)</font> <font color='#5555FF'>|</font><font color='#5555FF'>|</font> <font color='#BB00BB'>keymatch</font><font face='Lucida Console'>(</font>arg, "<font color='#CC0000'>verbose</font>", <font color='#979000'>1</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#009900'>/* Enable debug printouts. */</font>
+      <font color='#009900'>/* On first -d, print version identification */</font>
+      <font color='#0000FF'>static</font> boolean printed_version <font color='#5555FF'>=</font> FALSE;
+
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>!</font> printed_version<font face='Lucida Console'>)</font> <b>{</b>
+	<font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>Independent JPEG Group's JPEGTRAN, version %s\n%s\n</font>",
+		JVERSION, JCOPYRIGHT<font face='Lucida Console'>)</font>;
+	printed_version <font color='#5555FF'>=</font> TRUE;
+      <b>}</b>
+      cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>err<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>trace_level<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;
+
+    <b>}</b> <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>keymatch</font><font face='Lucida Console'>(</font>arg, "<font color='#CC0000'>flip</font>", <font color='#979000'>1</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#009900'>/* Mirror left-right or top-bottom. */</font>
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>+</font><font color='#5555FF'>+</font>argn <font color='#5555FF'>&gt;</font><font color='#5555FF'>=</font> argc<font face='Lucida Console'>)</font>	<font color='#009900'>/* advance to next argument */</font>
+	<font color='#BB00BB'>usage</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>keymatch</font><font face='Lucida Console'>(</font>argv[argn], "<font color='#CC0000'>horizontal</font>", <font color='#979000'>1</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>
+	<font color='#BB00BB'>select_transform</font><font face='Lucida Console'>(</font>JXFORM_FLIP_H<font face='Lucida Console'>)</font>;
+      <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>keymatch</font><font face='Lucida Console'>(</font>argv[argn], "<font color='#CC0000'>vertical</font>", <font color='#979000'>1</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>
+	<font color='#BB00BB'>select_transform</font><font face='Lucida Console'>(</font>JXFORM_FLIP_V<font face='Lucida Console'>)</font>;
+      <font color='#0000FF'>else</font>
+	<font color='#BB00BB'>usage</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+
+    <b>}</b> <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>keymatch</font><font face='Lucida Console'>(</font>arg, "<font color='#CC0000'>grayscale</font>", <font color='#979000'>1</font><font face='Lucida Console'>)</font> <font color='#5555FF'>|</font><font color='#5555FF'>|</font> <font color='#BB00BB'>keymatch</font><font face='Lucida Console'>(</font>arg, "<font color='#CC0000'>greyscale</font>",<font color='#979000'>1</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#009900'>/* Force to grayscale. */</font>
+<font color='#0000FF'>#if</font> TRANSFORMS_SUPPORTED
+      transformoption.force_grayscale <font color='#5555FF'>=</font> TRUE;
+<font color='#0000FF'>#else</font>
+      <font color='#BB00BB'>select_transform</font><font face='Lucida Console'>(</font>JXFORM_NONE<font face='Lucida Console'>)</font>;	<font color='#009900'>/* force an error */</font>
+<font color='#0000FF'>#endif</font>
+
+    <b>}</b> <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>keymatch</font><font face='Lucida Console'>(</font>arg, "<font color='#CC0000'>maxmemory</font>", <font color='#979000'>3</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#009900'>/* Maximum memory in Kb (or Mb with 'm'). */</font>
+      <font color='#0000FF'><u>long</u></font> lval;
+      <font color='#0000FF'><u>char</u></font> ch <font color='#5555FF'>=</font> '<font color='#FF0000'>x</font>';
+
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>+</font><font color='#5555FF'>+</font>argn <font color='#5555FF'>&gt;</font><font color='#5555FF'>=</font> argc<font face='Lucida Console'>)</font>	<font color='#009900'>/* advance to next argument */</font>
+	<font color='#BB00BB'>usage</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>sscanf</font><font face='Lucida Console'>(</font>argv[argn], "<font color='#CC0000'>%ld%c</font>", <font color='#5555FF'>&amp;</font>lval, <font color='#5555FF'>&amp;</font>ch<font face='Lucida Console'>)</font> <font color='#5555FF'>&lt;</font> <font color='#979000'>1</font><font face='Lucida Console'>)</font>
+	<font color='#BB00BB'>usage</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>ch <font color='#5555FF'>=</font><font color='#5555FF'>=</font> '<font color='#FF0000'>m</font>' <font color='#5555FF'>|</font><font color='#5555FF'>|</font> ch <font color='#5555FF'>=</font><font color='#5555FF'>=</font> '<font color='#FF0000'>M</font>'<font face='Lucida Console'>)</font>
+	lval <font color='#5555FF'>*</font><font color='#5555FF'>=</font> <font color='#979000'>1000</font>L;
+      cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>max_memory_to_use <font color='#5555FF'>=</font> lval <font color='#5555FF'>*</font> <font color='#979000'>1000</font>L;
+
+    <b>}</b> <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>keymatch</font><font face='Lucida Console'>(</font>arg, "<font color='#CC0000'>optimize</font>", <font color='#979000'>1</font><font face='Lucida Console'>)</font> <font color='#5555FF'>|</font><font color='#5555FF'>|</font> <font color='#BB00BB'>keymatch</font><font face='Lucida Console'>(</font>arg, "<font color='#CC0000'>optimise</font>", <font color='#979000'>1</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#009900'>/* Enable entropy parm optimization. */</font>
+<font color='#0000FF'>#ifdef</font> ENTROPY_OPT_SUPPORTED
+      cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>optimize_coding <font color='#5555FF'>=</font> TRUE;
+<font color='#0000FF'>#else</font>
+      <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>%s: sorry, entropy optimization was not compiled\n</font>",
+	      progname<font face='Lucida Console'>)</font>;
+      <font color='#BB00BB'>exit</font><font face='Lucida Console'>(</font>EXIT_FAILURE<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#endif</font>
+
+    <b>}</b> <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>keymatch</font><font face='Lucida Console'>(</font>arg, "<font color='#CC0000'>outfile</font>", <font color='#979000'>4</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#009900'>/* Set output file name. */</font>
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>+</font><font color='#5555FF'>+</font>argn <font color='#5555FF'>&gt;</font><font color='#5555FF'>=</font> argc<font face='Lucida Console'>)</font>	<font color='#009900'>/* advance to next argument */</font>
+	<font color='#BB00BB'>usage</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+      outfilename <font color='#5555FF'>=</font> argv[argn];	<font color='#009900'>/* save it away for later use */</font>
+
+    <b>}</b> <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>keymatch</font><font face='Lucida Console'>(</font>arg, "<font color='#CC0000'>perfect</font>", <font color='#979000'>2</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#009900'>/* Fail if there is any partial edge MCUs that the transform can't
+       * handle. */</font>
+      transformoption.perfect <font color='#5555FF'>=</font> TRUE;
+
+    <b>}</b> <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>keymatch</font><font face='Lucida Console'>(</font>arg, "<font color='#CC0000'>progressive</font>", <font color='#979000'>2</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#009900'>/* Select simple progressive mode. */</font>
+<font color='#0000FF'>#ifdef</font> C_PROGRESSIVE_SUPPORTED
+      simple_progressive <font color='#5555FF'>=</font> TRUE;
+      <font color='#009900'>/* We must postpone execution until num_components is known. */</font>
+<font color='#0000FF'>#else</font>
+      <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>%s: sorry, progressive output was not compiled\n</font>",
+	      progname<font face='Lucida Console'>)</font>;
+      <font color='#BB00BB'>exit</font><font face='Lucida Console'>(</font>EXIT_FAILURE<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#endif</font>
+
+    <b>}</b> <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>keymatch</font><font face='Lucida Console'>(</font>arg, "<font color='#CC0000'>restart</font>", <font color='#979000'>1</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#009900'>/* Restart interval in MCU rows (or in MCUs with 'b'). */</font>
+      <font color='#0000FF'><u>long</u></font> lval;
+      <font color='#0000FF'><u>char</u></font> ch <font color='#5555FF'>=</font> '<font color='#FF0000'>x</font>';
+
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>+</font><font color='#5555FF'>+</font>argn <font color='#5555FF'>&gt;</font><font color='#5555FF'>=</font> argc<font face='Lucida Console'>)</font>	<font color='#009900'>/* advance to next argument */</font>
+	<font color='#BB00BB'>usage</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>sscanf</font><font face='Lucida Console'>(</font>argv[argn], "<font color='#CC0000'>%ld%c</font>", <font color='#5555FF'>&amp;</font>lval, <font color='#5555FF'>&amp;</font>ch<font face='Lucida Console'>)</font> <font color='#5555FF'>&lt;</font> <font color='#979000'>1</font><font face='Lucida Console'>)</font>
+	<font color='#BB00BB'>usage</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>lval <font color='#5555FF'>&lt;</font> <font color='#979000'>0</font> <font color='#5555FF'>|</font><font color='#5555FF'>|</font> lval <font color='#5555FF'>&gt;</font> <font color='#979000'>65535</font>L<font face='Lucida Console'>)</font>
+	<font color='#BB00BB'>usage</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>ch <font color='#5555FF'>=</font><font color='#5555FF'>=</font> '<font color='#FF0000'>b</font>' <font color='#5555FF'>|</font><font color='#5555FF'>|</font> ch <font color='#5555FF'>=</font><font color='#5555FF'>=</font> '<font color='#FF0000'>B</font>'<font face='Lucida Console'>)</font> <b>{</b>
+	cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>restart_interval <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#0000FF'><u>unsigned</u></font> <font color='#0000FF'><u>int</u></font><font face='Lucida Console'>)</font> lval;
+	cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>restart_in_rows <font color='#5555FF'>=</font> <font color='#979000'>0</font>; <font color='#009900'>/* else prior '-restart n' overrides me */</font>
+      <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+	cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>restart_in_rows <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#0000FF'><u>int</u></font><font face='Lucida Console'>)</font> lval;
+	<font color='#009900'>/* restart_interval will be computed during startup */</font>
+      <b>}</b>
+
+    <b>}</b> <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>keymatch</font><font face='Lucida Console'>(</font>arg, "<font color='#CC0000'>rotate</font>", <font color='#979000'>2</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#009900'>/* Rotate 90, 180, or 270 degrees (measured clockwise). */</font>
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>+</font><font color='#5555FF'>+</font>argn <font color='#5555FF'>&gt;</font><font color='#5555FF'>=</font> argc<font face='Lucida Console'>)</font>	<font color='#009900'>/* advance to next argument */</font>
+	<font color='#BB00BB'>usage</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>keymatch</font><font face='Lucida Console'>(</font>argv[argn], "<font color='#CC0000'>90</font>", <font color='#979000'>2</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>
+	<font color='#BB00BB'>select_transform</font><font face='Lucida Console'>(</font>JXFORM_ROT_90<font face='Lucida Console'>)</font>;
+      <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>keymatch</font><font face='Lucida Console'>(</font>argv[argn], "<font color='#CC0000'>180</font>", <font color='#979000'>3</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>
+	<font color='#BB00BB'>select_transform</font><font face='Lucida Console'>(</font>JXFORM_ROT_180<font face='Lucida Console'>)</font>;
+      <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>keymatch</font><font face='Lucida Console'>(</font>argv[argn], "<font color='#CC0000'>270</font>", <font color='#979000'>3</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>
+	<font color='#BB00BB'>select_transform</font><font face='Lucida Console'>(</font>JXFORM_ROT_270<font face='Lucida Console'>)</font>;
+      <font color='#0000FF'>else</font>
+	<font color='#BB00BB'>usage</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+
+    <b>}</b> <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>keymatch</font><font face='Lucida Console'>(</font>arg, "<font color='#CC0000'>scale</font>", <font color='#979000'>4</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#009900'>/* Scale the output image by a fraction M/N. */</font>
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>+</font><font color='#5555FF'>+</font>argn <font color='#5555FF'>&gt;</font><font color='#5555FF'>=</font> argc<font face='Lucida Console'>)</font>	<font color='#009900'>/* advance to next argument */</font>
+	<font color='#BB00BB'>usage</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+      scaleoption <font color='#5555FF'>=</font> argv[argn];
+      <font color='#009900'>/* We must postpone processing until decompression startup. */</font>
+
+    <b>}</b> <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>keymatch</font><font face='Lucida Console'>(</font>arg, "<font color='#CC0000'>scans</font>", <font color='#979000'>1</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#009900'>/* Set scan script. */</font>
+<font color='#0000FF'>#ifdef</font> C_MULTISCAN_FILES_SUPPORTED
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>+</font><font color='#5555FF'>+</font>argn <font color='#5555FF'>&gt;</font><font color='#5555FF'>=</font> argc<font face='Lucida Console'>)</font>	<font color='#009900'>/* advance to next argument */</font>
+	<font color='#BB00BB'>usage</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+      scansarg <font color='#5555FF'>=</font> argv[argn];
+      <font color='#009900'>/* We must postpone reading the file in case -progressive appears. */</font>
+<font color='#0000FF'>#else</font>
+      <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>%s: sorry, multi-scan output was not compiled\n</font>",
+	      progname<font face='Lucida Console'>)</font>;
+      <font color='#BB00BB'>exit</font><font face='Lucida Console'>(</font>EXIT_FAILURE<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#endif</font>
+
+    <b>}</b> <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>keymatch</font><font face='Lucida Console'>(</font>arg, "<font color='#CC0000'>transpose</font>", <font color='#979000'>1</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#009900'>/* Transpose (across UL-to-LR axis). */</font>
+      <font color='#BB00BB'>select_transform</font><font face='Lucida Console'>(</font>JXFORM_TRANSPOSE<font face='Lucida Console'>)</font>;
+
+    <b>}</b> <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>keymatch</font><font face='Lucida Console'>(</font>arg, "<font color='#CC0000'>transverse</font>", <font color='#979000'>6</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#009900'>/* Transverse transpose (across UR-to-LL axis). */</font>
+      <font color='#BB00BB'>select_transform</font><font face='Lucida Console'>(</font>JXFORM_TRANSVERSE<font face='Lucida Console'>)</font>;
+
+    <b>}</b> <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>keymatch</font><font face='Lucida Console'>(</font>arg, "<font color='#CC0000'>trim</font>", <font color='#979000'>3</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#009900'>/* Trim off any partial edge MCUs that the transform can't handle. */</font>
+      transformoption.trim <font color='#5555FF'>=</font> TRUE;
+
+    <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+      <font color='#BB00BB'>usage</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;			<font color='#009900'>/* bogus switch */</font>
+    <b>}</b>
+  <b>}</b>
+
+  <font color='#009900'>/* Post-switch-scanning cleanup */</font>
+
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>for_real<font face='Lucida Console'>)</font> <b>{</b>
+
+<font color='#0000FF'>#ifdef</font> C_PROGRESSIVE_SUPPORTED
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>simple_progressive<font face='Lucida Console'>)</font>	<font color='#009900'>/* process -progressive; -scans can override */</font>
+      <font color='#BB00BB'>jpeg_simple_progression</font><font face='Lucida Console'>(</font>cinfo<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#endif</font>
+
+<font color='#0000FF'>#ifdef</font> C_MULTISCAN_FILES_SUPPORTED
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>scansarg <font color='#5555FF'>!</font><font color='#5555FF'>=</font> NULL<font face='Lucida Console'>)</font>	<font color='#009900'>/* process -scans if it was present */</font>
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>!</font> <font color='#BB00BB'>read_scan_script</font><font face='Lucida Console'>(</font>cinfo, scansarg<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>
+	<font color='#BB00BB'>usage</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#endif</font>
+  <b>}</b>
+
+  <font color='#0000FF'>return</font> argn;			<font color='#009900'>/* return index of next arg (file name) */</font>
+<b>}</b>
+
+
+<font color='#009900'>/*
+ * The main program.
+ */</font>
+
+<font color='#0000FF'><u>int</u></font>
+<b><a name='main'></a>main</b> <font face='Lucida Console'>(</font><font color='#0000FF'><u>int</u></font> argc, <font color='#0000FF'><u>char</u></font> <font color='#5555FF'>*</font><font color='#5555FF'>*</font>argv<font face='Lucida Console'>)</font>
+<b>{</b>
+  <font color='#0000FF'>struct</font> jpeg_decompress_struct srcinfo;
+  <font color='#0000FF'>struct</font> jpeg_compress_struct dstinfo;
+  <font color='#0000FF'>struct</font> jpeg_error_mgr jsrcerr, jdsterr;
+<font color='#0000FF'>#ifdef</font> PROGRESS_REPORT
+  <font color='#0000FF'>struct</font> cdjpeg_progress_mgr progress;
+<font color='#0000FF'>#endif</font>
+  jvirt_barray_ptr <font color='#5555FF'>*</font> src_coef_arrays;
+  jvirt_barray_ptr <font color='#5555FF'>*</font> dst_coef_arrays;
+  <font color='#0000FF'><u>int</u></font> file_index;
+  <font color='#009900'>/* We assume all-in-memory processing and can therefore use only a
+   * single file pointer for sequential input and output operation. 
+   */</font>
+  FILE <font color='#5555FF'>*</font> fp;
+
+  <font color='#009900'>/* On Mac, fetch a command line. */</font>
+<font color='#0000FF'>#ifdef</font> USE_CCOMMAND
+  argc <font color='#5555FF'>=</font> <font color='#BB00BB'>ccommand</font><font face='Lucida Console'>(</font><font color='#5555FF'>&amp;</font>argv<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#endif</font>
+
+  progname <font color='#5555FF'>=</font> argv[<font color='#979000'>0</font>];
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>progname <font color='#5555FF'>=</font><font color='#5555FF'>=</font> NULL <font color='#5555FF'>|</font><font color='#5555FF'>|</font> progname[<font color='#979000'>0</font>] <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>0</font><font face='Lucida Console'>)</font>
+    progname <font color='#5555FF'>=</font> "<font color='#CC0000'>jpegtran</font>";	<font color='#009900'>/* in case C library doesn't provide it */</font>
+
+  <font color='#009900'>/* Initialize the JPEG decompression object with default error handling. */</font>
+  srcinfo.err <font color='#5555FF'>=</font> <font color='#BB00BB'>jpeg_std_error</font><font face='Lucida Console'>(</font><font color='#5555FF'>&amp;</font>jsrcerr<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>jpeg_create_decompress</font><font face='Lucida Console'>(</font><font color='#5555FF'>&amp;</font>srcinfo<font face='Lucida Console'>)</font>;
+  <font color='#009900'>/* Initialize the JPEG compression object with default error handling. */</font>
+  dstinfo.err <font color='#5555FF'>=</font> <font color='#BB00BB'>jpeg_std_error</font><font face='Lucida Console'>(</font><font color='#5555FF'>&amp;</font>jdsterr<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>jpeg_create_compress</font><font face='Lucida Console'>(</font><font color='#5555FF'>&amp;</font>dstinfo<font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* Now safe to enable signal catcher.
+   * Note: we assume only the decompression object will have virtual arrays.
+   */</font>
+<font color='#0000FF'>#ifdef</font> NEED_SIGNAL_CATCHER
+  <font color='#BB00BB'>enable_signal_catcher</font><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> <font color='#5555FF'>&amp;</font>srcinfo<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#endif</font>
+
+  <font color='#009900'>/* Scan command line to find file names.
+   * It is convenient to use just one switch-parsing routine, but the switch
+   * values read here are mostly ignored; we will rescan the switches after
+   * opening the input file.  Also note that most of the switches affect the
+   * destination JPEG object, so we parse into that and then copy over what
+   * needs to affects the source too.
+   */</font>
+
+  file_index <font color='#5555FF'>=</font> <font color='#BB00BB'>parse_switches</font><font face='Lucida Console'>(</font><font color='#5555FF'>&amp;</font>dstinfo, argc, argv, <font color='#979000'>0</font>, FALSE<font face='Lucida Console'>)</font>;
+  jsrcerr.trace_level <font color='#5555FF'>=</font> jdsterr.trace_level;
+  srcinfo.mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>max_memory_to_use <font color='#5555FF'>=</font> dstinfo.mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>max_memory_to_use;
+
+<font color='#0000FF'>#ifdef</font> TWO_FILE_COMMANDLINE
+  <font color='#009900'>/* Must have either -outfile switch or explicit output file name */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>outfilename <font color='#5555FF'>=</font><font color='#5555FF'>=</font> NULL<font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>file_index <font color='#5555FF'>!</font><font color='#5555FF'>=</font> argc<font color='#5555FF'>-</font><font color='#979000'>2</font><font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>%s: must name one input and one output file\n</font>",
+	      progname<font face='Lucida Console'>)</font>;
+      <font color='#BB00BB'>usage</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+    <b>}</b>
+    outfilename <font color='#5555FF'>=</font> argv[file_index<font color='#5555FF'>+</font><font color='#979000'>1</font>];
+  <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>file_index <font color='#5555FF'>!</font><font color='#5555FF'>=</font> argc<font color='#5555FF'>-</font><font color='#979000'>1</font><font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>%s: must name one input and one output file\n</font>",
+	      progname<font face='Lucida Console'>)</font>;
+      <font color='#BB00BB'>usage</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+    <b>}</b>
+  <b>}</b>
+<font color='#0000FF'>#else</font>
+  <font color='#009900'>/* Unix style: expect zero or one file name */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>file_index <font color='#5555FF'>&lt;</font> argc<font color='#5555FF'>-</font><font color='#979000'>1</font><font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>%s: only one input file\n</font>", progname<font face='Lucida Console'>)</font>;
+    <font color='#BB00BB'>usage</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+  <b>}</b>
+<font color='#0000FF'>#endif</font> <font color='#009900'>/* TWO_FILE_COMMANDLINE */</font>
+
+  <font color='#009900'>/* Open the input file. */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>file_index <font color='#5555FF'>&lt;</font> argc<font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>fp <font color='#5555FF'>=</font> <font color='#BB00BB'>fopen</font><font face='Lucida Console'>(</font>argv[file_index], READ_BINARY<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> NULL<font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>%s: can't open %s for reading\n</font>", progname, argv[file_index]<font face='Lucida Console'>)</font>;
+      <font color='#BB00BB'>exit</font><font face='Lucida Console'>(</font>EXIT_FAILURE<font face='Lucida Console'>)</font>;
+    <b>}</b>
+  <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+    <font color='#009900'>/* default input file is stdin */</font>
+    fp <font color='#5555FF'>=</font> <font color='#BB00BB'>read_stdin</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+  <b>}</b>
+
+<font color='#0000FF'>#ifdef</font> PROGRESS_REPORT
+  <font color='#BB00BB'>start_progress_monitor</font><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> <font color='#5555FF'>&amp;</font>dstinfo, <font color='#5555FF'>&amp;</font>progress<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#endif</font>
+
+  <font color='#009900'>/* Specify data source for decompression */</font>
+  <font color='#BB00BB'>jpeg_stdio_src</font><font face='Lucida Console'>(</font><font color='#5555FF'>&amp;</font>srcinfo, fp<font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* Enable saving of extra markers that we want to copy */</font>
+  <font color='#BB00BB'>jcopy_markers_setup</font><font face='Lucida Console'>(</font><font color='#5555FF'>&amp;</font>srcinfo, copyoption<font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* Read file header */</font>
+  <font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font> <font color='#BB00BB'>jpeg_read_header</font><font face='Lucida Console'>(</font><font color='#5555FF'>&amp;</font>srcinfo, TRUE<font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* Adjust default decompression parameters */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>scaleoption <font color='#5555FF'>!</font><font color='#5555FF'>=</font> NULL<font face='Lucida Console'>)</font>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>sscanf</font><font face='Lucida Console'>(</font>scaleoption, "<font color='#CC0000'>%d/%d</font>",
+	<font color='#5555FF'>&amp;</font>srcinfo.scale_num, <font color='#5555FF'>&amp;</font>srcinfo.scale_denom<font face='Lucida Console'>)</font> <font color='#5555FF'>&lt;</font> <font color='#979000'>1</font><font face='Lucida Console'>)</font>
+      <font color='#BB00BB'>usage</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* Any space needed by a transform option must be requested before
+   * jpeg_read_coefficients so that memory allocation will be done right.
+   */</font>
+<font color='#0000FF'>#if</font> TRANSFORMS_SUPPORTED
+  <font color='#009900'>/* Fail right away if -perfect is given and transformation is not perfect.
+   */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>!</font><font color='#BB00BB'>jtransform_request_workspace</font><font face='Lucida Console'>(</font><font color='#5555FF'>&amp;</font>srcinfo, <font color='#5555FF'>&amp;</font>transformoption<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>%s: transformation is not perfect\n</font>", progname<font face='Lucida Console'>)</font>;
+    <font color='#BB00BB'>exit</font><font face='Lucida Console'>(</font>EXIT_FAILURE<font face='Lucida Console'>)</font>;
+  <b>}</b>
+<font color='#0000FF'>#endif</font>
+
+  <font color='#009900'>/* Read source file as DCT coefficients */</font>
+  src_coef_arrays <font color='#5555FF'>=</font> <font color='#BB00BB'>jpeg_read_coefficients</font><font face='Lucida Console'>(</font><font color='#5555FF'>&amp;</font>srcinfo<font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* Initialize destination compression parameters from source values */</font>
+  <font color='#BB00BB'>jpeg_copy_critical_parameters</font><font face='Lucida Console'>(</font><font color='#5555FF'>&amp;</font>srcinfo, <font color='#5555FF'>&amp;</font>dstinfo<font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* Adjust destination parameters if required by transform options;
+   * also find out which set of coefficient arrays will hold the output.
+   */</font>
+<font color='#0000FF'>#if</font> TRANSFORMS_SUPPORTED
+  dst_coef_arrays <font color='#5555FF'>=</font> <font color='#BB00BB'>jtransform_adjust_parameters</font><font face='Lucida Console'>(</font><font color='#5555FF'>&amp;</font>srcinfo, <font color='#5555FF'>&amp;</font>dstinfo,
+						 src_coef_arrays,
+						 <font color='#5555FF'>&amp;</font>transformoption<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#else</font>
+  dst_coef_arrays <font color='#5555FF'>=</font> src_coef_arrays;
+<font color='#0000FF'>#endif</font>
+
+  <font color='#009900'>/* Close input file, if we opened it.
+   * Note: we assume that jpeg_read_coefficients consumed all input
+   * until JPEG_REACHED_EOI, and that jpeg_finish_decompress will
+   * only consume more while (! cinfo-&gt;inputctl-&gt;eoi_reached).
+   * We cannot call jpeg_finish_decompress here since we still need the
+   * virtual arrays allocated from the source object for processing.
+   */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>fp <font color='#5555FF'>!</font><font color='#5555FF'>=</font> stdin<font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>fclose</font><font face='Lucida Console'>(</font>fp<font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* Open the output file. */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>outfilename <font color='#5555FF'>!</font><font color='#5555FF'>=</font> NULL<font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>fp <font color='#5555FF'>=</font> <font color='#BB00BB'>fopen</font><font face='Lucida Console'>(</font>outfilename, WRITE_BINARY<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> NULL<font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>%s: can't open %s for writing\n</font>", progname, outfilename<font face='Lucida Console'>)</font>;
+      <font color='#BB00BB'>exit</font><font face='Lucida Console'>(</font>EXIT_FAILURE<font face='Lucida Console'>)</font>;
+    <b>}</b>
+  <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+    <font color='#009900'>/* default output file is stdout */</font>
+    fp <font color='#5555FF'>=</font> <font color='#BB00BB'>write_stdout</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+  <b>}</b>
+
+  <font color='#009900'>/* Adjust default compression parameters by re-parsing the options */</font>
+  file_index <font color='#5555FF'>=</font> <font color='#BB00BB'>parse_switches</font><font face='Lucida Console'>(</font><font color='#5555FF'>&amp;</font>dstinfo, argc, argv, <font color='#979000'>0</font>, TRUE<font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* Specify data destination for compression */</font>
+  <font color='#BB00BB'>jpeg_stdio_dest</font><font face='Lucida Console'>(</font><font color='#5555FF'>&amp;</font>dstinfo, fp<font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* Start compressor (note no image data is actually written here) */</font>
+  <font color='#BB00BB'>jpeg_write_coefficients</font><font face='Lucida Console'>(</font><font color='#5555FF'>&amp;</font>dstinfo, dst_coef_arrays<font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* Copy to the output file any extra markers that we want to preserve */</font>
+  <font color='#BB00BB'>jcopy_markers_execute</font><font face='Lucida Console'>(</font><font color='#5555FF'>&amp;</font>srcinfo, <font color='#5555FF'>&amp;</font>dstinfo, copyoption<font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* Execute image transformation, if any */</font>
+<font color='#0000FF'>#if</font> TRANSFORMS_SUPPORTED
+  <font color='#BB00BB'>jtransform_execute_transformation</font><font face='Lucida Console'>(</font><font color='#5555FF'>&amp;</font>srcinfo, <font color='#5555FF'>&amp;</font>dstinfo,
+				    src_coef_arrays,
+				    <font color='#5555FF'>&amp;</font>transformoption<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#endif</font>
+
+  <font color='#009900'>/* Finish compression and release memory */</font>
+  <font color='#BB00BB'>jpeg_finish_compress</font><font face='Lucida Console'>(</font><font color='#5555FF'>&amp;</font>dstinfo<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>jpeg_destroy_compress</font><font face='Lucida Console'>(</font><font color='#5555FF'>&amp;</font>dstinfo<font face='Lucida Console'>)</font>;
+  <font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font> <font color='#BB00BB'>jpeg_finish_decompress</font><font face='Lucida Console'>(</font><font color='#5555FF'>&amp;</font>srcinfo<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>jpeg_destroy_decompress</font><font face='Lucida Console'>(</font><font color='#5555FF'>&amp;</font>srcinfo<font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* Close output file, if we opened it */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>fp <font color='#5555FF'>!</font><font color='#5555FF'>=</font> stdout<font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>fclose</font><font face='Lucida Console'>(</font>fp<font face='Lucida Console'>)</font>;
+
+<font color='#0000FF'>#ifdef</font> PROGRESS_REPORT
+  <font color='#BB00BB'>end_progress_monitor</font><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> <font color='#5555FF'>&amp;</font>dstinfo<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#endif</font>
+
+  <font color='#009900'>/* All done. */</font>
+  <font color='#BB00BB'>exit</font><font face='Lucida Console'>(</font>jsrcerr.num_warnings <font color='#5555FF'>+</font> jdsterr.num_warnings ?EXIT_WARNING:EXIT_SUCCESS<font face='Lucida Console'>)</font>;
+  <font color='#0000FF'>return</font> <font color='#979000'>0</font>;			<font color='#009900'>/* suppress no-return-value warnings */</font>
+<b>}</b>
+
+</pre></body></html>

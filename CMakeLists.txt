@@ -35,5 +35,5 @@ add_executable(bin ${SOURCES})
 
 find_library(LIGHTGBM_LIB lib_lightgbm.dylib LightGBM)
 target_link_libraries(bin ${LIGHTGBM_LIB})
-target_link_libraries(assignment_learning_ex dlib::dlib)
+target_link_libraries(bin dlib::dlib)
 

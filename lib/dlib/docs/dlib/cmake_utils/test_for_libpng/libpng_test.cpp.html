@@ -1,0 +1,57 @@
+<html><!-- Created using the cpp_pretty_printer from the dlib C++ library.  See http://dlib.net for updates. --><head><title>dlib C++ Library - libpng_test.cpp</title></head><body bgcolor='white'><pre>
+<font color='#009900'>// Copyright (C) 2019  Davis E. King (davis@dlib.net), Nils Labugt
+</font><font color='#009900'>// License: Boost Software License   See LICENSE.txt for the full license.
+</font><font color='#0000FF'>#include</font> <font color='#5555FF'>&lt;</font>png.h<font color='#5555FF'>&gt;</font>
+<font color='#0000FF'>#include</font> <font color='#5555FF'>&lt;</font>setjmp.h<font color='#5555FF'>&gt;</font>
+<font color='#0000FF'>#include</font> <font color='#5555FF'>&lt;</font>stdio.h<font color='#5555FF'>&gt;</font>
+<font color='#0000FF'>#include</font> <font color='#5555FF'>&lt;</font>stdlib.h<font color='#5555FF'>&gt;</font>
+<font color='#0000FF'>#include</font> <font color='#5555FF'>&lt;</font>iostream<font color='#5555FF'>&gt;</font>
+
+<font color='#0000FF'><u>void</u></font> <b><a name='png_loader_user_error_fn_silent'></a>png_loader_user_error_fn_silent</b><font face='Lucida Console'>(</font>png_structp  png_struct, png_const_charp <font face='Lucida Console'>)</font> 
+<b>{</b>
+    <font color='#BB00BB'>longjmp</font><font face='Lucida Console'>(</font><font color='#BB00BB'>png_jmpbuf</font><font face='Lucida Console'>(</font>png_struct<font face='Lucida Console'>)</font>,<font color='#979000'>1</font><font face='Lucida Console'>)</font>;
+<b>}</b>
+<font color='#0000FF'><u>void</u></font> <b><a name='png_loader_user_warning_fn_silent'></a>png_loader_user_warning_fn_silent</b><font face='Lucida Console'>(</font>png_structp , png_const_charp <font face='Lucida Console'>)</font> 
+<b>{</b>
+<b>}</b>
+
+<font color='#009900'>// This code doesn't really make a lot of sense.  It's just calling all the libpng functions to make
+</font><font color='#009900'>// sure they can be compiled and linked.  
+</font><font color='#0000FF'><u>int</u></font> <b><a name='main'></a>main</b><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font> 
+<b>{</b>
+    std::cerr <font color='#5555FF'>&lt;</font><font color='#5555FF'>&lt;</font> "<font color='#CC0000'>This program is just for build system testing.  Don't actually run it.</font>" <font color='#5555FF'>&lt;</font><font color='#5555FF'>&lt;</font> std::endl;
+    <font color='#BB00BB'>abort</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+
+    png_bytep<font color='#5555FF'>*</font> row_pointers_;
+    png_structp png_ptr_;
+    png_infop info_ptr_;
+    png_infop end_info_;
+
+    FILE <font color='#5555FF'>*</font>fp <font color='#5555FF'>=</font> <font color='#BB00BB'>fopen</font><font face='Lucida Console'>(</font> "<font color='#CC0000'>whatever.png</font>", "<font color='#CC0000'>rb</font>" <font face='Lucida Console'>)</font>;
+    png_byte sig[<font color='#979000'>8</font>];
+    <font color='#BB00BB'>fread</font><font face='Lucida Console'>(</font> sig, <font color='#979000'>1</font>, <font color='#979000'>8</font>, fp <font face='Lucida Console'>)</font>;
+    <font color='#BB00BB'>png_sig_cmp</font><font face='Lucida Console'>(</font> sig, <font color='#979000'>0</font>, <font color='#979000'>8</font> <font face='Lucida Console'>)</font>;
+    png_ptr_ <font color='#5555FF'>=</font> <font color='#BB00BB'>png_create_read_struct</font><font face='Lucida Console'>(</font> PNG_LIBPNG_VER_STRING, NULL, <font color='#5555FF'>&amp;</font>png_loader_user_error_fn_silent, <font color='#5555FF'>&amp;</font>png_loader_user_warning_fn_silent <font face='Lucida Console'>)</font>;
+
+    <font color='#BB00BB'>png_get_header_ver</font><font face='Lucida Console'>(</font>NULL<font face='Lucida Console'>)</font>;
+    info_ptr_ <font color='#5555FF'>=</font> <font color='#BB00BB'>png_create_info_struct</font><font face='Lucida Console'>(</font> png_ptr_ <font face='Lucida Console'>)</font>;
+    end_info_ <font color='#5555FF'>=</font> <font color='#BB00BB'>png_create_info_struct</font><font face='Lucida Console'>(</font> png_ptr_ <font face='Lucida Console'>)</font>;
+    <font color='#BB00BB'>setjmp</font><font face='Lucida Console'>(</font><font color='#BB00BB'>png_jmpbuf</font><font face='Lucida Console'>(</font>png_ptr_<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+    <font color='#BB00BB'>png_set_palette_to_rgb</font><font face='Lucida Console'>(</font>png_ptr_<font face='Lucida Console'>)</font>;
+    <font color='#BB00BB'>png_init_io</font><font face='Lucida Console'>(</font> png_ptr_, fp <font face='Lucida Console'>)</font>;
+    <font color='#BB00BB'>png_set_sig_bytes</font><font face='Lucida Console'>(</font> png_ptr_, <font color='#979000'>8</font> <font face='Lucida Console'>)</font>;
+    <font color='#009900'>// flags force one byte per channel output
+</font>    <font color='#0000FF'><u>int</u></font> png_transforms <font color='#5555FF'>=</font> PNG_TRANSFORM_PACKING;
+    <font color='#BB00BB'>png_read_png</font><font face='Lucida Console'>(</font> png_ptr_, info_ptr_, png_transforms, NULL <font face='Lucida Console'>)</font>;
+    <font color='#BB00BB'>png_get_image_height</font><font face='Lucida Console'>(</font> png_ptr_, info_ptr_ <font face='Lucida Console'>)</font>;
+    <font color='#BB00BB'>png_get_image_width</font><font face='Lucida Console'>(</font> png_ptr_, info_ptr_ <font face='Lucida Console'>)</font>;
+    <font color='#BB00BB'>png_get_bit_depth</font><font face='Lucida Console'>(</font> png_ptr_, info_ptr_ <font face='Lucida Console'>)</font>;
+    <font color='#BB00BB'>png_get_color_type</font><font face='Lucida Console'>(</font> png_ptr_,  info_ptr_ <font face='Lucida Console'>)</font>;
+
+    <font color='#BB00BB'>png_get_rows</font><font face='Lucida Console'>(</font> png_ptr_, info_ptr_ <font face='Lucida Console'>)</font>;
+
+    <font color='#BB00BB'>fclose</font><font face='Lucida Console'>(</font>fp<font face='Lucida Console'>)</font>;
+    <font color='#BB00BB'>png_destroy_read_struct</font><font face='Lucida Console'>(</font><font color='#5555FF'>&amp;</font>png_ptr_, <font color='#5555FF'>&amp;</font>info_ptr_, <font color='#5555FF'>&amp;</font>end_info_<font face='Lucida Console'>)</font>;
+<b>}</b>
+
+</pre></body></html>

@@ -1,0 +1,452 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6"/>
+	<Project>
+		<Option title="dlib"/>
+		<Option makefile_is_custom="1"/>
+		<Option compiler="clang"/>
+		<Option virtualFolders="CMake Files\;CMake Files\dlib\;CMake Files\dlib\cmake_utils\;"/>
+		<Build>
+			<Target title="all">
+				<Option working_dir="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/dlib"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/dlib/Makefile&quot;  VERBOSE=1 all"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/dlib/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/dlib/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/dlib/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="dlib">
+				<Option output="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/dlib/libdlib.a" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/dlib"/>
+				<Option object_output="./"/>
+				<Option type="2"/>
+				<Option compiler="clang"/>
+				<Compiler>
+					<Add directory="/usr/X11R6/include"/>
+					<Add directory="/Library/Frameworks/Mono.framework/Headers"/>
+					<Add directory="/Library/Developer/CommandLineTools/usr/include/c++/v1"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/Library/Developer/CommandLineTools/usr/lib/clang/10.0.1/include"/>
+					<Add directory="/Library/Developer/CommandLineTools/usr/include"/>
+					<Add directory="/System/Library/Frameworks"/>
+					<Add directory="/Library/Frameworks"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/dlib/Makefile&quot;  VERBOSE=1 dlib"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/dlib/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/dlib/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/dlib/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="dlib/fast">
+				<Option output="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/dlib/libdlib.a" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/dlib"/>
+				<Option object_output="./"/>
+				<Option type="2"/>
+				<Option compiler="clang"/>
+				<Compiler>
+					<Add directory="/usr/X11R6/include"/>
+					<Add directory="/Library/Frameworks/Mono.framework/Headers"/>
+					<Add directory="/Library/Developer/CommandLineTools/usr/include/c++/v1"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/Library/Developer/CommandLineTools/usr/lib/clang/10.0.1/include"/>
+					<Add directory="/Library/Developer/CommandLineTools/usr/include"/>
+					<Add directory="/System/Library/Frameworks"/>
+					<Add directory="/Library/Frameworks"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/dlib/Makefile&quot;  VERBOSE=1 dlib/fast"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/dlib/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/dlib/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/dlib/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+		</Build>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/base64/base64_kernel_1.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/base64/base64_kernel_1.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/bigint/bigint_kernel_1.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/bigint/bigint_kernel_1.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/bigint/bigint_kernel_2.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/bigint/bigint_kernel_2.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/bit_stream/bit_stream_kernel_1.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/bit_stream/bit_stream_kernel_1.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/bsp/bsp.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/bsp/bsp.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/cuda/cpu_dlib.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/cuda/cpu_dlib.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/cuda/tensor_tools.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/cuda/tensor_tools.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/data_io/image_dataset_metadata.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/data_io/image_dataset_metadata.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/data_io/mnist.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/data_io/mnist.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/dir_nav/dir_nav_extensions.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/dir_nav/dir_nav_extensions.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/dir_nav/dir_nav_kernel_1.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/dir_nav/dir_nav_kernel_1.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/dir_nav/dir_nav_kernel_2.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/dir_nav/dir_nav_kernel_2.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/entropy_decoder/entropy_decoder_kernel_1.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/entropy_decoder/entropy_decoder_kernel_1.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/entropy_decoder/entropy_decoder_kernel_2.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/entropy_decoder/entropy_decoder_kernel_2.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/entropy_encoder/entropy_encoder_kernel_1.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/entropy_encoder/entropy_encoder_kernel_1.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/entropy_encoder/entropy_encoder_kernel_2.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/entropy_encoder/entropy_encoder_kernel_2.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/filtering/kalman_filter.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/filtering/kalman_filter.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/global_optimization/global_function_search.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/global_optimization/global_function_search.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/gui_core/gui_core_kernel_1.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/gui_core/gui_core_kernel_1.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/gui_core/gui_core_kernel_2.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/gui_core/gui_core_kernel_2.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/gui_widgets/base_widgets.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/gui_widgets/base_widgets.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/gui_widgets/canvas_drawing.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/gui_widgets/canvas_drawing.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/gui_widgets/drawable.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/gui_widgets/drawable.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/gui_widgets/fonts.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/gui_widgets/fonts.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/gui_widgets/style.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/gui_widgets/style.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/gui_widgets/widgets.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/gui_widgets/widgets.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/image_loader/jpeg_loader.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/image_loader/jpeg_loader.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/image_loader/png_loader.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/image_loader/png_loader.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/image_saver/save_jpeg.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/image_saver/save_jpeg.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/image_saver/save_png.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/image_saver/save_png.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/linker/linker_kernel_1.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/linker/linker_kernel_1.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/logger/extra_logger_headers.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/logger/extra_logger_headers.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/logger/logger_config_file.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/logger/logger_config_file.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/logger/logger_kernel_1.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/logger/logger_kernel_1.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/md5/md5_kernel_1.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/md5/md5_kernel_1.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/misc_api/misc_api_kernel_1.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/misc_api/misc_api_kernel_1.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/misc_api/misc_api_kernel_2.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/misc_api/misc_api_kernel_2.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/server/server_http.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/server/server_http.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/server/server_iostream.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/server/server_iostream.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/server/server_kernel.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/server/server_kernel.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/sockets/sockets_extensions.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/sockets/sockets_extensions.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/sockets/sockets_kernel_1.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/sockets/sockets_kernel_1.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/sockets/sockets_kernel_2.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/sockets/sockets_kernel_2.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/sockstreambuf/sockstreambuf.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/sockstreambuf/sockstreambuf.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/sockstreambuf/sockstreambuf_unbuffered.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/sockstreambuf/sockstreambuf_unbuffered.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/stack_trace.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/stack_trace.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/svm/auto.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/svm/auto.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/test_for_odr_violations.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/test_for_odr_violations.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/threads/async.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/threads/async.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/threads/multithreaded_object_extension.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/threads/multithreaded_object_extension.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/threads/thread_pool_extension.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/threads/thread_pool_extension.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/threads/threaded_object_extension.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/threads/threaded_object_extension.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/threads/threads_kernel_1.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/threads/threads_kernel_1.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/threads/threads_kernel_2.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/threads/threads_kernel_2.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/threads/threads_kernel_shared.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/threads/threads_kernel_shared.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/timer/timer.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/timer/timer.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/tokenizer/tokenizer_kernel_1.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/tokenizer/tokenizer_kernel_1.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/unicode/unicode.cpp">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/unicode/unicode.h">
+			<Option target="dlib"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\dlib\"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/config.h.in">
+			<Option virtualFolder="CMake Files\dlib\"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/revision.h.in">
+			<Option virtualFolder="CMake Files\dlib\"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/cmake_utils/dlib.pc.in">
+			<Option virtualFolder="CMake Files\dlib\cmake_utils\"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/cmake_utils/dlibConfig.cmake.in">
+			<Option virtualFolder="CMake Files\dlib\cmake_utils\"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/cmake_utils/find_blas.cmake">
+			<Option virtualFolder="CMake Files\dlib\cmake_utils\"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/cmake_utils/find_libjpeg.cmake">
+			<Option virtualFolder="CMake Files\dlib\cmake_utils\"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/cmake_utils/find_libpng.cmake">
+			<Option virtualFolder="CMake Files\dlib\cmake_utils\"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/cmake_utils/release_build_by_default">
+			<Option virtualFolder="CMake Files\dlib\cmake_utils\"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/cmake_utils/set_compiler_specific_options.cmake">
+			<Option virtualFolder="CMake Files\dlib\cmake_utils\"/>
+		</Unit>
+		<Unit filename="/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/cmake_utils/use_cpp_11.cmake">
+			<Option virtualFolder="CMake Files\dlib\cmake_utils\"/>
+		</Unit>
+	</Project>
+</CodeBlocks_project_file>

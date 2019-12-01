@@ -1,0 +1,216 @@
+<html><!-- Created using the cpp_pretty_printer from the dlib C++ library.  See http://dlib.net for updates. --><head><title>dlib C++ Library - transupp.h</title></head><body bgcolor='white'><pre>
+<font color='#009900'>/*
+ * transupp.h
+ *
+ * Copyright (C) 1997-2011, Thomas G. Lane, Guido Vollbeding.
+ * This file is part of the Independent JPEG Group's software.
+ * For conditions of distribution and use, see the accompanying README file.
+ *
+ * This file contains declarations for image transformation routines and
+ * other utility code used by the jpegtran sample application.  These are
+ * NOT part of the core JPEG library.  But we keep these routines separate
+ * from jpegtran.c to ease the task of maintaining jpegtran-like programs
+ * that have other user interfaces.
+ *
+ * NOTE: all the routines declared here have very specific requirements
+ * about when they are to be executed during the reading and writing of the
+ * source and destination files.  See the comments in transupp.c, or see
+ * jpegtran.c for an example of correct usage.
+ */</font>
+
+<font color='#009900'>/* If you happen not to want the image transform support, disable it here */</font>
+<font color='#0000FF'>#ifndef</font> TRANSFORMS_SUPPORTED
+<font color='#0000FF'>#define</font> TRANSFORMS_SUPPORTED <font color='#979000'>1</font>		<font color='#009900'>/* 0 disables transform code */</font>
+<font color='#0000FF'>#endif</font>
+
+<font color='#009900'>/*
+ * Although rotating and flipping data expressed as DCT coefficients is not
+ * hard, there is an asymmetry in the JPEG format specification for images
+ * whose dimensions aren't multiples of the iMCU size.  The right and bottom
+ * image edges are padded out to the next iMCU boundary with junk data; but
+ * no padding is possible at the top and left edges.  If we were to flip
+ * the whole image including the pad data, then pad garbage would become
+ * visible at the top and/or left, and real pixels would disappear into the
+ * pad margins --- perhaps permanently, since encoders &amp; decoders may not
+ * bother to preserve DCT blocks that appear to be completely outside the
+ * nominal image area.  So, we have to exclude any partial iMCUs from the
+ * basic transformation.
+ *
+ * Transpose is the only transformation that can handle partial iMCUs at the
+ * right and bottom edges completely cleanly.  flip_h can flip partial iMCUs
+ * at the bottom, but leaves any partial iMCUs at the right edge untouched.
+ * Similarly flip_v leaves any partial iMCUs at the bottom edge untouched.
+ * The other transforms are defined as combinations of these basic transforms
+ * and process edge blocks in a way that preserves the equivalence.
+ *
+ * The "trim" option causes untransformable partial iMCUs to be dropped;
+ * this is not strictly lossless, but it usually gives the best-looking
+ * result for odd-size images.  Note that when this option is active,
+ * the expected mathematical equivalences between the transforms may not hold.
+ * (For example, -rot 270 -trim trims only the bottom edge, but -rot 90 -trim
+ * followed by -rot 180 -trim trims both edges.)
+ *
+ * We also offer a lossless-crop option, which discards data outside a given
+ * image region but losslessly preserves what is inside.  Like the rotate and
+ * flip transforms, lossless crop is restricted by the JPEG format: the upper
+ * left corner of the selected region must fall on an iMCU boundary.  If this
+ * does not hold for the given crop parameters, we silently move the upper left
+ * corner up and/or left to make it so, simultaneously increasing the region
+ * dimensions to keep the lower right crop corner unchanged.  (Thus, the
+ * output image covers at least the requested region, but may cover more.)
+ * The adjustment of the region dimensions may be optionally disabled.
+ *
+ * We also provide a lossless-resize option, which is kind of a lossless-crop
+ * operation in the DCT coefficient block domain - it discards higher-order
+ * coefficients and losslessly preserves lower-order coefficients of a
+ * sub-block.
+ *
+ * Rotate/flip transform, resize, and crop can be requested together in a
+ * single invocation.  The crop is applied last --- that is, the crop region
+ * is specified in terms of the destination image after transform/resize.
+ *
+ * We also offer a "force to grayscale" option, which simply discards the
+ * chrominance channels of a YCbCr image.  This is lossless in the sense that
+ * the luminance channel is preserved exactly.  It's not the same kind of
+ * thing as the rotate/flip transformations, but it's convenient to handle it
+ * as part of this package, mainly because the transformation routines have to
+ * be aware of the option to know how many components to work on.
+ */</font>
+
+
+<font color='#009900'>/* Short forms of external names for systems with brain-damaged linkers. */</font>
+
+<font color='#0000FF'>#ifdef</font> NEED_SHORT_EXTERNAL_NAMES
+<font color='#0000FF'>#define</font> jtransform_parse_crop_spec	jTrParCrop
+<font color='#0000FF'>#define</font> jtransform_request_workspace	jTrRequest
+<font color='#0000FF'>#define</font> jtransform_adjust_parameters	jTrAdjust
+<font color='#0000FF'>#define</font> jtransform_execute_transform	jTrExec
+<font color='#0000FF'>#define</font> jtransform_perfect_transform	jTrPerfect
+<font color='#0000FF'>#define</font> jcopy_markers_setup		jCMrkSetup
+<font color='#0000FF'>#define</font> jcopy_markers_execute		jCMrkExec
+<font color='#0000FF'>#endif</font> <font color='#009900'>/* NEED_SHORT_EXTERNAL_NAMES */</font>
+
+
+<font color='#009900'>/*
+ * Codes for supported types of image transformations.
+ */</font>
+
+<font color='#0000FF'>typedef</font> <font color='#0000FF'>enum</font> <b>{</b>
+	JXFORM_NONE,		<font color='#009900'>/* no transformation */</font>
+	JXFORM_FLIP_H,		<font color='#009900'>/* horizontal flip */</font>
+	JXFORM_FLIP_V,		<font color='#009900'>/* vertical flip */</font>
+	JXFORM_TRANSPOSE,	<font color='#009900'>/* transpose across UL-to-LR axis */</font>
+	JXFORM_TRANSVERSE,	<font color='#009900'>/* transpose across UR-to-LL axis */</font>
+	JXFORM_ROT_90,		<font color='#009900'>/* 90-degree clockwise rotation */</font>
+	JXFORM_ROT_180,		<font color='#009900'>/* 180-degree rotation */</font>
+	JXFORM_ROT_270		<font color='#009900'>/* 270-degree clockwise (or 90 ccw) */</font>
+<b>}</b> JXFORM_CODE;
+
+<font color='#009900'>/*
+ * Codes for crop parameters, which can individually be unspecified,
+ * positive or negative for xoffset or yoffset,
+ * positive or forced for width or height.
+ */</font>
+
+<font color='#0000FF'>typedef</font> <font color='#0000FF'>enum</font> <b>{</b>
+        JCROP_UNSET,
+        JCROP_POS,
+        JCROP_NEG,
+        JCROP_FORCE
+<b>}</b> JCROP_CODE;
+
+<font color='#009900'>/*
+ * Transform parameters struct.
+ * NB: application must not change any elements of this struct after
+ * calling jtransform_request_workspace.
+ */</font>
+
+<font color='#0000FF'>typedef</font> <font color='#0000FF'>struct</font> <b>{</b>
+  <font color='#009900'>/* Options: set by caller */</font>
+  JXFORM_CODE transform;	<font color='#009900'>/* image transform operator */</font>
+  boolean perfect;		<font color='#009900'>/* if TRUE, fail if partial MCUs are requested */</font>
+  boolean trim;			<font color='#009900'>/* if TRUE, trim partial MCUs as needed */</font>
+  boolean force_grayscale;	<font color='#009900'>/* if TRUE, convert color image to grayscale */</font>
+  boolean crop;			<font color='#009900'>/* if TRUE, crop source image */</font>
+
+  <font color='#009900'>/* Crop parameters: application need not set these unless crop is TRUE.
+   * These can be filled in by jtransform_parse_crop_spec().
+   */</font>
+  JDIMENSION crop_width;	<font color='#009900'>/* Width of selected region */</font>
+  JCROP_CODE crop_width_set;	<font color='#009900'>/* (forced disables adjustment) */</font>
+  JDIMENSION crop_height;	<font color='#009900'>/* Height of selected region */</font>
+  JCROP_CODE crop_height_set;	<font color='#009900'>/* (forced disables adjustment) */</font>
+  JDIMENSION crop_xoffset;	<font color='#009900'>/* X offset of selected region */</font>
+  JCROP_CODE crop_xoffset_set;	<font color='#009900'>/* (negative measures from right edge) */</font>
+  JDIMENSION crop_yoffset;	<font color='#009900'>/* Y offset of selected region */</font>
+  JCROP_CODE crop_yoffset_set;	<font color='#009900'>/* (negative measures from bottom edge) */</font>
+
+  <font color='#009900'>/* Internal workspace: caller should not touch these */</font>
+  <font color='#0000FF'><u>int</u></font> num_components;		<font color='#009900'>/* # of components in workspace */</font>
+  jvirt_barray_ptr <font color='#5555FF'>*</font> workspace_coef_arrays; <font color='#009900'>/* workspace for transformations */</font>
+  JDIMENSION output_width;	<font color='#009900'>/* cropped destination dimensions */</font>
+  JDIMENSION output_height;
+  JDIMENSION x_crop_offset;	<font color='#009900'>/* destination crop offsets measured in iMCUs */</font>
+  JDIMENSION y_crop_offset;
+  <font color='#0000FF'><u>int</u></font> iMCU_sample_width;	<font color='#009900'>/* destination iMCU size */</font>
+  <font color='#0000FF'><u>int</u></font> iMCU_sample_height;
+<b>}</b> jpeg_transform_info;
+
+
+<font color='#0000FF'>#if</font> TRANSFORMS_SUPPORTED
+
+<font color='#009900'>/* Parse a crop specification (written in X11 geometry style) */</font>
+<b><a name='EXTERN'></a>EXTERN</b><font face='Lucida Console'>(</font>boolean<font face='Lucida Console'>)</font> jtransform_parse_crop_spec
+	<b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>jpeg_transform_info <font color='#5555FF'>*</font>info, <font color='#0000FF'>const</font> <font color='#0000FF'><u>char</u></font> <font color='#5555FF'>*</font>spec<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+<font color='#009900'>/* Request any required workspace */</font>
+<b><a name='EXTERN'></a>EXTERN</b><font face='Lucida Console'>(</font>boolean<font face='Lucida Console'>)</font> jtransform_request_workspace
+	<b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_decompress_ptr srcinfo, jpeg_transform_info <font color='#5555FF'>*</font>info<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+<font color='#009900'>/* Adjust output image parameters */</font>
+<b><a name='EXTERN'></a>EXTERN</b><font face='Lucida Console'>(</font>jvirt_barray_ptr <font color='#5555FF'>*</font><font face='Lucida Console'>)</font> jtransform_adjust_parameters
+	<b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_decompress_ptr srcinfo, j_compress_ptr dstinfo,
+	     jvirt_barray_ptr <font color='#5555FF'>*</font>src_coef_arrays,
+	     jpeg_transform_info <font color='#5555FF'>*</font>info<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+<font color='#009900'>/* Execute the actual transformation, if any */</font>
+<b><a name='EXTERN'></a>EXTERN</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font> jtransform_execute_transform
+	<b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_decompress_ptr srcinfo, j_compress_ptr dstinfo,
+	     jvirt_barray_ptr <font color='#5555FF'>*</font>src_coef_arrays,
+	     jpeg_transform_info <font color='#5555FF'>*</font>info<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+<font color='#009900'>/* Determine whether lossless transformation is perfectly
+ * possible for a specified image and transformation.
+ */</font>
+<b><a name='EXTERN'></a>EXTERN</b><font face='Lucida Console'>(</font>boolean<font face='Lucida Console'>)</font> jtransform_perfect_transform
+	<b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>JDIMENSION image_width, JDIMENSION image_height,
+	     <font color='#0000FF'><u>int</u></font> MCU_width, <font color='#0000FF'><u>int</u></font> MCU_height,
+	     JXFORM_CODE transform<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+
+<font color='#009900'>/* jtransform_execute_transform used to be called
+ * jtransform_execute_transformation, but some compilers complain about
+ * routine names that long.  This macro is here to avoid breaking any
+ * old source code that uses the original name...
+ */</font>
+<font color='#0000FF'>#define</font> jtransform_execute_transformation	jtransform_execute_transform
+
+<font color='#0000FF'>#endif</font> <font color='#009900'>/* TRANSFORMS_SUPPORTED */</font>
+
+
+<font color='#009900'>/*
+ * Support for copying optional markers from source to destination file.
+ */</font>
+
+<font color='#0000FF'>typedef</font> <font color='#0000FF'>enum</font> <b>{</b>
+	JCOPYOPT_NONE,		<font color='#009900'>/* copy no optional markers */</font>
+	JCOPYOPT_COMMENTS,	<font color='#009900'>/* copy only comment (COM) markers */</font>
+	JCOPYOPT_ALL		<font color='#009900'>/* copy all optional markers */</font>
+<b>}</b> JCOPY_OPTION;
+
+<font color='#0000FF'>#define</font> JCOPYOPT_DEFAULT  JCOPYOPT_COMMENTS	<font color='#009900'>/* recommended default */</font>
+
+<font color='#009900'>/* Setup decompression object to save desired markers in memory */</font>
+<b><a name='EXTERN'></a>EXTERN</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font> jcopy_markers_setup
+	<b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_decompress_ptr srcinfo, JCOPY_OPTION option<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+<font color='#009900'>/* Copy markers saved in the given source object to the destination object */</font>
+<b><a name='EXTERN'></a>EXTERN</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font> jcopy_markers_execute
+	<b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_decompress_ptr srcinfo, j_compress_ptr dstinfo,
+	     JCOPY_OPTION option<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+
+</pre></body></html>

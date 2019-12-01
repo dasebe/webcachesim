@@ -1,0 +1,402 @@
+<html><!-- Created using the cpp_pretty_printer from the dlib C++ library.  See http://dlib.net for updates. --><head><title>dlib C++ Library - wrgif.c</title></head><body bgcolor='white'><pre>
+<font color='#009900'>/*
+ * wrgif.c
+ *
+ * Copyright (C) 1991-1997, Thomas G. Lane.
+ * This file is part of the Independent JPEG Group's software.
+ * For conditions of distribution and use, see the accompanying README file.
+ *
+ * This file contains routines to write output images in GIF format.
+ *
+ **************************************************************************
+ * NOTE: to avoid entanglements with Unisys' patent on LZW compression,   *
+ * this code has been modified to output "uncompressed GIF" files.        *
+ * There is no trace of the LZW algorithm in this file.                   *
+ **************************************************************************
+ *
+ * These routines may need modification for non-Unix environments or
+ * specialized applications.  As they stand, they assume output to
+ * an ordinary stdio stream.
+ */</font>
+
+<font color='#009900'>/*
+ * This code is loosely based on ppmtogif from the PBMPLUS distribution
+ * of Feb. 1991.  That file contains the following copyright notice:
+ *    Based on GIFENCODE by David Rowley &lt;mgardi@watdscu.waterloo.edu&gt;.
+ *    Lempel-Ziv compression based on "compress" by Spencer W. Thomas et al.
+ *    Copyright (C) 1989 by Jef Poskanzer.
+ *    Permission to use, copy, modify, and distribute this software and its
+ *    documentation for any purpose and without fee is hereby granted, provided
+ *    that the above copyright notice appear in all copies and that both that
+ *    copyright notice and this permission notice appear in supporting
+ *    documentation.  This software is provided "as is" without express or
+ *    implied warranty.
+ *
+ * We are also required to state that
+ *    "The Graphics Interchange Format(c) is the Copyright property of
+ *    CompuServe Incorporated. GIF(sm) is a Service Mark property of
+ *    CompuServe Incorporated."
+ */</font>
+
+<font color='#0000FF'>#include</font> "<a style='text-decoration:none' href='cdjpeg.h.html'>cdjpeg.h</a>"		<font color='#009900'>/* Common decls for cjpeg/djpeg applications */</font>
+
+<font color='#0000FF'>#ifdef</font> GIF_SUPPORTED
+
+
+<font color='#009900'>/* Private version of data destination object */</font>
+
+<font color='#0000FF'>typedef</font> <font color='#0000FF'>struct</font> <b>{</b>
+  <font color='#0000FF'>struct</font> djpeg_dest_struct pub;	<font color='#009900'>/* public fields */</font>
+
+  j_decompress_ptr cinfo;	<font color='#009900'>/* back link saves passing separate parm */</font>
+
+  <font color='#009900'>/* State for packing variable-width codes into a bitstream */</font>
+  <font color='#0000FF'><u>int</u></font> n_bits;			<font color='#009900'>/* current number of bits/code */</font>
+  <font color='#0000FF'><u>int</u></font> maxcode;			<font color='#009900'>/* maximum code, given n_bits */</font>
+  INT32 cur_accum;		<font color='#009900'>/* holds bits not yet output */</font>
+  <font color='#0000FF'><u>int</u></font> cur_bits;			<font color='#009900'>/* # of bits in cur_accum */</font>
+
+  <font color='#009900'>/* State for GIF code assignment */</font>
+  <font color='#0000FF'><u>int</u></font> ClearCode;		<font color='#009900'>/* clear code (doesn't change) */</font>
+  <font color='#0000FF'><u>int</u></font> EOFCode;			<font color='#009900'>/* EOF code (ditto) */</font>
+  <font color='#0000FF'><u>int</u></font> code_counter;		<font color='#009900'>/* counts output symbols */</font>
+
+  <font color='#009900'>/* GIF data packet construction buffer */</font>
+  <font color='#0000FF'><u>int</u></font> bytesinpkt;		<font color='#009900'>/* # of bytes in current packet */</font>
+  <font color='#0000FF'><u>char</u></font> packetbuf[<font color='#979000'>256</font>];		<font color='#009900'>/* workspace for accumulating packet */</font>
+
+<b>}</b> gif_dest_struct;
+
+<font color='#0000FF'>typedef</font> gif_dest_struct <font color='#5555FF'>*</font> gif_dest_ptr;
+
+<font color='#009900'>/* Largest value that will fit in N bits */</font>
+<font color='#0000FF'>#define</font> MAXCODE<font face='Lucida Console'>(</font>n_bits<font face='Lucida Console'>)</font>	<font face='Lucida Console'>(</font><font face='Lucida Console'>(</font><font color='#979000'>1</font> <font color='#5555FF'>&lt;</font><font color='#5555FF'>&lt;</font> <font face='Lucida Console'>(</font>n_bits<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <font color='#5555FF'>-</font> <font color='#979000'>1</font><font face='Lucida Console'>)</font>
+
+
+<font color='#009900'>/*
+ * Routines to package finished data bytes into GIF data blocks.
+ * A data block consists of a count byte (1..255) and that many data bytes.
+ */</font>
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='flush_packet'></a>flush_packet</b> <font face='Lucida Console'>(</font>gif_dest_ptr dinfo<font face='Lucida Console'>)</font>
+<font color='#009900'>/* flush any accumulated data */</font>
+<b>{</b>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>bytesinpkt <font color='#5555FF'>&gt;</font> <font color='#979000'>0</font><font face='Lucida Console'>)</font> <b>{</b>	<font color='#009900'>/* never write zero-length packet */</font>
+    dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>packetbuf[<font color='#979000'>0</font>] <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#0000FF'><u>char</u></font><font face='Lucida Console'>)</font> dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>bytesinpkt<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>JFWRITE</font><font face='Lucida Console'>(</font>dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.output_file, dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>packetbuf, dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>bytesinpkt<font face='Lucida Console'>)</font>
+	<font color='#5555FF'>!</font><font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#0000FF'><u>size_t</u></font><font face='Lucida Console'>)</font> dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>bytesinpkt<font face='Lucida Console'>)</font>
+      <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>cinfo, JERR_FILE_WRITE<font face='Lucida Console'>)</font>;
+    dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>bytesinpkt <font color='#5555FF'>=</font> <font color='#979000'>0</font>;
+  <b>}</b>
+<b>}</b>
+
+
+<font color='#009900'>/* Add a character to current packet; flush to disk if necessary */</font>
+<font color='#0000FF'>#define</font> CHAR_OUT<font face='Lucida Console'>(</font>dinfo,c<font face='Lucida Console'>)</font>  \
+	<b>{</b> <font face='Lucida Console'>(</font>dinfo<font face='Lucida Console'>)</font><font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>packetbuf[<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>(</font>dinfo<font face='Lucida Console'>)</font><font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>bytesinpkt] <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#0000FF'><u>char</u></font><font face='Lucida Console'>)</font> <font face='Lucida Console'>(</font>c<font face='Lucida Console'>)</font>;  \
+	    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>dinfo<font face='Lucida Console'>)</font><font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>bytesinpkt <font color='#5555FF'>&gt;</font><font color='#5555FF'>=</font> <font color='#979000'>255</font><font face='Lucida Console'>)</font>  \
+	      <font color='#BB00BB'>flush_packet</font><font face='Lucida Console'>(</font>dinfo<font face='Lucida Console'>)</font>;  \
+	<b>}</b>
+
+
+<font color='#009900'>/* Routine to convert variable-width codes into a byte stream */</font>
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='output'></a>output</b> <font face='Lucida Console'>(</font>gif_dest_ptr dinfo, <font color='#0000FF'><u>int</u></font> code<font face='Lucida Console'>)</font>
+<font color='#009900'>/* Emit a code of n_bits bits */</font>
+<font color='#009900'>/* Uses cur_accum and cur_bits to reblock into 8-bit bytes */</font>
+<b>{</b>
+  dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>cur_accum <font color='#5555FF'>|</font><font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>INT32<font face='Lucida Console'>)</font> code<font face='Lucida Console'>)</font> <font color='#5555FF'>&lt;</font><font color='#5555FF'>&lt;</font> dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>cur_bits;
+  dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>cur_bits <font color='#5555FF'>+</font><font color='#5555FF'>=</font> dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>n_bits;
+
+  <font color='#0000FF'>while</font> <font face='Lucida Console'>(</font>dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>cur_bits <font color='#5555FF'>&gt;</font><font color='#5555FF'>=</font> <font color='#979000'>8</font><font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#BB00BB'>CHAR_OUT</font><font face='Lucida Console'>(</font>dinfo, dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>cur_accum <font color='#5555FF'>&amp;</font> <font color='#979000'>0xFF</font><font face='Lucida Console'>)</font>;
+    dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>cur_accum <font color='#5555FF'>&gt;</font><font color='#5555FF'>&gt;</font><font color='#5555FF'>=</font> <font color='#979000'>8</font>;
+    dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>cur_bits <font color='#5555FF'>-</font><font color='#5555FF'>=</font> <font color='#979000'>8</font>;
+  <b>}</b>
+<b>}</b>
+
+
+<font color='#009900'>/* The pseudo-compression algorithm.
+ *
+ * In this module we simply output each pixel value as a separate symbol;
+ * thus, no compression occurs.  In fact, there is expansion of one bit per
+ * pixel, because we use a symbol width one bit wider than the pixel width.
+ *
+ * GIF ordinarily uses variable-width symbols, and the decoder will expect
+ * to ratchet up the symbol width after a fixed number of symbols.
+ * To simplify the logic and keep the expansion penalty down, we emit a
+ * GIF Clear code to reset the decoder just before the width would ratchet up.
+ * Thus, all the symbols in the output file will have the same bit width.
+ * Note that emitting the Clear codes at the right times is a mere matter of
+ * counting output symbols and is in no way dependent on the LZW patent.
+ *
+ * With a small basic pixel width (low color count), Clear codes will be
+ * needed very frequently, causing the file to expand even more.  So this
+ * simplistic approach wouldn't work too well on bilevel images, for example.
+ * But for output of JPEG conversions the pixel width will usually be 8 bits
+ * (129 to 256 colors), so the overhead added by Clear symbols is only about
+ * one symbol in every 256.
+ */</font>
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='compress_init'></a>compress_init</b> <font face='Lucida Console'>(</font>gif_dest_ptr dinfo, <font color='#0000FF'><u>int</u></font> i_bits<font face='Lucida Console'>)</font>
+<font color='#009900'>/* Initialize pseudo-compressor */</font>
+<b>{</b>
+  <font color='#009900'>/* init all the state variables */</font>
+  dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>n_bits <font color='#5555FF'>=</font> i_bits;
+  dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>maxcode <font color='#5555FF'>=</font> <font color='#BB00BB'>MAXCODE</font><font face='Lucida Console'>(</font>dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>n_bits<font face='Lucida Console'>)</font>;
+  dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>ClearCode <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#979000'>1</font> <font color='#5555FF'>&lt;</font><font color='#5555FF'>&lt;</font> <font face='Lucida Console'>(</font>i_bits <font color='#5555FF'>-</font> <font color='#979000'>1</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+  dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>EOFCode <font color='#5555FF'>=</font> dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>ClearCode <font color='#5555FF'>+</font> <font color='#979000'>1</font>;
+  dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>code_counter <font color='#5555FF'>=</font> dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>ClearCode <font color='#5555FF'>+</font> <font color='#979000'>2</font>;
+  <font color='#009900'>/* init output buffering vars */</font>
+  dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>bytesinpkt <font color='#5555FF'>=</font> <font color='#979000'>0</font>;
+  dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>cur_accum <font color='#5555FF'>=</font> <font color='#979000'>0</font>;
+  dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>cur_bits <font color='#5555FF'>=</font> <font color='#979000'>0</font>;
+  <font color='#009900'>/* GIF specifies an initial Clear code */</font>
+  <font color='#BB00BB'>output</font><font face='Lucida Console'>(</font>dinfo, dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>ClearCode<font face='Lucida Console'>)</font>;
+<b>}</b>
+
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='compress_pixel'></a>compress_pixel</b> <font face='Lucida Console'>(</font>gif_dest_ptr dinfo, <font color='#0000FF'><u>int</u></font> c<font face='Lucida Console'>)</font>
+<font color='#009900'>/* Accept and "compress" one pixel value.
+ * The given value must be less than n_bits wide.
+ */</font>
+<b>{</b>
+  <font color='#009900'>/* Output the given pixel value as a symbol. */</font>
+  <font color='#BB00BB'>output</font><font face='Lucida Console'>(</font>dinfo, c<font face='Lucida Console'>)</font>;
+  <font color='#009900'>/* Issue Clear codes often enough to keep the reader from ratcheting up
+   * its symbol size.
+   */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>code_counter <font color='#5555FF'>&lt;</font> dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>maxcode<font face='Lucida Console'>)</font> <b>{</b>
+    dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>code_counter<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;
+  <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+    <font color='#BB00BB'>output</font><font face='Lucida Console'>(</font>dinfo, dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>ClearCode<font face='Lucida Console'>)</font>;
+    dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>code_counter <font color='#5555FF'>=</font> dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>ClearCode <font color='#5555FF'>+</font> <font color='#979000'>2</font>;	<font color='#009900'>/* reset the counter */</font>
+  <b>}</b>
+<b>}</b>
+
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='compress_term'></a>compress_term</b> <font face='Lucida Console'>(</font>gif_dest_ptr dinfo<font face='Lucida Console'>)</font>
+<font color='#009900'>/* Clean up at end */</font>
+<b>{</b>
+  <font color='#009900'>/* Send an EOF code */</font>
+  <font color='#BB00BB'>output</font><font face='Lucida Console'>(</font>dinfo, dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>EOFCode<font face='Lucida Console'>)</font>;
+  <font color='#009900'>/* Flush the bit-packing buffer */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>cur_bits <font color='#5555FF'>&gt;</font> <font color='#979000'>0</font><font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#BB00BB'>CHAR_OUT</font><font face='Lucida Console'>(</font>dinfo, dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>cur_accum <font color='#5555FF'>&amp;</font> <font color='#979000'>0xFF</font><font face='Lucida Console'>)</font>;
+  <b>}</b>
+  <font color='#009900'>/* Flush the packet buffer */</font>
+  <font color='#BB00BB'>flush_packet</font><font face='Lucida Console'>(</font>dinfo<font face='Lucida Console'>)</font>;
+<b>}</b>
+
+
+<font color='#009900'>/* GIF header construction */</font>
+
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='put_word'></a>put_word</b> <font face='Lucida Console'>(</font>gif_dest_ptr dinfo, <font color='#0000FF'><u>unsigned</u></font> <font color='#0000FF'><u>int</u></font> w<font face='Lucida Console'>)</font>
+<font color='#009900'>/* Emit a 16-bit word, LSB first */</font>
+<b>{</b>
+  <font color='#BB00BB'>putc</font><font face='Lucida Console'>(</font>w <font color='#5555FF'>&amp;</font> <font color='#979000'>0xFF</font>, dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.output_file<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>putc</font><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>w <font color='#5555FF'>&gt;</font><font color='#5555FF'>&gt;</font> <font color='#979000'>8</font><font face='Lucida Console'>)</font> <font color='#5555FF'>&amp;</font> <font color='#979000'>0xFF</font>, dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.output_file<font face='Lucida Console'>)</font>;
+<b>}</b>
+
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='put_3bytes'></a>put_3bytes</b> <font face='Lucida Console'>(</font>gif_dest_ptr dinfo, <font color='#0000FF'><u>int</u></font> val<font face='Lucida Console'>)</font>
+<font color='#009900'>/* Emit 3 copies of same byte value --- handy subr for colormap construction */</font>
+<b>{</b>
+  <font color='#BB00BB'>putc</font><font face='Lucida Console'>(</font>val, dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.output_file<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>putc</font><font face='Lucida Console'>(</font>val, dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.output_file<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>putc</font><font face='Lucida Console'>(</font>val, dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.output_file<font face='Lucida Console'>)</font>;
+<b>}</b>
+
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='emit_header'></a>emit_header</b> <font face='Lucida Console'>(</font>gif_dest_ptr dinfo, <font color='#0000FF'><u>int</u></font> num_colors, JSAMPARRAY colormap<font face='Lucida Console'>)</font>
+<font color='#009900'>/* Output the GIF file header, including color map */</font>
+<font color='#009900'>/* If colormap==NULL, synthesize a gray-scale colormap */</font>
+<b>{</b>
+  <font color='#0000FF'><u>int</u></font> BitsPerPixel, ColorMapSize, InitCodeSize, FlagByte;
+  <font color='#0000FF'><u>int</u></font> cshift <font color='#5555FF'>=</font> dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>data_precision <font color='#5555FF'>-</font> <font color='#979000'>8</font>;
+  <font color='#0000FF'><u>int</u></font> i;
+
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>num_colors <font color='#5555FF'>&gt;</font> <font color='#979000'>256</font><font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>ERREXIT1</font><font face='Lucida Console'>(</font>dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>cinfo, JERR_TOO_MANY_COLORS, num_colors<font face='Lucida Console'>)</font>;
+  <font color='#009900'>/* Compute bits/pixel and related values */</font>
+  BitsPerPixel <font color='#5555FF'>=</font> <font color='#979000'>1</font>;
+  <font color='#0000FF'>while</font> <font face='Lucida Console'>(</font>num_colors <font color='#5555FF'>&gt;</font> <font face='Lucida Console'>(</font><font color='#979000'>1</font> <font color='#5555FF'>&lt;</font><font color='#5555FF'>&lt;</font> BitsPerPixel<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>
+    BitsPerPixel<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;
+  ColorMapSize <font color='#5555FF'>=</font> <font color='#979000'>1</font> <font color='#5555FF'>&lt;</font><font color='#5555FF'>&lt;</font> BitsPerPixel;
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>BitsPerPixel <font color='#5555FF'>&lt;</font><font color='#5555FF'>=</font> <font color='#979000'>1</font><font face='Lucida Console'>)</font>
+    InitCodeSize <font color='#5555FF'>=</font> <font color='#979000'>2</font>;
+  <font color='#0000FF'>else</font>
+    InitCodeSize <font color='#5555FF'>=</font> BitsPerPixel;
+  <font color='#009900'>/*
+   * Write the GIF header.
+   * Note that we generate a plain GIF87 header for maximum compatibility.
+   */</font>
+  <font color='#BB00BB'>putc</font><font face='Lucida Console'>(</font>'<font color='#FF0000'>G</font>', dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.output_file<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>putc</font><font face='Lucida Console'>(</font>'<font color='#FF0000'>I</font>', dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.output_file<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>putc</font><font face='Lucida Console'>(</font>'<font color='#FF0000'>F</font>', dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.output_file<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>putc</font><font face='Lucida Console'>(</font>'<font color='#FF0000'>8</font>', dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.output_file<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>putc</font><font face='Lucida Console'>(</font>'<font color='#FF0000'>7</font>', dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.output_file<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>putc</font><font face='Lucida Console'>(</font>'<font color='#FF0000'>a</font>', dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.output_file<font face='Lucida Console'>)</font>;
+  <font color='#009900'>/* Write the Logical Screen Descriptor */</font>
+  <font color='#BB00BB'>put_word</font><font face='Lucida Console'>(</font>dinfo, <font face='Lucida Console'>(</font><font color='#0000FF'><u>unsigned</u></font> <font color='#0000FF'><u>int</u></font><font face='Lucida Console'>)</font> dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>put_word</font><font face='Lucida Console'>(</font>dinfo, <font face='Lucida Console'>(</font><font color='#0000FF'><u>unsigned</u></font> <font color='#0000FF'><u>int</u></font><font face='Lucida Console'>)</font> dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height<font face='Lucida Console'>)</font>;
+  FlagByte <font color='#5555FF'>=</font> <font color='#979000'>0x80</font>;		<font color='#009900'>/* Yes, there is a global color table */</font>
+  FlagByte <font color='#5555FF'>|</font><font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>BitsPerPixel<font color='#5555FF'>-</font><font color='#979000'>1</font><font face='Lucida Console'>)</font> <font color='#5555FF'>&lt;</font><font color='#5555FF'>&lt;</font> <font color='#979000'>4</font>; <font color='#009900'>/* color resolution */</font>
+  FlagByte <font color='#5555FF'>|</font><font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>BitsPerPixel<font color='#5555FF'>-</font><font color='#979000'>1</font><font face='Lucida Console'>)</font>;	<font color='#009900'>/* size of global color table */</font>
+  <font color='#BB00BB'>putc</font><font face='Lucida Console'>(</font>FlagByte, dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.output_file<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>putc</font><font face='Lucida Console'>(</font><font color='#979000'>0</font>, dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.output_file<font face='Lucida Console'>)</font>; <font color='#009900'>/* Background color index */</font>
+  <font color='#BB00BB'>putc</font><font face='Lucida Console'>(</font><font color='#979000'>0</font>, dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.output_file<font face='Lucida Console'>)</font>; <font color='#009900'>/* Reserved (aspect ratio in GIF89) */</font>
+  <font color='#009900'>/* Write the Global Color Map */</font>
+  <font color='#009900'>/* If the color map is more than 8 bits precision, */</font>
+  <font color='#009900'>/* we reduce it to 8 bits by shifting */</font>
+  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>i<font color='#5555FF'>=</font><font color='#979000'>0</font>; i <font color='#5555FF'>&lt;</font> ColorMapSize; i<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>i <font color='#5555FF'>&lt;</font> num_colors<font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>colormap <font color='#5555FF'>!</font><font color='#5555FF'>=</font> NULL<font face='Lucida Console'>)</font> <b>{</b>
+	<font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>out_color_space <font color='#5555FF'>=</font><font color='#5555FF'>=</font> JCS_RGB<font face='Lucida Console'>)</font> <b>{</b>
+	  <font color='#009900'>/* Normal case: RGB color map */</font>
+	  <font color='#BB00BB'>putc</font><font face='Lucida Console'>(</font><font color='#BB00BB'>GETJSAMPLE</font><font face='Lucida Console'>(</font>colormap[<font color='#979000'>0</font>][i]<font face='Lucida Console'>)</font> <font color='#5555FF'>&gt;</font><font color='#5555FF'>&gt;</font> cshift, dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.output_file<font face='Lucida Console'>)</font>;
+	  <font color='#BB00BB'>putc</font><font face='Lucida Console'>(</font><font color='#BB00BB'>GETJSAMPLE</font><font face='Lucida Console'>(</font>colormap[<font color='#979000'>1</font>][i]<font face='Lucida Console'>)</font> <font color='#5555FF'>&gt;</font><font color='#5555FF'>&gt;</font> cshift, dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.output_file<font face='Lucida Console'>)</font>;
+	  <font color='#BB00BB'>putc</font><font face='Lucida Console'>(</font><font color='#BB00BB'>GETJSAMPLE</font><font face='Lucida Console'>(</font>colormap[<font color='#979000'>2</font>][i]<font face='Lucida Console'>)</font> <font color='#5555FF'>&gt;</font><font color='#5555FF'>&gt;</font> cshift, dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.output_file<font face='Lucida Console'>)</font>;
+	<b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+	  <font color='#009900'>/* Grayscale "color map": possible if quantizing grayscale image */</font>
+	  <font color='#BB00BB'>put_3bytes</font><font face='Lucida Console'>(</font>dinfo, <font color='#BB00BB'>GETJSAMPLE</font><font face='Lucida Console'>(</font>colormap[<font color='#979000'>0</font>][i]<font face='Lucida Console'>)</font> <font color='#5555FF'>&gt;</font><font color='#5555FF'>&gt;</font> cshift<font face='Lucida Console'>)</font>;
+	<b>}</b>
+      <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+	<font color='#009900'>/* Create a gray-scale map of num_colors values, range 0..255 */</font>
+	<font color='#BB00BB'>put_3bytes</font><font face='Lucida Console'>(</font>dinfo, <font face='Lucida Console'>(</font>i <font color='#5555FF'>*</font> <font color='#979000'>255</font> <font color='#5555FF'>+</font> <font face='Lucida Console'>(</font>num_colors<font color='#5555FF'>-</font><font color='#979000'>1</font><font face='Lucida Console'>)</font><font color='#5555FF'>/</font><font color='#979000'>2</font><font face='Lucida Console'>)</font> <font color='#5555FF'>/</font> <font face='Lucida Console'>(</font>num_colors<font color='#5555FF'>-</font><font color='#979000'>1</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+      <b>}</b>
+    <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+      <font color='#009900'>/* fill out the map to a power of 2 */</font>
+      <font color='#BB00BB'>put_3bytes</font><font face='Lucida Console'>(</font>dinfo, <font color='#979000'>0</font><font face='Lucida Console'>)</font>;
+    <b>}</b>
+  <b>}</b>
+  <font color='#009900'>/* Write image separator and Image Descriptor */</font>
+  <font color='#BB00BB'>putc</font><font face='Lucida Console'>(</font>'<font color='#FF0000'>,</font>', dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.output_file<font face='Lucida Console'>)</font>; <font color='#009900'>/* separator */</font>
+  <font color='#BB00BB'>put_word</font><font face='Lucida Console'>(</font>dinfo, <font color='#979000'>0</font><font face='Lucida Console'>)</font>;		<font color='#009900'>/* left/top offset */</font>
+  <font color='#BB00BB'>put_word</font><font face='Lucida Console'>(</font>dinfo, <font color='#979000'>0</font><font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>put_word</font><font face='Lucida Console'>(</font>dinfo, <font face='Lucida Console'>(</font><font color='#0000FF'><u>unsigned</u></font> <font color='#0000FF'><u>int</u></font><font face='Lucida Console'>)</font> dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width<font face='Lucida Console'>)</font>; <font color='#009900'>/* image size */</font>
+  <font color='#BB00BB'>put_word</font><font face='Lucida Console'>(</font>dinfo, <font face='Lucida Console'>(</font><font color='#0000FF'><u>unsigned</u></font> <font color='#0000FF'><u>int</u></font><font face='Lucida Console'>)</font> dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height<font face='Lucida Console'>)</font>;
+  <font color='#009900'>/* flag byte: not interlaced, no local color map */</font>
+  <font color='#BB00BB'>putc</font><font face='Lucida Console'>(</font><font color='#979000'>0x00</font>, dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.output_file<font face='Lucida Console'>)</font>;
+  <font color='#009900'>/* Write Initial Code Size byte */</font>
+  <font color='#BB00BB'>putc</font><font face='Lucida Console'>(</font>InitCodeSize, dinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.output_file<font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* Initialize for "compression" of image data */</font>
+  <font color='#BB00BB'>compress_init</font><font face='Lucida Console'>(</font>dinfo, InitCodeSize<font color='#5555FF'>+</font><font color='#979000'>1</font><font face='Lucida Console'>)</font>;
+<b>}</b>
+
+
+<font color='#009900'>/*
+ * Startup: write the file header.
+ */</font>
+
+<b><a name='METHODDEF'></a>METHODDEF</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='start_output_gif'></a>start_output_gif</b> <font face='Lucida Console'>(</font>j_decompress_ptr cinfo, djpeg_dest_ptr dinfo<font face='Lucida Console'>)</font>
+<b>{</b>
+  gif_dest_ptr dest <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>gif_dest_ptr<font face='Lucida Console'>)</font> dinfo;
+
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>quantize_colors<font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>emit_header</font><font face='Lucida Console'>(</font>dest, cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>actual_number_of_colors, cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>colormap<font face='Lucida Console'>)</font>;
+  <font color='#0000FF'>else</font>
+    <font color='#BB00BB'>emit_header</font><font face='Lucida Console'>(</font>dest, <font color='#979000'>256</font>, <font face='Lucida Console'>(</font>JSAMPARRAY<font face='Lucida Console'>)</font> NULL<font face='Lucida Console'>)</font>;
+<b>}</b>
+
+
+<font color='#009900'>/*
+ * Write some pixel data.
+ * In this module rows_supplied will always be 1.
+ */</font>
+
+<b><a name='METHODDEF'></a>METHODDEF</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='put_pixel_rows'></a>put_pixel_rows</b> <font face='Lucida Console'>(</font>j_decompress_ptr cinfo, djpeg_dest_ptr dinfo,
+		JDIMENSION rows_supplied<font face='Lucida Console'>)</font>
+<b>{</b>
+  gif_dest_ptr dest <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>gif_dest_ptr<font face='Lucida Console'>)</font> dinfo;
+  <font color='#0000FF'>register</font> JSAMPROW ptr;
+  <font color='#0000FF'>register</font> JDIMENSION col;
+
+  ptr <font color='#5555FF'>=</font> dest<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.buffer[<font color='#979000'>0</font>];
+  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>col <font color='#5555FF'>=</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width; col <font color='#5555FF'>&gt;</font> <font color='#979000'>0</font>; col<font color='#5555FF'>-</font><font color='#5555FF'>-</font><font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#BB00BB'>compress_pixel</font><font face='Lucida Console'>(</font>dest, <font color='#BB00BB'>GETJSAMPLE</font><font face='Lucida Console'>(</font><font color='#5555FF'>*</font>ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+  <b>}</b>
+<b>}</b>
+
+
+<font color='#009900'>/*
+ * Finish up at the end of the file.
+ */</font>
+
+<b><a name='METHODDEF'></a>METHODDEF</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='finish_output_gif'></a>finish_output_gif</b> <font face='Lucida Console'>(</font>j_decompress_ptr cinfo, djpeg_dest_ptr dinfo<font face='Lucida Console'>)</font>
+<b>{</b>
+  gif_dest_ptr dest <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>gif_dest_ptr<font face='Lucida Console'>)</font> dinfo;
+
+  <font color='#009900'>/* Flush "compression" mechanism */</font>
+  <font color='#BB00BB'>compress_term</font><font face='Lucida Console'>(</font>dest<font face='Lucida Console'>)</font>;
+  <font color='#009900'>/* Write a zero-length data block to end the series */</font>
+  <font color='#BB00BB'>putc</font><font face='Lucida Console'>(</font><font color='#979000'>0</font>, dest<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.output_file<font face='Lucida Console'>)</font>;
+  <font color='#009900'>/* Write the GIF terminator mark */</font>
+  <font color='#BB00BB'>putc</font><font face='Lucida Console'>(</font>'<font color='#FF0000'>;</font>', dest<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.output_file<font face='Lucida Console'>)</font>;
+  <font color='#009900'>/* Make sure we wrote the output file OK */</font>
+  <font color='#BB00BB'>fflush</font><font face='Lucida Console'>(</font>dest<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.output_file<font face='Lucida Console'>)</font>;
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>ferror</font><font face='Lucida Console'>(</font>dest<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.output_file<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>cinfo, JERR_FILE_WRITE<font face='Lucida Console'>)</font>;
+<b>}</b>
+
+
+<font color='#009900'>/*
+ * The module selection routine for GIF format output.
+ */</font>
+
+<b><a name='GLOBAL'></a>GLOBAL</b><font face='Lucida Console'>(</font>djpeg_dest_ptr<font face='Lucida Console'>)</font>
+<b><a name='jinit_write_gif'></a>jinit_write_gif</b> <font face='Lucida Console'>(</font>j_decompress_ptr cinfo<font face='Lucida Console'>)</font>
+<b>{</b>
+  gif_dest_ptr dest;
+
+  <font color='#009900'>/* Create module interface object, fill in method pointers */</font>
+  dest <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>gif_dest_ptr<font face='Lucida Console'>)</font>
+      <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>alloc_small<font face='Lucida Console'>)</font> <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> cinfo, JPOOL_IMAGE,
+				  <font color='#BB00BB'>SIZEOF</font><font face='Lucida Console'>(</font>gif_dest_struct<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+  dest<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>cinfo <font color='#5555FF'>=</font> cinfo;		<font color='#009900'>/* make back link for subroutines */</font>
+  dest<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.start_output <font color='#5555FF'>=</font> start_output_gif;
+  dest<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.put_pixel_rows <font color='#5555FF'>=</font> put_pixel_rows;
+  dest<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.finish_output <font color='#5555FF'>=</font> finish_output_gif;
+
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>out_color_space <font color='#5555FF'>!</font><font color='#5555FF'>=</font> JCS_GRAYSCALE <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+      cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>out_color_space <font color='#5555FF'>!</font><font color='#5555FF'>=</font> JCS_RGB<font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>cinfo, JERR_GIF_COLORSPACE<font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* Force quantization if color or if &gt; 8 bits input */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>out_color_space <font color='#5555FF'>!</font><font color='#5555FF'>=</font> JCS_GRAYSCALE <font color='#5555FF'>|</font><font color='#5555FF'>|</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>data_precision <font color='#5555FF'>&gt;</font> <font color='#979000'>8</font><font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#009900'>/* Force quantization to at most 256 colors */</font>
+    cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>quantize_colors <font color='#5555FF'>=</font> TRUE;
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>desired_number_of_colors <font color='#5555FF'>&gt;</font> <font color='#979000'>256</font><font face='Lucida Console'>)</font>
+      cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>desired_number_of_colors <font color='#5555FF'>=</font> <font color='#979000'>256</font>;
+  <b>}</b>
+
+  <font color='#009900'>/* Calculate output image dimensions so we can allocate space */</font>
+  <font color='#BB00BB'>jpeg_calc_output_dimensions</font><font face='Lucida Console'>(</font>cinfo<font face='Lucida Console'>)</font>;
+
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_components <font color='#5555FF'>!</font><font color='#5555FF'>=</font> <font color='#979000'>1</font><font face='Lucida Console'>)</font> <font color='#009900'>/* safety check: just one component? */</font>
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>cinfo, JERR_GIF_BUG<font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* Create decompressor output buffer. */</font>
+  dest<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.buffer <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>alloc_sarray<font face='Lucida Console'>)</font>
+    <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> cinfo, JPOOL_IMAGE, cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width, <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> <font color='#979000'>1</font><font face='Lucida Console'>)</font>;
+  dest<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.buffer_height <font color='#5555FF'>=</font> <font color='#979000'>1</font>;
+
+  <font color='#0000FF'>return</font> <font face='Lucida Console'>(</font>djpeg_dest_ptr<font face='Lucida Console'>)</font> dest;
+<b>}</b>
+
+<font color='#0000FF'>#endif</font> <font color='#009900'>/* GIF_SUPPORTED */</font>
+
+</pre></body></html>

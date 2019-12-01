@@ -1,0 +1,8 @@
+libdir=/usr/local/lib
+includedir=/usr/local/include
+
+Name: dlib
+Description: Numerical and networking C++ library
+Version: 19.18.0
+Libs: -L${libdir} -ldlib /usr/X11R6/lib/libSM.dylib /usr/X11R6/lib/libICE.dylib /usr/X11R6/lib/libX11.dylib /usr/X11R6/lib/libXext.dylib /usr/local/lib/libpng.dylib /usr/lib/libz.dylib /usr/local/lib/libjpeg.dylib /usr/lib/libcblas.dylib /usr/lib/liblapack.dylib /usr/lib/libsqlite3.dylib
+Cflags: -I${includedir}  -I/Library/Frameworks/Mono.framework/Headers
