@@ -120,8 +120,6 @@ Bins:
     - 0.1
     - 0
 WLC:
-  training_sample_interval:
-    - 64
   sample_rate:
     - 64
   memory_window: 10000000
@@ -179,7 +177,7 @@ WLC:
   wlc_bloom_filter:
     - 0
   #    - 1
-  version: belady_min_distribution
+  version: true_random_sampling
 ParallelWLC:
   training_sample_interval:
     - 64
