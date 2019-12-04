@@ -539,6 +539,7 @@ public:
         doc.append(kvp("n_metadata", to_string(key_map.size())));
         doc.append(kvp("feature_overhead", to_string(feature_overhead)));
         doc.append(kvp("sample ", to_string(sample_overhead)));
+        doc.append(kvp("n_force_eviction", to_string(n_force_eviction)));
 
         int res;
         auto importances = vector<double>(WLC::n_feature, 0);
