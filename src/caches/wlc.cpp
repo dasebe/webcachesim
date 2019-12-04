@@ -533,7 +533,7 @@ void WLCCache::evict() {
             key_map.find(in_cache_metas[activate_tail_idx]._key)->second.list_pos = old_pos;
         }
         in_cache_metas.pop_back();
-
+        ++n_force_eviction;
     } else {
         //bring list 0 to list 1
         in_cache_lru_queue.dq.erase(meta.p_last_request);
