@@ -104,23 +104,15 @@ void WLCCache::sample() {
 #ifdef LOG_SAMPLE_RATE
     bool log_flag = ((double) rand() / (RAND_MAX)) < LOG_SAMPLE_RATE;
 #endif
+    auto rand_idx = _distribution(_generator);
     auto n_l0 = static_cast<uint32_t>(in_cache_metas.size());
     auto n_l1 = static_cast<uint32_t>(out_cache_metas.size());
-    auto rand_idx = _distribution(_generator);
-    // at least sample 1 from the list, at most size of the list
-    auto n_sample_l0 = min(max(uint32_t(training_sample_interval * n_l0 / (n_l0 + n_l1)), (uint32_t) 1), n_l0);
-    auto n_sample_l1 = min(max(uint32_t(training_sample_interval - n_sample_l0), (uint32_t) 1), n_l1);
-
-    //sample list 0
-    for (uint32_t i = 0; i < n_sample_l0; i++) {
-        uint32_t pos = (uint32_t) (i + rand_idx) % n_l0;
+    if (rand() / (RAND_MAX + 1.) < static_cast<float>(n_l1) / (n_l0 + n_l1)) {
+        uint32_t pos = rand_idx % n_l0;
         auto &meta = in_cache_metas[pos];
         meta.emplace_sample(current_t);
-    }
-
-    //sample list 1
-    for (uint32_t i = 0; i < n_sample_l1; i++) {
-        uint32_t pos = (uint32_t) (i + rand_idx) % n_l1;
+    } else {
+        uint32_t pos = rand_idx % n_l1;
         auto &meta = out_cache_metas[pos];
         meta.emplace_sample(current_t);
     }
@@ -226,8 +218,7 @@ bool WLCCache::lookup(SimpleRequest &req) {
     }
 
     //sampling happens late to prevent immediate re-request
-    if (!(req._t % training_sample_interval))
-        sample();
+    sample();
     return ret;
 }
 
@@ -344,7 +335,6 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
             return {meta._key, pos};
     }
 
-    uint32_t rand_idx = _distribution(_generator) % in_cache_metas.size();
 
     int32_t indptr[sample_rate + 1];
     indptr[0] = 0;
@@ -352,16 +342,19 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
     double data[sample_rate * WLC::n_feature];
     int32_t past_timestamps[sample_rate];
     uint32_t sizes[sample_rate];
-    uint64_t ids[sample_rate];
+
+    uint64_t keys[sample_rate];
+    uint32_t poses[sample_rate];
     //next_past_timestamp, next_size = next_indptr - 1
 
     unsigned int idx_feature = 0;
     unsigned int idx_row = 0;
     for (int i = 0; i < sample_rate; i++) {
-        uint32_t pos = (i + rand_idx) % in_cache_metas.size();
+        uint32_t pos = _distribution(_generator) % in_cache_metas.size();
         auto &meta = in_cache_metas[pos];
 
-        ids[i] = meta._key;
+        keys[i] = meta._key;
+        poses[i] = pos;
         //fill in past_interval
         indices[idx_feature] = 0;
         data[idx_feature++] = current_t - meta._past_timestamp;
@@ -441,14 +434,16 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
         for (uint32_t i = 0; i < sample_rate; ++i)
             result[i] *= sizes[i];
 
-    double worst_score;
-    uint32_t worst_pos;
-    uint64_t min_past_timestamp;
+    double worst_score = result[0];
+    uint32_t worst_pos = poses[0];
+    uint64_t worst_key = keys[0];
+    uint64_t min_past_timestamp = past_timestamps[0];
 
-    for (int i = 0; i < sample_rate; ++i)
-        if (!i || result[i] > worst_score || (result[i] == worst_score && (past_timestamps[i] < min_past_timestamp))) {
+    for (int i = 1; i < sample_rate; ++i)
+        if (result[i] > worst_score || (result[i] == worst_score && (past_timestamps[i] < min_past_timestamp))) {
             worst_score = result[i];
-            worst_pos = i;
+            worst_pos = poses[i];
+            worst_key = keys[i];
             min_past_timestamp = past_timestamps[i];
         }
 
@@ -466,18 +461,13 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
                     } else
                         trainings_and_predictions.emplace_back(NAN);
                 }
-                uint32_t future_interval = WLC::future_timestamps.find(ids[i])->second - current_t;
+                uint32_t future_interval = WLC::future_timestamps.find(keys[i])->second - current_t;
                 trainings_and_predictions.emplace_back(future_interval);
                 trainings_and_predictions.emplace_back(result[i]);
             }
         }
     }
 #endif
-
-
-    worst_pos = (worst_pos + rand_idx) % in_cache_metas.size();
-    auto &meta = in_cache_metas[worst_pos];
-    auto &worst_key = meta._key;
 
     return {worst_key, worst_pos};
 }
