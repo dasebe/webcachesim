@@ -490,16 +490,17 @@ double AdaptSizeCache::modelHitRate(double log2c) {
   not optimal: actually segment 0 can hold more than 1/4 if total segments are not full
 */
 
-void S4LRUCache::setSize(uint64_t cs) {
+void S4LRUCache::setSize(const uint64_t &cs) {
+    Cache::setSize(cs);
     uint64_t total = cs;
-    for(int i=3; i>=0; i--) {
+    for (int i = 3; i >= 0; i--) {
         if (i) {
-            segments[i].setSize(cs/4);
-            total -= cs/4;
+            segments[i].setSize(cs / 4);
+            total -= cs / 4;
         } else {
             segments[i].setSize(total);
         }
-        std::cerr << "segment " << i << " size : " <<segments[i].getSize()  << "\n";
+        std::cerr << "segment " << i << " size : " << segments[i].getSize() << "\n";
     }
 }
 

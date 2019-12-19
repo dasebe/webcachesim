@@ -12,18 +12,20 @@ namespace cache {
 
 
 using namespace webcachesim;
-class LHD : public Cache
-{
+class LHD : public Cache {
 protected:
-    cache::Cache* lhdcache;
+    cache::Cache *lhdcache;
 
 public:
     LHD();
 
-    virtual void setSize(uint64_t cs);
-    virtual bool lookup(SimpleRequest& req);
-    virtual void admit(SimpleRequest& req);
-    virtual void evict();
+    void setSize(const uint64_t &cs) override;
+
+    bool lookup(SimpleRequest &req) override;
+
+    void admit(SimpleRequest &req) override;
+
+    void evict();
 };
 
 static Factory<LHD> factoryLHD2("LHD");

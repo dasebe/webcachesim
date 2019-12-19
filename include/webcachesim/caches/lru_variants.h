@@ -256,20 +256,21 @@ protected:
 
 public:
     S4LRUCache()
-            : Cache()
-    {
+            : Cache() {
         segments[0] = LRUCache();
         segments[1] = LRUCache();
         segments[2] = LRUCache();
         segments[3] = LRUCache();
     }
-    virtual ~S4LRUCache()
-    {
+
+    virtual ~S4LRUCache() {
     }
 
-    virtual void setSize(uint64_t cs);
-    virtual bool lookup(SimpleRequest& req);
-    virtual void admit(SimpleRequest& req);
+    void setSize(const uint64_t &cs) override;
+
+    bool lookup(SimpleRequest &req) override;
+
+    void admit(SimpleRequest &req) override;
 
     void segment_admit(uint8_t idx, SimpleRequest &req);
 
