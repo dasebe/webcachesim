@@ -63,26 +63,7 @@ void WLCCache::train() {
                               &len,
                               result.data());
 
-#ifdef EVICTION_LOGGING
-    {
-        if (current_t >= n_logging_start0) {
-//            training_and_prediction_logic_timestamps.emplace_back(current_t / 65536);
-            for (int i = 0; i < training_data->labels.size(); ++i) {
-                int current_idx = training_data->indptr[i];
-                for (int p = 0; p < WLC::n_feature; ++p) {
-                    if (p == training_data->indices[current_idx]) {
-                        trainings_and_predictions.emplace_back(training_data->data[current_idx]);
-                        if (current_idx < training_data->indptr[i + 1] - 1)
-                            ++current_idx;
-                    } else
-                        trainings_and_predictions.emplace_back(NAN);
-                }
-                trainings_and_predictions.emplace_back(training_data->labels[i]);
-                trainings_and_predictions.emplace_back(NAN);
-            }
-        }
-    }
-#endif
+
 
 
     double se = 0;
@@ -449,21 +430,23 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
 
 #ifdef EVICTION_LOGGING
     {
-        if (current_t >= n_logging_start0) {
+        if (current_t >= WLC::n_logging_start) {
 //            training_and_prediction_logic_timestamps.emplace_back(current_t / 65536);
             for (int i = 0; i < sample_rate; ++i) {
                 int current_idx = indptr[i];
                 for (int p = 0; p < WLC::n_feature; ++p) {
                     if (p == indices[current_idx]) {
-                        trainings_and_predictions.emplace_back(data[current_idx]);
-                        if (current_idx < indptr[i + 1] - 1)
+                        WLC::trainings_and_predictions.emplace_back(data[current_idx]);
+                        if (current_idx + 1 < indptr[i + 1])
                             ++current_idx;
                     } else
-                        trainings_and_predictions.emplace_back(NAN);
+                        WLC::trainings_and_predictions.emplace_back(NAN);
                 }
                 uint32_t future_interval = WLC::future_timestamps.find(keys[i])->second - current_t;
-                trainings_and_predictions.emplace_back(future_interval);
-                trainings_and_predictions.emplace_back(result[i]);
+                future_interval = min(2 * WLC::memory_window, future_interval);
+                WLC::trainings_and_predictions.emplace_back(future_interval);
+                WLC::trainings_and_predictions.emplace_back(result[i]);
+                WLC::trainings_and_predictions.emplace_back(current_t);
             }
         }
     }

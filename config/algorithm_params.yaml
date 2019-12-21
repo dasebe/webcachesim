@@ -1,3 +1,7 @@
+LRU:
+  bloom_filter:
+    - 0
+    - 1
 LRUK:
   k:
     #    - 1
@@ -203,7 +207,7 @@ ParallelWLC:
   wlc_bloom_filter:
     - 0
   #    - 1
-  version: prototype
+  version: 20m_logging
 Hyperbolic:
   sample_rate: 64
 LeCaR:

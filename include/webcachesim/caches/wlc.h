@@ -43,6 +43,8 @@ namespace WLC {
     //TODO: interval clock should tick by event instead of following incoming packet time
 #ifdef EVICTION_LOGGING
     unordered_map<uint64_t, uint32_t> future_timestamps;
+    uint32_t n_logging_start;
+    vector<float> trainings_and_predictions;
 #endif
 }
 
@@ -296,6 +298,29 @@ public:
 
         labels.push_back(log1p(future_interval));
         indptr.push_back(counter);
+
+
+#ifdef EVICTION_LOGGING
+        {
+            if (sample_timestamp >= WLC::n_logging_start) {
+//            training_and_prediction_logic_timestamps.emplace_back(current_t / 65536);
+                int i = indptr.size() - 2;
+                int current_idx = indptr[i];
+                for (int p = 0; p < WLC::n_feature; ++p) {
+                    if (p == indices[current_idx]) {
+                        WLC::trainings_and_predictions.emplace_back(data[current_idx]);
+                        if (current_idx + 1 < indptr[i + 1])
+                            ++current_idx;
+                    } else
+                        WLC::trainings_and_predictions.emplace_back(NAN);
+                }
+                WLC::trainings_and_predictions.emplace_back(future_interval);
+                WLC::trainings_and_predictions.emplace_back(NAN);
+                WLC::trainings_and_predictions.emplace_back(sample_timestamp);
+            }
+        }
+#endif
+
     }
 
     void clear() {
@@ -368,8 +393,6 @@ public:
     uint64_t byte_million_req;
     uint32_t n_req;
     int64_t n_early_stop = -1;
-    uint32_t n_logging_start0;
-    vector<float> trainings_and_predictions;
 //    vector<uint16_t> training_and_prediction_logic_timestamps;
     string task_id;
     string dburl;
@@ -470,9 +493,9 @@ public:
 #ifdef EVICTION_LOGGING
         //logging the training and inference happened in the last 1 million
         if (n_early_stop < 0) {
-            n_logging_start0 = n_req - 1000000;
+            WLC::n_logging_start = n_req - 20000000;
         } else {
-            n_logging_start0 = n_early_stop - 1000000;
+            WLC::n_logging_start = n_early_stop - 20000000;
         }
 #endif
     }
@@ -585,7 +608,7 @@ public:
                 uploader.write((uint8_t *) (&b), sizeof(uint16_t));
             uploader.close();
             uploader = bucket.open_upload_stream(task_id + ".trainings_and_predictions");
-            for (auto &b: trainings_and_predictions)
+            for (auto &b: WLC::trainings_and_predictions)
                 uploader.write((uint8_t *) (&b), sizeof(float));
             uploader.close();
 //            uploader = bucket.open_upload_stream(task_id + ".training_and_prediction_timestamps");
