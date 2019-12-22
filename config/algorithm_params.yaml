@@ -181,7 +181,7 @@ WLC:
   wlc_bloom_filter:
     - 0
   #    - 1
-  version: true_random_sampling
+  version: 20m_logging
 ParallelWLC:
   training_sample_interval:
     - 64
@@ -207,7 +207,7 @@ ParallelWLC:
   wlc_bloom_filter:
     - 0
   #    - 1
-  version: 20m_logging
+  version: prototype
 Hyperbolic:
   sample_rate: 64
 LeCaR:

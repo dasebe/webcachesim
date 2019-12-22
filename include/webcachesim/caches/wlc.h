@@ -45,6 +45,7 @@ namespace WLC {
     unordered_map<uint64_t, uint32_t> future_timestamps;
     uint32_t n_logging_start;
     vector<float> trainings_and_predictions;
+    bool start_train_logging = false;
 #endif
 }
 
@@ -301,23 +302,25 @@ public:
 
 
 #ifdef EVICTION_LOGGING
-        {
-            if (sample_timestamp >= WLC::n_logging_start) {
+        if ((sample_timestamp >= WLC::n_logging_start) && !WLC::start_train_logging && (indptr.size() == 2)) {
+            WLC::start_train_logging = true;
+        }
+
+        if (WLC::start_train_logging) {
 //            training_and_prediction_logic_timestamps.emplace_back(current_t / 65536);
-                int i = indptr.size() - 2;
-                int current_idx = indptr[i];
-                for (int p = 0; p < WLC::n_feature; ++p) {
-                    if (p == indices[current_idx]) {
-                        WLC::trainings_and_predictions.emplace_back(data[current_idx]);
-                        if (current_idx + 1 < indptr[i + 1])
-                            ++current_idx;
-                    } else
-                        WLC::trainings_and_predictions.emplace_back(NAN);
-                }
-                WLC::trainings_and_predictions.emplace_back(future_interval);
-                WLC::trainings_and_predictions.emplace_back(NAN);
-                WLC::trainings_and_predictions.emplace_back(sample_timestamp);
+            int i = indptr.size() - 2;
+            int current_idx = indptr[i];
+            for (int p = 0; p < WLC::n_feature; ++p) {
+                if (p == indices[current_idx]) {
+                    WLC::trainings_and_predictions.emplace_back(data[current_idx]);
+                    if (current_idx + 1 < indptr[i + 1])
+                        ++current_idx;
+                } else
+                    WLC::trainings_and_predictions.emplace_back(NAN);
             }
+            WLC::trainings_and_predictions.emplace_back(future_interval);
+            WLC::trainings_and_predictions.emplace_back(NAN);
+            WLC::trainings_and_predictions.emplace_back(sample_timestamp);
         }
 #endif
 

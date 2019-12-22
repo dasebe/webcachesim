@@ -430,7 +430,7 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
 
 #ifdef EVICTION_LOGGING
     {
-        if (current_t >= WLC::n_logging_start) {
+        if (WLC::start_train_logging) {
 //            training_and_prediction_logic_timestamps.emplace_back(current_t / 65536);
             for (int i = 0; i < sample_rate; ++i) {
                 int current_idx = indptr[i];
