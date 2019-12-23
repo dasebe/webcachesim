@@ -43,7 +43,7 @@ namespace WLC {
     //TODO: interval clock should tick by event instead of following incoming packet time
 #ifdef EVICTION_LOGGING
     unordered_map<uint64_t, uint32_t> future_timestamps;
-    uint32_t n_logging_start;
+    int n_logging_start;
     vector<float> trainings_and_predictions;
     bool start_train_logging = false;
 #endif
@@ -614,10 +614,11 @@ public:
 
 #ifdef EVICTION_LOGGING
         //logging the training and inference happened in the last 1 million
+        int range_log = 20000000;
         if (n_early_stop < 0) {
-            WLC::n_logging_start = n_req - 20000000;
+            WLC::n_logging_start = n_req < range_log ? 0 : n_req - range_log;
         } else {
-            WLC::n_logging_start = n_early_stop - 20000000;
+            WLC::n_logging_start = n_early_stop < range_log ? 0 : n_early_stop - range_log;
         }
 #endif
     }
