@@ -165,7 +165,7 @@ bool WLCCache::lookup(SimpleRequest &req) {
             for (auto &sample_time: meta._sample_times) {
                 //don't use label within the first forget window because the data is not static
                 uint32_t future_distance = req._t - sample_time;
-                training_data->emplace_back(meta, sample_time, future_distance);
+                training_data->emplace_back(meta, sample_time, future_distance, meta._key);
                 //training
                 if (training_data->labels.size() == WLC::batch_size) {
                     train();
@@ -174,6 +174,21 @@ bool WLCCache::lookup(SimpleRequest &req) {
             }
             meta._sample_times.clear();
             meta._sample_times.shrink_to_fit();
+        }
+
+        if (!meta._eviction_sample_times.empty()) {
+            //mature
+            for (auto &sample_time: meta._eviction_sample_times) {
+                //don't use label within the first forget window because the data is not static
+                uint32_t future_distance = req._t - sample_time;
+                eviction_training_data->emplace_back(meta, sample_time, future_distance, meta._key);
+                //training
+                if (eviction_training_data->labels.size() == WLC::batch_size) {
+                    eviction_training_data->clear();
+                }
+            }
+            meta._eviction_sample_times.clear();
+            meta._eviction_sample_times.shrink_to_fit();
         }
 
         //make this update after update training, otherwise the last timestamp will change
@@ -227,7 +242,7 @@ void WLCCache::forget() {
             uint32_t future_distance = WLC::memory_window * 2;
             for (auto &sample_time: meta._sample_times) {
                 //don't use label within the first forget window because the data is not static
-                training_data->emplace_back(meta, sample_time, future_distance);
+                training_data->emplace_back(meta, sample_time, future_distance, meta._key);
                 //training
                 if (training_data->labels.size() == WLC::batch_size) {
                     train();
@@ -236,6 +251,23 @@ void WLCCache::forget() {
             }
             meta._sample_times.clear();
             meta._sample_times.shrink_to_fit();
+        }
+
+        //timeout mature
+        if (!meta._eviction_sample_times.empty()) {
+            //mature
+            //todo: potential to overfill
+            uint32_t future_distance = WLC::memory_window * 2;
+            for (auto &sample_time: meta._eviction_sample_times) {
+                //don't use label within the first forget window because the data is not static
+                eviction_training_data->emplace_back(meta, sample_time, future_distance, meta._key);
+                //training
+                if (eviction_training_data->labels.size() == WLC::batch_size) {
+                    eviction_training_data->clear();
+                }
+            }
+            meta._eviction_sample_times.clear();
+            meta._eviction_sample_times.shrink_to_fit();
         }
 
         assert(meta._key == forget_key);
@@ -333,6 +365,7 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
     for (int i = 0; i < sample_rate; i++) {
         uint32_t pos = _distribution(_generator) % in_cache_metas.size();
         auto &meta = in_cache_metas[pos];
+        meta.emplace_eviction_sample(current_t);
 
         keys[i] = meta._key;
         poses[i] = pos;
@@ -447,6 +480,8 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
                 WLC::trainings_and_predictions.emplace_back(future_interval);
                 WLC::trainings_and_predictions.emplace_back(result[i]);
                 WLC::trainings_and_predictions.emplace_back(current_t);
+                WLC::trainings_and_predictions.emplace_back(1);
+                WLC::trainings_and_predictions.emplace_back(keys[i]);
             }
         }
     }
@@ -479,7 +514,7 @@ void WLCCache::evict() {
             uint32_t future_distance = current_t - meta._past_timestamp + WLC::memory_window;
             for (auto &sample_time: meta._sample_times) {
                 //don't use label within the first forget window because the data is not static
-                training_data->emplace_back(meta, sample_time, future_distance);
+                training_data->emplace_back(meta, sample_time, future_distance, meta._key);
                 //training
                 if (training_data->labels.size() == WLC::batch_size) {
                     train();
@@ -488,6 +523,22 @@ void WLCCache::evict() {
             }
             meta._sample_times.clear();
             meta._sample_times.shrink_to_fit();
+        }
+
+        //must be the tail of lru
+        if (!meta._eviction_sample_times.empty()) {
+            //mature
+            uint32_t future_distance = current_t - meta._past_timestamp + WLC::memory_window;
+            for (auto &sample_time: meta._eviction_sample_times) {
+                //don't use label within the first forget window because the data is not static
+                eviction_training_data->emplace_back(meta, sample_time, future_distance, meta._key);
+                //training
+                if (eviction_training_data->labels.size() == WLC::batch_size) {
+                    eviction_training_data->clear();
+                }
+            }
+            meta._eviction_sample_times.clear();
+            meta._eviction_sample_times.shrink_to_fit();
         }
 
 

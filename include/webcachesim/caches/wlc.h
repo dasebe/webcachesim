@@ -92,6 +92,7 @@ public:
     WLCMetaExtra *_extra = nullptr;
     vector<uint32_t> _sample_times;
 #ifdef EVICTION_LOGGING
+    vector<uint32_t> _eviction_sample_times;
     uint32_t _future_timestamp;
 #endif
 
@@ -122,6 +123,10 @@ public:
 
     void emplace_sample(uint32_t &sample_t) {
         _sample_times.emplace_back(sample_t);
+    }
+
+    void emplace_eviction_sample(uint32_t &sample_t) {
+        _eviction_sample_times.emplace_back(sample_t);
     }
 
     void free() {
@@ -238,7 +243,7 @@ public:
         data.reserve(WLC::batch_size * WLC::n_feature);
     }
 
-    void emplace_back(WLCMeta &meta, uint32_t &sample_timestamp, uint32_t &future_interval) {
+    void emplace_back(WLCMeta &meta, uint32_t &sample_timestamp, uint32_t &future_interval, const uint64_t &key) {
         int32_t counter = indptr.back();
 
         indices.emplace_back(0);
@@ -321,6 +326,118 @@ public:
             WLC::trainings_and_predictions.emplace_back(future_interval);
             WLC::trainings_and_predictions.emplace_back(NAN);
             WLC::trainings_and_predictions.emplace_back(sample_timestamp);
+            WLC::trainings_and_predictions.emplace_back(0);
+            WLC::trainings_and_predictions.emplace_back(key);
+        }
+#endif
+
+    }
+
+    void clear() {
+        labels.clear();
+        indptr.resize(1);
+        indices.clear();
+        data.clear();
+    }
+};
+
+
+class WLCEvictionTrainingData {
+public:
+    vector<float> labels;
+    vector<int32_t> indptr;
+    vector<int32_t> indices;
+    vector<double> data;
+
+    WLCEvictionTrainingData() {
+        labels.reserve(WLC::batch_size);
+        indptr.reserve(WLC::batch_size + 1);
+        indptr.emplace_back(0);
+        indices.reserve(WLC::batch_size * WLC::n_feature);
+        data.reserve(WLC::batch_size * WLC::n_feature);
+    }
+
+    void emplace_back(WLCMeta &meta, uint32_t &sample_timestamp, uint32_t &future_interval, const uint64_t &key) {
+        int32_t counter = indptr.back();
+
+        indices.emplace_back(0);
+        data.emplace_back(sample_timestamp - meta._past_timestamp);
+        ++counter;
+
+        uint32_t this_past_distance = 0;
+        int j = 0;
+        uint8_t n_within = 0;
+        if (meta._extra) {
+            for (; j < meta._extra->_past_distance_idx && j < WLC::max_n_past_distances; ++j) {
+                uint8_t past_distance_idx = (meta._extra->_past_distance_idx - 1 - j) % WLC::max_n_past_distances;
+                const uint32_t &past_distance = meta._extra->_past_distances[past_distance_idx];
+                this_past_distance += past_distance;
+                indices.emplace_back(j + 1);
+                data.emplace_back(past_distance);
+                if (this_past_distance < WLC::memory_window) {
+                    ++n_within;
+                }
+            }
+        }
+
+        counter += j;
+
+        indices.emplace_back(WLC::max_n_past_timestamps);
+        data.push_back(meta._size);
+        ++counter;
+
+        for (int k = 0; k < WLC::n_extra_fields; ++k) {
+            indices.push_back(WLC::max_n_past_timestamps + k + 1);
+            data.push_back(meta._extra_features[k]);
+        }
+        counter += WLC::n_extra_fields;
+
+        indices.push_back(WLC::max_n_past_timestamps + WLC::n_extra_fields + 1);
+        data.push_back(n_within);
+        ++counter;
+
+        if (meta._extra) {
+            for (int k = 0; k < WLC::n_edc_feature; ++k) {
+                indices.push_back(WLC::max_n_past_timestamps + WLC::n_extra_fields + 2 + k);
+                uint32_t _distance_idx = std::min(
+                        uint32_t(sample_timestamp - meta._past_timestamp) / WLC::edc_windows[k],
+                        WLC::max_hash_edc_idx);
+                data.push_back(meta._extra->_edc[k] * WLC::hash_edc[_distance_idx]);
+            }
+        } else {
+            for (int k = 0; k < WLC::n_edc_feature; ++k) {
+                indices.push_back(WLC::max_n_past_timestamps + WLC::n_extra_fields + 2 + k);
+                uint32_t _distance_idx = std::min(
+                        uint32_t(sample_timestamp - meta._past_timestamp) / WLC::edc_windows[k],
+                        WLC::max_hash_edc_idx);
+                data.push_back(WLC::hash_edc[_distance_idx]);
+            }
+        }
+
+        counter += WLC::n_edc_feature;
+
+        labels.push_back(log1p(future_interval));
+        indptr.push_back(counter);
+
+
+#ifdef EVICTION_LOGGING
+        if (WLC::start_train_logging) {
+//            training_and_prediction_logic_timestamps.emplace_back(current_t / 65536);
+            int i = indptr.size() - 2;
+            int current_idx = indptr[i];
+            for (int p = 0; p < WLC::n_feature; ++p) {
+                if (p == indices[current_idx]) {
+                    WLC::trainings_and_predictions.emplace_back(data[current_idx]);
+                    if (current_idx + 1 < indptr[i + 1])
+                        ++current_idx;
+                } else
+                    WLC::trainings_and_predictions.emplace_back(NAN);
+            }
+            WLC::trainings_and_predictions.emplace_back(future_interval);
+            WLC::trainings_and_predictions.emplace_back(NAN);
+            WLC::trainings_and_predictions.emplace_back(sample_timestamp);
+            WLC::trainings_and_predictions.emplace_back(2);
+            WLC::trainings_and_predictions.emplace_back(key);
         }
 #endif
 
@@ -352,6 +469,7 @@ public:
     //TODO: negative queue should have a better abstraction, at least hide the round-up
     sparse_hash_map<uint32_t, uint64_t> negative_candidate_queue;
     WLCTrainingData *training_data;
+    WLCEvictionTrainingData *eviction_training_data;
     uint32_t current_t;
 
     // sample_size
@@ -492,6 +610,7 @@ public:
         //can set number of threads, however the inference time will increase a lot (2x~3x) if use 1 thread
 //        inference_params["num_threads"] = "4";
         training_data = new WLCTrainingData();
+        eviction_training_data = new WLCEvictionTrainingData();
 
 #ifdef EVICTION_LOGGING
         //logging the training and inference happened in the last 1 million

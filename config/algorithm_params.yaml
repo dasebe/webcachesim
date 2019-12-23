@@ -181,7 +181,7 @@ WLC:
   wlc_bloom_filter:
     - 0
   #    - 1
-  version: 20m_logging
+  version: key_logging
 ParallelWLC:
   training_sample_interval:
     - 64
