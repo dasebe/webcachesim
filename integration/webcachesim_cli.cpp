@@ -55,11 +55,17 @@ int main(int argc, char *argv[]) {
     key_builder.append(kvp("cache_type", argv[2]));
     key_builder.append(kvp("cache_size", argv[3]));
 
-    for (auto &k: params)
-        if (!unordered_set<string>({"dbcollection", "dburl", "task_id"}).count(k.first))
+    for (auto &k: params) {
+        //don't store authentication information
+        if (unordered_set<string>({"dburl"}).count(k.first)) {
+            continue;
+        }
+        if (!unordered_set<string>({"dbcollection", "task_id"}).count(k.first)) {
             key_builder.append(kvp(k.first, k.second));
-        else
+        } else {
             value_builder.append(kvp(k.first, k.second));
+        }
+    }
     for (bsoncxx::document::element ele: key_builder.view())
         value_builder.append(kvp(ele.key(), ele.get_value()));
 

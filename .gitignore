@@ -68,3 +68,5 @@ profile
 
 # ats log
 ats_log
+
+**/authentication.yaml
