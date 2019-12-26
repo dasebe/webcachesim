@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <unordered_map>
 #include <numeric>
+#include <assert.h>
 #include "bsoncxx/builder/basic/document.hpp"
 #include "bsoncxx/json.hpp"
 
@@ -59,6 +60,12 @@ FrameWork::FrameWork(const string &trace_file, const string &cache_type, const u
             it = params.erase(it);
         } else if (it->first == "is_metadata_in_cache_size") {
             is_metadata_in_cache_size = static_cast<bool>(stoi(it->second));
+#ifdef EVICTION_LOGGING
+            if (true == is_metadata_in_cache_size) {
+                throw invalid_argument(
+                        "error: set is_metadata_in_cache_size while EVICTION_LOGGING. Must not consider metadata overhead");
+            }
+#endif
             it = params.erase(it);
         } else if (it->first == "bloom_filter") {
             bloom_filter = static_cast<bool>(stoi(it->second));
