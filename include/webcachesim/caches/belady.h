@@ -11,7 +11,11 @@
 #include <map>
 
 #ifdef EVICTION_LOGGING
+
 #include "mongocxx/client.hpp"
+
+using bsoncxx::builder::basic::kvp;
+using bsoncxx::builder::basic::sub_array;
 #endif
 
 using namespace std;
@@ -20,13 +24,12 @@ using namespace webcachesim;
 /*
   Belady: Optimal for unit size
 */
-class BeladyCache : public Cache
-{
+class BeladyCache : public Cache {
 protected:
-    // list for recency order
-    multimap<uint64_t , uint64_t, greater<uint64_t >> _valueMap;
+    // next_request -> id
+    multimap<uint64_t, uint64_t, greater<uint64_t >> _next_req_map;
     // only store in-cache object, value is size
-    unordered_map<uint64_t, uint64_t> _cacheMap;
+    unordered_map<uint64_t, uint64_t> _size_map;
 #ifdef EVICTION_LOGGING
     unordered_map<uint64_t, uint64_t> last_req_timestamps;
     // how far an evicted object will access again
@@ -36,6 +39,9 @@ protected:
     unsigned int current_t;
     string task_id;
     string dburl;
+    vector<double> beyond_byte_ratio;
+    vector<double> beyond_obj_ratio;
+    uint64_t boundary;
 #endif
 
 public:
@@ -50,6 +56,8 @@ public:
                 task_id = it.second;
             } else if (it.first == "dburl") {
                 dburl = it.second;
+            } else if (it.first == "boundary") {
+                boundary = stoull(it.second);
             } else {
                 cerr << "unrecognized parameter: " << it.first << endl;
             }
@@ -63,10 +71,40 @@ public:
 
     void evict();
 
-    bool has(const uint64_t &id) override { return _cacheMap.find(id) != _cacheMap.end(); }
+    bool has(const uint64_t &id) override { return _size_map.find(id) != _size_map.end(); }
 
 #ifdef EVICTION_LOGGING
+
+
+    void update_stat_periodic() override {
+        size_t within_byte = 0, beyond_byte = 0;
+        size_t within_obj = 0, beyond_obj = 0;
+        for (auto &it_n: _next_req_map) {
+            auto it_s = _size_map.find(it_n.second);
+            if (_size_map.end() != it_s) {
+                //in-cache objs
+                if (it_n.first - current_t >= boundary) {
+                    beyond_byte += it_s->second;
+                    ++beyond_obj;
+                } else {
+                    within_byte += it_s->second;
+                    ++within_obj;
+                }
+            }
+        }
+        beyond_byte_ratio.emplace_back(static_cast<double>(beyond_byte) / (beyond_byte + within_byte));
+        beyond_obj_ratio.emplace_back(static_cast<double>(beyond_obj) / (beyond_obj + within_obj));
+    }
+
     void update_stat(bsoncxx::v_noabi::builder::basic::document &doc) override {
+        doc.append(kvp("beyond_byte_ratio", [this](sub_array child) {
+            for (const auto &element : beyond_byte_ratio)
+                child.append(element);
+        }));
+        doc.append(kvp("beyond_obj_ratio", [this](sub_array child) {
+            for (const auto &element : beyond_obj_ratio)
+                child.append(element);
+        }));
         //Log to GridFs because the value is too big to store in mongodb
         try {
             mongocxx::client client = mongocxx::client{mongocxx::uri(dburl)};

@@ -100,7 +100,7 @@ public:
         int64_t within_byte = 0, beyond_byte = 0;
         int64_t within_obj = 0, beyond_obj = 0;
         for (auto &i: meta_holder) {
-            if (i._future_timestamp - current_t > threshold) {
+            if (i._future_timestamp - current_t >= threshold) {
                 beyond_byte += i._size;
                 ++beyond_obj;
             } else {

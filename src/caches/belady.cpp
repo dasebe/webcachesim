@@ -7,11 +7,11 @@
 #include "belady.h"
 
 bool BeladyCache::lookup(SimpleRequest& _req) {
-    auto & req = dynamic_cast<AnnotatedRequest&>(_req);
-    _valueMap.emplace(req._next_seq, req._id);
-    auto if_hit = _cacheMap.find(req._id) !=_cacheMap.end();
+    auto &req = dynamic_cast<AnnotatedRequest &>(_req);
+    _next_req_map.emplace(req._next_seq, req._id);
+    auto if_hit = _size_map.find(req._id) != _size_map.end();
     //time to delete the past next_seq
-    _valueMap.erase(_req._t);
+    _next_req_map.erase(_req._t);
 
 #ifdef EVICTION_LOGGING
     {
@@ -42,7 +42,7 @@ void BeladyCache::admit(SimpleRequest& _req) {
     }
 
     // admit new object
-    _cacheMap.insert({req._id, req._size});
+    _size_map.insert({req._id, req._size});
     _currentSize += size;
 
 #ifdef EVICTION_LOGGING
@@ -56,9 +56,9 @@ void BeladyCache::admit(SimpleRequest& _req) {
 }
 
 void BeladyCache::evict() {
-    auto it = _valueMap.begin();
-    auto iit = _cacheMap.find(it->second);
-    if (iit != _cacheMap.end()) {
+    auto it = _next_req_map.begin();
+    auto iit = _size_map.find(it->second);
+    if (iit != _size_map.end()) {
 #ifdef EVICTION_LOGGING
         {   //record eviction decision quality
             unsigned int decision_qulity =
@@ -69,7 +69,7 @@ void BeladyCache::evict() {
         }
 #endif
         _currentSize -= iit->second;
-        _cacheMap.erase(iit);
+        _size_map.erase(iit);
     }
-    _valueMap.erase(it);
+    _next_req_map.erase(it);
 }

@@ -60,6 +60,7 @@ public:
     enum MetaT : uint8_t {
         within_boundary = 0, beyond_boundary = 1
     };
+    //key -> <metaT, pos>
     unordered_map<KeyT, pair<MetaT, uint32_t >> key_map;
     // list for recency order
     multimap<uint64_t, pair<KeyT, SizeT>, greater<uint64_t >> within_boundary_meta;
@@ -89,16 +90,65 @@ public:
 #ifdef EVICTION_LOGGING
                 } else if (it.first == "byte_million_req") {
                     byte_million_req = stoull(it.second);
-                } else if (it.first == "task_id") {
-                    task_id = it.second;
-                } else if (it.first == "dburl") {
-                    dburl = it.second;
+            } else if (it.first == "task_id") {
+                task_id = it.second;
+            } else if (it.first == "dburl") {
+                dburl = it.second;
 #endif
             } else {
                 cerr << "unrecognized parameter: " << it.first << endl;
             }
         }
     }
+
+
+#ifdef EVICTION_LOGGING
+
+    void update_stat_periodic() override {
+        size_t within_byte = 0, beyond_byte = 0;
+        size_t within_obj = 0, beyond_obj = 0;
+        for (auto &it_n: within_boundary_meta) {
+            auto &key = it_n.second.first;
+            auto &size = it_n.second.second;
+            auto it_k = key_map.find(key);
+            if (key_map.end() != it_k && within_boundary == it_k->second.first) {
+                //in-cache objs
+                if (it_n.first - current_t >= belady_boundary) {
+                    beyond_byte += size;
+                    ++beyond_obj;
+                } else {
+                    within_byte += size;
+                    ++within_obj;
+                }
+            }
+        }
+
+        for (auto &meta: beyond_boundary_meta) {
+            if (meta._future_timestamp - current_t >= belady_boundary) {
+                beyond_byte += meta._size;
+                ++beyond_obj;
+            } else {
+                within_byte += meta._size;
+                ++within_obj;
+            }
+        }
+
+        beyond_byte_ratio.emplace_back(static_cast<double>(beyond_byte) / (beyond_byte + within_byte));
+        beyond_obj_ratio.emplace_back(static_cast<double>(beyond_obj) / (beyond_obj + within_obj));
+    }
+
+    void update_stat(bsoncxx::v_noabi::builder::basic::document &doc) override {
+        doc.append(kvp("beyond_byte_ratio", [this](sub_array child) {
+            for (const auto &element : beyond_byte_ratio)
+                child.append(element);
+        }));
+        doc.append(kvp("beyond_obj_ratio", [this](sub_array child) {
+            for (const auto &element : beyond_obj_ratio)
+                child.append(element);
+        }));
+    }
+
+#endif
 
     void beyond_meta_remove_and_append(const uint32_t &pos) {
         auto &meta = beyond_boundary_meta[pos];
