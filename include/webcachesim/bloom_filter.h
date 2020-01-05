@@ -25,7 +25,6 @@ public:
     }
 
     inline bool exist_or_insert(const uint64_t &key) {
-        ++n_seen_req;
         if (exist(key))
             return true;
         else
@@ -34,21 +33,20 @@ public:
     }
 
     void insert(const uint64_t &key) {
-        if (n_seen_req > switch_interval) {
+        if (n_added_obj > max_n_element) {
             _filters[1 - current_filter]->clear();
             current_filter = 1 - current_filter;
-            n_seen_req = 0;
+            n_added_obj = 0;
         }
         _filters[current_filter]->add(key);
+        ++n_added_obj;
     }
 
 private:
     const size_t max_n_element = 40000000;
     constexpr static const double fp_rate = 0.001;
-    //8 is a magic number
-    const size_t switch_interval = 8 * max_n_element;
     uint8_t current_filter = 0;
-    int n_seen_req = 0;
+    int n_added_obj = 0;
     unique_ptr<bf::basic_bloom_filter> _filters[2];
 };
 
