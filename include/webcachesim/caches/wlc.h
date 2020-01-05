@@ -473,7 +473,7 @@ public:
 #ifdef EVICTION_LOGGING
     WLCEvictionTrainingData *eviction_training_data;
 #endif
-    uint32_t current_t;
+    uint32_t current_t = -1;
 
     // sample_size
     uint sample_rate = 64;

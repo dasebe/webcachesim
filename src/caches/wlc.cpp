@@ -127,8 +127,9 @@ void WLCCache::print_stats() {
 
 bool WLCCache::lookup(SimpleRequest &req) {
     bool ret;
+    ++current_t;
     //piggy back
-    if (req._t && !((req._t) % segment_window))
+    if (current_t && !((current_t) % segment_window))
         print_stats();
 
 #ifdef EVICTION_LOGGING
@@ -142,7 +143,6 @@ bool WLCCache::lookup(SimpleRequest &req) {
         }
     }
 #endif
-    current_t = req._t;
     forget();
 
     //first update the metadata: insert/update, which can trigger pending data.mature
