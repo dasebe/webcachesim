@@ -176,6 +176,7 @@ bool WLCCache::lookup(SimpleRequest &req) {
             meta._sample_times.shrink_to_fit();
         }
 
+#ifdef EVICTION_LOGGING
         if (!meta._eviction_sample_times.empty()) {
             //mature
             for (auto &sample_time: meta._eviction_sample_times) {
@@ -190,6 +191,7 @@ bool WLCCache::lookup(SimpleRequest &req) {
             meta._eviction_sample_times.clear();
             meta._eviction_sample_times.shrink_to_fit();
         }
+#endif
 
         //make this update after update training, otherwise the last timestamp will change
 #ifdef EVICTION_LOGGING
@@ -253,6 +255,7 @@ void WLCCache::forget() {
             meta._sample_times.shrink_to_fit();
         }
 
+#ifdef EVICTION_LOGGING
         //timeout mature
         if (!meta._eviction_sample_times.empty()) {
             //mature
@@ -269,6 +272,7 @@ void WLCCache::forget() {
             meta._eviction_sample_times.clear();
             meta._eviction_sample_times.shrink_to_fit();
         }
+#endif
 
         assert(meta._key == forget_key);
         //free the actual content
@@ -365,7 +369,9 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
     for (int i = 0; i < sample_rate; i++) {
         uint32_t pos = _distribution(_generator) % in_cache_metas.size();
         auto &meta = in_cache_metas[pos];
+#ifdef EVICTION_LOGGING
         meta.emplace_eviction_sample(current_t);
+#endif
 
         keys[i] = meta._key;
         poses[i] = pos;
@@ -525,6 +531,7 @@ void WLCCache::evict() {
             meta._sample_times.shrink_to_fit();
         }
 
+#ifdef EVICTION_LOGGING
         //must be the tail of lru
         if (!meta._eviction_sample_times.empty()) {
             //mature
@@ -540,6 +547,7 @@ void WLCCache::evict() {
             meta._eviction_sample_times.clear();
             meta._eviction_sample_times.shrink_to_fit();
         }
+#endif
 
 
         in_cache_lru_queue.dq.erase(meta.p_last_request);

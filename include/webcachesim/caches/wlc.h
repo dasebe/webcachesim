@@ -125,9 +125,11 @@ public:
         _sample_times.emplace_back(sample_t);
     }
 
+#ifdef EVICTION_LOGGING
     void emplace_eviction_sample(uint32_t &sample_t) {
         _eviction_sample_times.emplace_back(sample_t);
     }
+#endif
 
     void free() {
         delete _extra;
@@ -341,7 +343,7 @@ public:
     }
 };
 
-
+#ifdef EVICTION_LOGGING
 class WLCEvictionTrainingData {
 public:
     vector<float> labels;
@@ -420,7 +422,6 @@ public:
         indptr.push_back(counter);
 
 
-#ifdef EVICTION_LOGGING
         if (WLC::start_train_logging) {
 //            training_and_prediction_logic_timestamps.emplace_back(current_t / 65536);
             int i = indptr.size() - 2;
@@ -439,7 +440,6 @@ public:
             WLC::trainings_and_predictions.emplace_back(2);
             WLC::trainings_and_predictions.emplace_back(key);
         }
-#endif
 
     }
 
@@ -450,6 +450,7 @@ public:
         data.clear();
     }
 };
+#endif
 
 
 struct KeyMapEntryT {
@@ -469,7 +470,9 @@ public:
     //TODO: negative queue should have a better abstraction, at least hide the round-up
     sparse_hash_map<uint32_t, uint64_t> negative_candidate_queue;
     WLCTrainingData *training_data;
+#ifdef EVICTION_LOGGING
     WLCEvictionTrainingData *eviction_training_data;
+#endif
     uint32_t current_t;
 
     // sample_size
@@ -610,7 +613,9 @@ public:
         //can set number of threads, however the inference time will increase a lot (2x~3x) if use 1 thread
 //        inference_params["num_threads"] = "4";
         training_data = new WLCTrainingData();
+#ifdef EVICTION_LOGGING
         eviction_training_data = new WLCEvictionTrainingData();
+#endif
 
 #ifdef EVICTION_LOGGING
         //logging the training and inference happened in the last 1 million
