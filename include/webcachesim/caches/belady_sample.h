@@ -45,7 +45,7 @@ public:
 class BeladySampleCache : public Cache
 {
 public:
-    //key -> (0/1 list, idx)
+    //key -> (list pos)
     unordered_map<uint64_t, uint32_t> key_map;
     vector<BeladySampleMeta> meta_holder;
 
