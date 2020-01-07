@@ -56,6 +56,8 @@ set(LIB_SOURCE
         caches/parallel_wlc.cpp
         ${WEBCACHESIM_HEADER_DIR}/caches/binary_relaxed_belady.h
         caches/binary_relaxed_belady.cpp
+        ${WEBCACHESIM_HEADER_DIR}/caches/percent_relaxed_belady.h
+        caches/percent_relaxed_belady.cpp
         ${WEBCACHESIM_HEADER_DIR}/caches/relaxed_belady.h
         caches/relaxed_belady.cpp
         ${WEBCACHESIM_HEADER_DIR}/caches/static_parallel_cache.h

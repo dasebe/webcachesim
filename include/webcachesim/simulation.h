@@ -40,7 +40,8 @@ public:
     std::string _trace_file;
     std::string _cache_type;
     uint64_t _cache_size;
-    const unordered_set<string> offline_algorithms = {"Belady", "BeladySample", "RelaxedBelady", "BinaryRelaxedBelady"};
+    const unordered_set<string> offline_algorithms = {"Belady", "BeladySample", "RelaxedBelady", "BinaryRelaxedBelady",
+                                                      "PercentRelaxedBelady"};
     bool is_offline;
 
     /*
