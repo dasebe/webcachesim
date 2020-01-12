@@ -320,6 +320,8 @@ void WLCCache::admit(SimpleRequest &req) {
         //first move meta data, then modify hash table
         uint32_t tail0_pos = in_cache_metas.size();
         auto &meta = out_cache_metas[it->second.list_pos];
+        //size should be consistent
+        assert(meta._size == size);
         auto forget_timestamp = meta._past_timestamp + WLC::memory_window;
         negative_candidate_queue.erase(forget_timestamp % WLC::memory_window);
         auto it_lru = in_cache_lru_queue.request(req._id);
