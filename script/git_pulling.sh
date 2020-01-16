@@ -1,7 +1,10 @@
-#!/bin/sh
+#!/bin/bash
+
+PYTHON='/home/zhenyus/anaconda3/envs/webcachesim_env/bin/python'
+RUNNER_FILE='/home/zhenyus/webcachesim/script/run.py'
 
 while [[ 1 ]]; do
-  sleep 30
+  git remote update
   UPSTREAM=${1:-'@{u}'}
   LOCAL=$(git rev-parse @)
   REMOTE=$(git rev-parse "$UPSTREAM")
@@ -13,14 +16,11 @@ while [[ 1 ]]; do
       echo "Need to pull"
       echo "pulling"
       git pull
-      python run.py
+      $PYTHON $RUNNER_FILE
   elif [ $REMOTE = $BASE ]; then
       echo "Need to push"
   else
       echo "Diverged"
   fi
-
-
-
-
+  sleep 30
 done
