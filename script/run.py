@@ -12,6 +12,8 @@ current_branch = Repository(webcachesim_root).head.shorthand
 for node in params['nodes']:
     # for each machine, fetch, checkout, merge, make, make install
     hostname = node[node.find('/') + 1:] if '/' in node else node
+    # command = ['ssh', '-t', hostname, f'cd ${{HOME}}; rm ./.bashrc; cp /local/repository/.bashrc ./']
+    # subprocess.run(command)
     command = ['ssh', '-t', hostname, f'cd ${{WEBCACHESIM_ROOT}}/build; '
                                       f'git fetch; git checkout {current_branch}; git pull; make -j8; sudo make install']
     subprocess.run(command)
