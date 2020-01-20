@@ -63,9 +63,9 @@ public:
 
     void admit(SimpleRequest &req) override;
 
-    void evict(SimpleRequest &req);
-
-    void evict();
+//    void evict(SimpleRequest &req);
+//
+    virtual void evict();
 };
 
 static Factory<GreedyDualBase> factoryGD("GD");
@@ -126,13 +126,10 @@ protected:
     unsigned int _tk;
     uint64_t _curTime;
 
-    virtual long double ageValue(SimpleRequest& req);
+    long double ageValue(SimpleRequest &req) override;
 
 public:
     LRUKCache();
-    virtual ~LRUKCache()
-    {
-    }
 
     void init_with_params(const map<string, string> &params) override {
         //set params
@@ -179,9 +176,9 @@ public:
 
     bool lookup(SimpleRequest &req) override;
 
-    void evict(SimpleRequest &req);
+//    void evict(SimpleRequest &req) ;
 
-    void evict();
+    void evict() override;
 };
 
 static Factory<LRUKCache> factoryLRUK("LRUK");
