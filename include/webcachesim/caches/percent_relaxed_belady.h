@@ -88,7 +88,7 @@ public:
                 } else if (it.first == "task_id") {
                     task_id = it.second;
                 } else if (it.first == "dburl") {
-                    dburl = it.second;
+                dburl = it.second;
 #endif
             } else {
                 cerr << "unrecognized parameter: " << it.first << endl;
@@ -98,21 +98,21 @@ public:
 
 #ifdef EVICTION_LOGGING
 
-    void update_stat_periodic() override {
-        int64_t within_byte = 0, beyond_byte = 0;
-        int64_t within_obj = 0, beyond_obj = 0;
-        for (auto &i: meta_holder) {
-            if (i._future_timestamp - current_t >= threshold) {
-                beyond_byte += i._size;
-                ++beyond_obj;
-            } else {
-                within_byte += i._size;
-                ++within_obj;
-            }
-        }
-        beyond_byte_ratio.emplace_back(static_cast<double>(beyond_byte) / (beyond_byte + within_byte));
-        beyond_obj_ratio.emplace_back(static_cast<double>(beyond_obj) / (beyond_obj + within_obj));
-    }
+//    void update_stat_periodic() override {
+//        int64_t within_byte = 0, beyond_byte = 0;
+//        int64_t within_obj = 0, beyond_obj = 0;
+//        for (auto &i: meta_holder) {
+//            if (i._future_timestamp - current_t >= threshold) {
+//                beyond_byte += i._size;
+//                ++beyond_obj;
+//            } else {
+//                within_byte += i._size;
+//                ++within_obj;
+//            }
+//        }
+//        beyond_byte_ratio.emplace_back(static_cast<double>(beyond_byte) / (beyond_byte + within_byte));
+//        beyond_obj_ratio.emplace_back(static_cast<double>(beyond_obj) / (beyond_obj + within_obj));
+//    }
 
     void update_stat(bsoncxx::builder::basic::document &doc) override {
         doc.append(kvp("beyond_byte_ratio", [this](sub_array child) {

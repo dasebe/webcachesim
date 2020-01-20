@@ -46,6 +46,7 @@ namespace WLC {
     int n_logging_start;
     vector<float> trainings_and_predictions;
     bool start_train_logging = false;
+    int range_log = 1000000;
 #endif
 }
 
@@ -560,6 +561,8 @@ public:
                 task_id = it.second;
             } else if (it.first == "belady_boundary") {
                 belady_boundary = stoll(it.second);
+            } else if (it.first == "range_log") {
+                WLC::range_log = stoi(it.second);
 #endif
             } else if (it.first == "n_edc_feature") {
                 if (stoull(it.second) != WLC::n_edc_feature) {
@@ -619,18 +622,17 @@ public:
 
 #ifdef EVICTION_LOGGING
         //logging the training and inference happened in the last 1 million
-        int range_log = 20000000;
         if (n_early_stop < 0) {
-            WLC::n_logging_start = n_req < range_log ? 0 : n_req - range_log;
+            WLC::n_logging_start = n_req < WLC::range_log ? 0 : n_req - WLC::range_log;
         } else {
-            WLC::n_logging_start = n_early_stop < range_log ? 0 : n_early_stop - range_log;
+            WLC::n_logging_start = n_early_stop < WLC::range_log ? 0 : n_early_stop - WLC::range_log;
         }
 #endif
     }
 
-    bool lookup(SimpleRequest &req);
+    bool lookup(SimpleRequest &req) override;
 
-    void admit(SimpleRequest &req);
+    void admit(SimpleRequest &req) override;
 
     void evict();
 

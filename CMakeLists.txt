@@ -14,12 +14,12 @@ set(CMAKE_CXX_STANDARD 17)
 remove_definitions(-DMISS_DECOUPLE)
 
 #set this flag to get statistics of cache sizes decouple
-add_definitions(-DCACHE_SIZE_DECOUPLE)
-#remove_definitions(-DCACHE_SIZE_DECOUPLE)
+#add_definitions(-DCACHE_SIZE_DECOUPLE)
+remove_definitions(-DCACHE_SIZE_DECOUPLE)
 
 #logging eviction information
-#add_definitions(-DEVICTION_LOGGING)
-remove_definitions(-DEVICTION_LOGGING)
+add_definitions(-DEVICTION_LOGGING)
+#remove_definitions(-DEVICTION_LOGGING)
 
 set(CMAKE_VERBOSE_MAKEFILE ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
