@@ -91,11 +91,11 @@ void WLCCache::sample() {
     if (rand() / (RAND_MAX + 1.) < static_cast<float>(n_l1) / (n_l0 + n_l1)) {
         uint32_t pos = rand_idx % n_l0;
         auto &meta = in_cache_metas[pos];
-        meta.emplace_sample(current_t);
+        meta.emplace_sample(WLC::current_t);
     } else {
         uint32_t pos = rand_idx % n_l1;
         auto &meta = out_cache_metas[pos];
-        meta.emplace_sample(current_t);
+        meta.emplace_sample(WLC::current_t);
     }
 }
 
@@ -127,9 +127,9 @@ void WLCCache::print_stats() {
 
 bool WLCCache::lookup(SimpleRequest &req) {
     bool ret;
-    ++current_t;
+    ++WLC::current_t;
     //piggy back
-    if (current_t && !((current_t) % segment_window))
+    if (WLC::current_t && !((WLC::current_t) % segment_window))
         print_stats();
 
 #ifdef EVICTION_LOGGING
@@ -227,7 +227,7 @@ void WLCCache::forget() {
      * object is request at time 0 with memory window = 5, and will be forgotten exactly at the start of time 5.
      * */
     //remove item from forget table, which is not going to be affect from update
-    auto it = negative_candidate_queue.find(current_t % WLC::memory_window);
+    auto it = negative_candidate_queue.find(WLC::current_t % WLC::memory_window);
     if (it != negative_candidate_queue.end()) {
         auto forget_key = it->second;
         auto pos = key_map.find(forget_key)->second.list_pos;
@@ -287,7 +287,7 @@ void WLCCache::forget() {
         }
         out_cache_metas.pop_back();
         key_map.erase(forget_key);
-        negative_candidate_queue.erase(current_t % WLC::memory_window);
+        negative_candidate_queue.erase(WLC::current_t % WLC::memory_window);
     }
 }
 
@@ -350,7 +350,7 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
         auto it = key_map.find(candidate_key);
         auto pos = it->second.list_pos;
         auto &meta = in_cache_metas[pos];
-        if ((!booster) || (WLC::memory_window <= current_t - meta._past_timestamp))
+        if ((!booster) || (WLC::memory_window <= WLC::current_t - meta._past_timestamp))
             return {meta._key, pos};
     }
 
@@ -372,14 +372,14 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
         uint32_t pos = _distribution(_generator) % in_cache_metas.size();
         auto &meta = in_cache_metas[pos];
 #ifdef EVICTION_LOGGING
-        meta.emplace_eviction_sample(current_t);
+        meta.emplace_eviction_sample(WLC::current_t);
 #endif
 
         keys[i] = meta._key;
         poses[i] = pos;
         //fill in past_interval
         indices[idx_feature] = 0;
-        data[idx_feature++] = current_t - meta._past_timestamp;
+        data[idx_feature++] = WLC::current_t - meta._past_timestamp;
         past_timestamps[idx_row] = meta._past_timestamp;
 
         uint8_t j = 0;
@@ -414,7 +414,7 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
 
         for (uint8_t k = 0; k < WLC::n_edc_feature; ++k) {
             indices[idx_feature] = WLC::max_n_past_timestamps + WLC::n_extra_fields + 2 + k;
-            uint32_t _distance_idx = min(uint32_t(current_t - meta._past_timestamp) / WLC::edc_windows[k],
+            uint32_t _distance_idx = min(uint32_t(WLC::current_t - meta._past_timestamp) / WLC::edc_windows[k],
                                          WLC::max_hash_edc_idx);
             if (meta._extra)
                 data[idx_feature++] = meta._extra->_edc[k] * WLC::hash_edc[_distance_idx];
@@ -428,7 +428,7 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
     vector<double> result(sample_rate);
     system_clock::time_point timeBegin;
     //sample to measure inference time
-    if (!(current_t % 10000))
+    if (!(WLC::current_t % 10000))
         timeBegin = chrono::system_clock::now();
     LGBM_BoosterPredictForCSR(booster,
                               static_cast<void *>(indptr),
@@ -446,7 +446,7 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
                               result.data());
 
 
-    if (!(current_t % 10000))
+    if (!(WLC::current_t % 10000))
         inference_time = 0.95 * inference_time +
                          0.05 *
                          chrono::duration_cast<chrono::microseconds>(chrono::system_clock::now() - timeBegin).count();
@@ -483,11 +483,11 @@ pair<uint64_t, uint32_t> WLCCache::rank() {
                     } else
                         WLC::trainings_and_predictions.emplace_back(NAN);
                 }
-                uint32_t future_interval = WLC::future_timestamps.find(keys[i])->second - current_t;
+                uint32_t future_interval = WLC::future_timestamps.find(keys[i])->second - WLC::current_t;
                 future_interval = min(2 * WLC::memory_window, future_interval);
                 WLC::trainings_and_predictions.emplace_back(future_interval);
                 WLC::trainings_and_predictions.emplace_back(result[i]);
-                WLC::trainings_and_predictions.emplace_back(current_t);
+                WLC::trainings_and_predictions.emplace_back(WLC::current_t);
                 WLC::trainings_and_predictions.emplace_back(1);
                 WLC::trainings_and_predictions.emplace_back(keys[i]);
             }
@@ -507,19 +507,19 @@ void WLCCache::evict() {
     {
         auto it = WLC::future_timestamps.find(key);
         unsigned int decision_qulity =
-                static_cast<double>(it->second - current_t) / (_cacheSize * 1e6 / byte_million_req);
+                static_cast<double>(it->second - WLC::current_t) / (_cacheSize * 1e6 / byte_million_req);
         decision_qulity = min((unsigned int) 255, decision_qulity);
         eviction_qualities.emplace_back(decision_qulity);
-        eviction_logic_timestamps.emplace_back(current_t / 65536);
+        eviction_logic_timestamps.emplace_back(WLC::current_t / 65536);
     }
 #endif
 
     auto &meta = in_cache_metas[old_pos];
-    if (WLC::memory_window <= current_t - meta._past_timestamp) {
+    if (WLC::memory_window <= WLC::current_t - meta._past_timestamp) {
         //must be the tail of lru
         if (!meta._sample_times.empty()) {
             //mature
-            uint32_t future_distance = current_t - meta._past_timestamp + WLC::memory_window;
+            uint32_t future_distance = WLC::current_t - meta._past_timestamp + WLC::memory_window;
             for (auto &sample_time: meta._sample_times) {
                 //don't use label within the first forget window because the data is not static
                 training_data->emplace_back(meta, sample_time, future_distance, meta._key);
@@ -537,7 +537,7 @@ void WLCCache::evict() {
         //must be the tail of lru
         if (!meta._eviction_sample_times.empty()) {
             //mature
-            uint32_t future_distance = current_t - meta._past_timestamp + WLC::memory_window;
+            uint32_t future_distance = WLC::current_t - meta._past_timestamp + WLC::memory_window;
             for (auto &sample_time: meta._eviction_sample_times) {
                 //don't use label within the first forget window because the data is not static
                 eviction_training_data->emplace_back(meta, sample_time, future_distance, meta._key);

@@ -28,6 +28,7 @@ using bsoncxx::builder::basic::kvp;
 using bsoncxx::builder::basic::sub_array;
 
 namespace WLC {
+    uint32_t current_t = -1;
     uint8_t max_n_past_timestamps = 32;
     uint8_t max_n_past_distances = 31;
     uint8_t base_edc_window = 10;
@@ -310,7 +311,7 @@ public:
 
 
 #ifdef EVICTION_LOGGING
-        if ((sample_timestamp >= WLC::n_logging_start) && !WLC::start_train_logging && (indptr.size() == 2)) {
+        if ((WLC::current_t >= WLC::n_logging_start) && !WLC::start_train_logging && (indptr.size() == 2)) {
             WLC::start_train_logging = true;
         }
 
@@ -341,6 +342,7 @@ public:
         indptr.resize(1);
         indices.clear();
         data.clear();
+        cerr << "finish a batch" << endl;
     }
 };
 
@@ -474,7 +476,6 @@ public:
 #ifdef EVICTION_LOGGING
     WLCEvictionTrainingData *eviction_training_data;
 #endif
-    uint32_t current_t = -1;
 
     // sample_size
     uint sample_rate = 64;
@@ -661,7 +662,7 @@ public:
         for (auto &i: in_cache_metas) {
             if (i._future_timestamp == 0xffffffff) {
                 far_byte += i._size;
-            } else if (i._future_timestamp - current_t > belady_boundary) {
+            } else if (i._future_timestamp - WLC::current_t > belady_boundary) {
                 middle_byte += i._size;
             } else {
                 near_byte += i._size;
