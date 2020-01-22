@@ -342,7 +342,6 @@ public:
         indptr.resize(1);
         indices.clear();
         data.clear();
-        cerr << "finish a batch" << endl;
     }
 };
 
