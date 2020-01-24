@@ -284,8 +284,6 @@ public:
 
     // sample_size
     uint sample_rate = 64;
-    uint64_t training_sample_interval = 64;
-//    unsigned int segment_window = 1000000;
 //
 //    double training_loss = 0;
 
@@ -350,8 +348,6 @@ public:
                 WLC_train_params["num_threads"] = it.second;
             } else if (it.first == "num_leaves") {
                 WLC_train_params["num_leaves"] = it.second;
-            } else if (it.first == "training_sample_interval") {
-                training_sample_interval = stoull(it.second);
             } else if (it.first == "n_edc_feature") {
                 if (stoull(it.second) != ParallelWLC::n_edc_feature) {
                     cerr << "error: cannot change n_edc_feature because of const" << endl;

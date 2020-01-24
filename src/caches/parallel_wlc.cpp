@@ -86,25 +86,17 @@ void ParallelWLCCache::sample() {
     // warmup not finish
     if (in_cache_metas.empty() || out_cache_metas.empty())
         return;
-
+    auto rand_idx = _distribution(_generator);
     auto n_l0 = static_cast<uint32_t>(in_cache_metas.size());
     auto n_l1 = static_cast<uint32_t>(out_cache_metas.size());
-    auto rand_idx = _distribution(_generator);
-    // at least sample 1 from the list, at most size of the list
-    auto n_sample_l0 = std::min(std::max(uint32_t(training_sample_interval * n_l0 / (n_l0 + n_l1)), (uint32_t) 1),
-                                n_l0);
-    auto n_sample_l1 = std::min(std::max(uint32_t(training_sample_interval - n_sample_l0), (uint32_t) 1), n_l1);
-
-    //sample list 0
-    for (uint32_t i = 0; i < n_sample_l0; i++) {
-        uint32_t pos = (uint32_t) (i + rand_idx) % n_l0;
+    //TODO: we should use n_l0 / (n_l0 + n_l1), but this makes byte miss ratio worse
+    auto r = rand();
+    if (r / (RAND_MAX + 1.) < static_cast<float>(n_l1) / (n_l0 + n_l1)) {
+        uint32_t pos = rand_idx % n_l0;
         auto &meta = in_cache_metas[pos];
         meta.emplace_sample(t_counter);
-    }
-
-    //sample list 1
-    for (uint32_t i = 0; i < n_sample_l1; i++) {
-        uint32_t pos = (uint32_t) (i + rand_idx) % n_l1;
+    } else {
+        uint32_t pos = rand_idx % n_l1;
         auto &meta = out_cache_metas[pos];
         meta.emplace_sample(t_counter);
     }
@@ -152,8 +144,7 @@ void ParallelWLCCache::async_lookup(const uint64_t &key) {
             p->p_last_request = in_cache_lru_queue.re_request(p->p_last_request);
         }
         //sampling
-        if (!(t_counter % training_sample_interval))
-            sample();
+        sample();
         ++t_counter;
         forget();
     } else {
@@ -260,8 +251,7 @@ void ParallelWLCCache::async_admit(const uint64_t &key, const int64_t &size, con
     }
     Lreturn:
     //sampling
-    if (!(t_counter % training_sample_interval))
-        sample();
+    sample();
     ++t_counter;
     forget();
     //no logical op is performed
@@ -279,7 +269,6 @@ pair<uint64_t, uint32_t> ParallelWLCCache::rank() {
     if ((!if_trained) || (ParallelWLC::memory_window <= t_counter - meta._past_timestamp))
         return {meta._key, pos};
 
-    uint32_t rand_idx = _distribution(_generator) % in_cache_metas.size();
 
     int32_t indptr[sample_rate + 1];
     indptr[0] = 0;
@@ -287,17 +276,21 @@ pair<uint64_t, uint32_t> ParallelWLCCache::rank() {
     double data[sample_rate * ParallelWLC::n_feature];
     int32_t past_timestamps[sample_rate];
 
+    uint64_t keys[sample_rate];
+    uint32_t poses[sample_rate];
+    //next_past_timestamp, next_size = next_indptr - 1
+
     unsigned int idx_feature = 0;
     unsigned int idx_row = 0;
     for (int i = 0; i < sample_rate; i++) {
-        uint32_t pos = (i + rand_idx) % in_cache_metas.size();
+        uint32_t pos = _distribution(_generator) % in_cache_metas.size();
         auto &meta = in_cache_metas[pos];
 
-//        ids[i] = meta._key;
+        keys[i] = meta._key;
+        poses[i] = pos;
         //fill in past_interval
         indices[idx_feature] = 0;
         data[idx_feature++] = t_counter - meta._past_timestamp;
-        past_timestamps[idx_row] = meta._past_timestamp;
 
         uint8_t j = 0;
         uint32_t this_past_distance = 0;
@@ -370,19 +363,18 @@ pair<uint64_t, uint32_t> ParallelWLCCache::rank() {
 //        for (uint32_t i = 0; i < n_sample; ++i)
 //            result[i] *= sizes[i];
 
-    double worst_score;
-    uint32_t worst_pos;
-    uint32_t min_past_timestamp;
+    double worst_score = result[0];
+    uint32_t worst_pos = poses[0];
+    uint64_t worst_key = keys[0];
+    uint64_t min_past_timestamp = past_timestamps[0];
 
-    for (int i = 0; i < sample_rate; ++i)
-        if (!i || result[i] > worst_score || (result[i] == worst_score && (past_timestamps[i] < min_past_timestamp))) {
+    for (int i = 1; i < sample_rate; ++i)
+        if (result[i] > worst_score || (result[i] == worst_score && (past_timestamps[i] < min_past_timestamp))) {
             worst_score = result[i];
-            worst_pos = i;
+            worst_pos = poses[i];
+            worst_key = keys[i];
             min_past_timestamp = past_timestamps[i];
         }
-
-    worst_pos = (worst_pos + rand_idx) % in_cache_metas.size();
-    auto &worst_key = in_cache_metas[worst_pos]._key;
 
     return {worst_key, worst_pos};
 }
