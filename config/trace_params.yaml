@@ -156,6 +156,32 @@ wiki2018.tr:
     - -1
 #    - 500000000
 
+wiki2018_4mb.tr:
+  cache_sizes:
+    - 1099511627776:
+        ParallelLRU:
+          bloom_filter: 1
+        ParallelWLC:
+          memory_window:
+            - 469762048
+            - 536870912
+            - 671088640
+            - 805306368
+            - 939524096
+  n_extra_fields: 1
+  segment_window: 1000000
+  real_time_segment_window: 600
+  is_metadata_in_cache_size:
+    #    - 1
+    - 0
+  #  bloom_filter: 1
+  byte_million_req: 35234263115
+  n_req: 2800000000
+  uni_size: 0
+  # stop at exactly before req id n, so finish reqs [0, n-1]
+  n_early_stop:
+    - -1
+#    - 500000000
 
 
 wiki_1400m_4mb.tr:
