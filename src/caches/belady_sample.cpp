@@ -10,15 +10,18 @@ using namespace std;
 
 bool BeladySampleCache::lookup(SimpleRequest &_req) {
     auto & req = dynamic_cast<AnnotatedRequest &>(_req);
-
+    current_t = req._t;
     auto it = key_map.find(req._id);
     if (it != key_map.end()) {
         //update past timestamps
-        bool & list_idx = it->second.first;
-        uint32_t & pos_idx = it->second.second;
-        meta_holder[list_idx][pos_idx].update(req._t, req._next_seq);
+        uint32_t &pos_idx = it->second;
+        meta_holder[pos_idx].update(req._t, req._next_seq);
 
-        return !list_idx;
+        if (memorize_sample && memorize_sample_keys.find(req._id) != memorize_sample_keys.end() &&
+            req._next_seq - current_t <= threshold)
+            memorize_sample_keys.erase(req._id);
+
+        return true;
     }
     return false;
 }
@@ -35,114 +38,109 @@ void BeladySampleCache::admit(SimpleRequest &_req) {
     auto it = key_map.find(req._id);
     if (it == key_map.end()) {
         //fresh insert
-        key_map.insert({req._id, {0, (uint32_t) meta_holder[0].size()}});
-        meta_holder[0].emplace_back(req._id, req._size, req._t, req._next_seq);
+        key_map.insert({req._id, (uint32_t) meta_holder.size()});
+        meta_holder.emplace_back(req._id, req._size, req._t, req._next_seq);
         _currentSize += size;
-        if (_currentSize <= _cacheSize)
-            return;
-    } else if (size + _currentSize <= _cacheSize){
-        //bring list 1 to list 0
-        //first move meta data, then modify hash table
-        uint32_t tail0_pos = meta_holder[0].size();
-        meta_holder[0].emplace_back(meta_holder[1][it->second.second]);
-        uint32_t tail1_pos = meta_holder[1].size()-1;
-        if (it->second.second !=  tail1_pos) {
-            //swap tail
-            meta_holder[1][it->second.second] = meta_holder[1][tail1_pos];
-            key_map.find(meta_holder[1][tail1_pos]._key)->second.second = it->second.second;
-        }
-        meta_holder[1].pop_back();
-        it->second = {0, tail0_pos};
-        _currentSize += size;
-        return;
-    } else {
-        //insert-evict
-        auto epair = rank(req._t);
-        auto & key0 = epair.first;
-        auto & pos0 = epair.second;
-        auto & pos1 = it->second.second;
-        _currentSize = _currentSize - meta_holder[0][pos0]._size + req._size;
-        swap(meta_holder[0][pos0], meta_holder[1][pos1]);
-        swap(it->second, key_map.find(key0)->second);
     }
     // check more eviction needed?
     while (_currentSize > _cacheSize) {
-        evict(req._t);
+        evict();
     }
 }
 
 
-pair<uint64_t, uint32_t> BeladySampleCache::rank(const uint64_t & t) {
-    uint64_t max_future_interval;
-    uint64_t min_past_timetamp;
+pair<uint64_t, uint32_t> BeladySampleCache::rank() {
+    vector<pair<uint64_t, uint32_t >> beyond_boundary_key_pos;
+    uint64_t max_future_interval = 0;
     uint64_t max_key;
     uint32_t max_pos;
 
-    uint32_t rand_idx = _distribution(_generator) % meta_holder[0].size();
-    uint n_sample = min(sample_rate, (uint32_t) meta_holder[0].size());
+    if (memorize_sample) {
+        //first pass: move near objects out of the set.
+        for (auto it = memorize_sample_keys.cbegin(); it != memorize_sample_keys.end();) {
+            auto &key = *it;
+            auto &pos = key_map.find(key)->second;
+            auto &meta = meta_holder[pos];
+            uint64_t &past_timestamp = meta._past_timestamp;
+            if (meta._future_timestamp - current_t <= threshold) {
+                it = memorize_sample_keys.erase(it);
+            } else {
+                beyond_boundary_key_pos.emplace_back(pair(key, pos));
+                ++it;
+            }
+        }
+    }
+
+    uint n_sample = min(sample_rate, (uint32_t) meta_holder.size());
 
     for (uint32_t i = 0; i < n_sample; i++) {
-        uint32_t pos = (i+rand_idx)%meta_holder[0].size();
-        auto & meta = meta_holder[0][pos];
-        //fill in past_interval
-        uint64_t &past_timestamp = meta._past_timestamp;
+        //true random sample
+        uint32_t pos = (i + _distribution(_generator)) % meta_holder.size();
+        auto &meta = meta_holder[pos];
+
+        if (memorize_sample && memorize_sample_keys.find(meta._key) != memorize_sample_keys.end()) {
+            //this key is already in the memorize keys, so we will enumerate it
+            continue;
+        }
 
         uint64_t future_interval;
-        if (meta._future_timestamp - past_timestamp > threshold)
-            future_interval = 2*threshold;
-        else
-            future_interval = meta._future_timestamp - t;
+        if (meta._future_timestamp - current_t <= threshold) {
+            future_interval = meta._future_timestamp - current_t;
+        } else {
+            beyond_boundary_key_pos.emplace_back(pair(meta._key, pos));
+            if (memorize_sample && memorize_sample_keys.size() < sample_rate) {
+                memorize_sample_keys.insert(meta._key);
+            }
+            continue;
+        }
 
-        if (!i || future_interval > max_future_interval ||
-            ((future_interval == max_future_interval) && (past_timestamp < min_past_timetamp))) {
+        //select the first one: random one
+        if (future_interval > max_future_interval) {
             max_future_interval = future_interval;
-            min_past_timetamp = past_timestamp;
             max_key = meta._key;
             max_pos = pos;
         }
     }
-    return {max_key, max_pos};
+
+    if (beyond_boundary_key_pos.empty()) {
+        return {max_key, max_pos};
+    } else {
+        auto rand_id = _distribution(_generator) % beyond_boundary_key_pos.size();
+        auto &item = beyond_boundary_key_pos[rand_id];
+        return {item.first, item.second};
+    }
 }
 
-void BeladySampleCache::evict(const uint64_t & t) {
+void BeladySampleCache::evict() {
 //    static uint counter = 0;
-    auto epair = rank(t);
+    auto epair = rank();
     uint64_t & key = epair.first;
     uint32_t & old_pos = epair.second;
 
     //record meta's future interval
-//    {
-//        LRMeta &meta = meta_holder[0][old_pos];
-//
-//        uint64_t known_future_interval;
-//        double log1p_known_future_interval;
-//        if (meta._future_timestamp - t < threshold) {
-//            known_future_interval = meta._future_timestamp - t;
-//            log1p_known_future_interval = log1p(known_future_interval);
-//        } else {
-//            known_future_interval = threshold;
-//            log1p_known_future_interval = log1p_threshold;
-//        }
-//        evicted_f = (evicted_f * 9 + known_future_interval)/10;
-//        if (! (++counter % 100000)) {
-//            cout << "evicted_f: " << evicted_f << endl;
-//        }
-//    }
 
-    //bring list 0 to list 1
-    uint32_t new_pos = meta_holder[1].size();
+#ifdef EVICTION_LOGGING
+    {
+        auto &meta = meta_holder[old_pos];
+        //record eviction decision quality
+        unsigned int decision_qulity =
+                static_cast<double>(meta._future_timestamp - current_t) / (_cacheSize * 1e6 / byte_million_req);
+        decision_qulity = min((unsigned int) 255, decision_qulity);
+        eviction_distances.emplace_back(decision_qulity);
+    }
+#endif
 
-    meta_holder[1].emplace_back(meta_holder[0][old_pos]);
-    uint32_t activate_tail_idx = meta_holder[0].size()-1;
+    if (memorize_sample && memorize_sample_keys.find(key) != memorize_sample_keys.end())
+        memorize_sample_keys.erase(key);
+
+    _currentSize -= meta_holder[old_pos]._size;
+    uint32_t activate_tail_idx = meta_holder.size() - 1;
     if (old_pos !=  activate_tail_idx) {
         //move tail
-        meta_holder[0][old_pos] = meta_holder[0][activate_tail_idx];
-        key_map.find(meta_holder[0][activate_tail_idx]._key)->second.second = old_pos;
+        meta_holder[old_pos] = meta_holder[activate_tail_idx];
+        key_map.find(meta_holder[activate_tail_idx]._key)->second = old_pos;
     }
-    meta_holder[0].pop_back();
+    meta_holder.pop_back();
 
-    auto it = key_map.find(key);
-    it->second.first = 1;
-    it->second.second = new_pos;
-    _currentSize -= meta_holder[1][new_pos]._size;
+    key_map.erase(key);
 }

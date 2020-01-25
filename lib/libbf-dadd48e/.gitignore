@@ -1,0 +1,7 @@
+.*swp
+.*swo
+.DS_Store
+doc/gh-pages
+Makefile
+.idea
+cmake-build-*/

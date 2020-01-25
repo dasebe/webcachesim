@@ -40,6 +40,7 @@
 .idea
 cmake-build-debug
 cmake-build-release
+cmake-build-relwithdebinfo
 
 # cmake
 build
@@ -67,3 +68,5 @@ profile
 
 # ats log
 ats_log
+
+**/authentication.yaml

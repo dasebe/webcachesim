@@ -18,8 +18,9 @@ setup(
     long_description='',
     install_requires=[
         'pyyaml',
-        # 'numpy',
-        # 'pandas',
+        'pygit2',
+        'numpy',
+        'pandas',
         # 'arrow',
         # 'seaborn',
         # 'matplotlib',

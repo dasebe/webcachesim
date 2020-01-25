@@ -6,23 +6,25 @@
 #include "cache.h"
 //#include "cache_object.h"
 
+using namespace webcachesim;
 namespace cache_competitors {
     class Cache;
 }
 
 
-class LHDBase : public Cache
-{
+class LHDBase : public Cache {
 protected:
-    cache_competitors::Cache* lhdcache;
+    cache_competitors::Cache *lhdcache;
 
 public:
     LHDBase();
 
-    virtual void setSize(uint64_t cs);
-    virtual bool lookup(SimpleRequest& req);
-    virtual void admit(SimpleRequest& req);
-    virtual void evict(SimpleRequest& req);
+    void setSize(const uint64_t &cs) override;
+
+    bool lookup(SimpleRequest &req) override;
+
+    void admit(SimpleRequest &req) override;
+
     virtual void evict();
 };
 

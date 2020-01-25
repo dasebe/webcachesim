@@ -25,36 +25,38 @@ static inline double oP2(double T, double l, double p) {
 bool LRUCache::lookup(SimpleRequest& req)
 {
 
-//
-//    {
-//        auto &_req = dynamic_cast<AnnotatedRequest &>(req);
-//        current_t = req._t;
-//
-//        if (_cacheMap.find(req._id) != _cacheMap.end()) {
-//            //hit
-//            auto it = last_timestamps.find(req._id);
-//            unsigned int hit =
-//                    static_cast<double>(current_t - it->second) / (_cacheSize * 1e6 / byte_million_req);
-//            hit = min((unsigned int) 255, hit);
-//            hits.emplace_back(hit);
-//            hit_timestamps.emplace_back(current_t / 65536);
-//        }
-//
-//        auto it = last_timestamps.find(req._id);
-//        if (it == last_timestamps.end()) {
-//            last_timestamps.insert({_req._id, current_t});
-//        } else {
-//            it->second = current_t;
-//        }
-//
-//
-//        it = future_timestamps.find(req._id);
-//        if (it == future_timestamps.end()) {
-//            future_timestamps.insert({_req._id, _req._next_seq});
-//        } else {
-//            it->second = _req._next_seq;
-//        }
-//    }
+
+#ifdef EVICTION_LOGGING
+    {
+        auto &_req = dynamic_cast<AnnotatedRequest &>(req);
+        current_t = req._t;
+
+        if (_cacheMap.find(req._id) != _cacheMap.end()) {
+            //hit
+            auto it = last_timestamps.find(req._id);
+            unsigned int hit =
+                    static_cast<double>(current_t - it->second) / (_cacheSize * 1e6 / byte_million_req);
+            hit = min((unsigned int) 255, hit);
+            hits.emplace_back(hit);
+            hit_timestamps.emplace_back(current_t / 65536);
+        }
+
+        auto it = last_timestamps.find(req._id);
+        if (it == last_timestamps.end()) {
+            last_timestamps.insert({_req._id, current_t});
+        } else {
+            it->second = current_t;
+        }
+
+
+        it = future_timestamps.find(req._id);
+        if (it == future_timestamps.end()) {
+            future_timestamps.insert({_req._id, _req._next_seq});
+        } else {
+            it->second = _req._next_seq;
+        }
+    }
+#endif
 
 
     uint64_t & obj = req._id;
@@ -73,7 +75,7 @@ void LRUCache::admit(SimpleRequest& req)
 {
     const uint64_t size = req.get_size();
     // object feasible to store?
-    if (size > 16777216) {
+    if (size > _cacheSize) {
         LOG("L", _cacheSize, req._id, size);
         return;
     }
@@ -125,14 +127,16 @@ void LRUCache::evict()
         uint64_t obj = *lit;
 
 
-//        {
-//            auto it = future_timestamps.find(obj);
-//            unsigned int decision_qulity =
-//                    static_cast<double>(it->second - current_t) / (_cacheSize * 1e6 / byte_million_req);
-//            decision_qulity = min((unsigned int) 255, decision_qulity);
-//            eviction_qualities.emplace_back(decision_qulity);
-//            eviction_logic_timestamps.emplace_back(current_t / 65536);
-//        }
+#ifdef EVICTION_LOGGING
+        {
+            auto it = future_timestamps.find(obj);
+            unsigned int decision_qulity =
+                    static_cast<double>(it->second - current_t) / (_cacheSize * 1e6 / byte_million_req);
+            decision_qulity = min((unsigned int) 255, decision_qulity);
+            eviction_qualities.emplace_back(decision_qulity);
+            eviction_logic_timestamps.emplace_back(current_t / 65536);
+        }
+#endif
 
         LOG("e", _currentSize, obj.id, obj.size);
         auto & size = _size_map[obj];
@@ -171,15 +175,16 @@ void FIFOCache::hit(lruCacheMapType::const_iterator it, uint64_t size)
 {
 }
 
-
-/*
-  FilterCache (admit only after N requests)
-*/
+//
+///*
+//  FilterCache (admit only after N requests)
+//*/
 //FilterCache::FilterCache()
-//        : LRUCache(),
-//          _nParam(2) {
+//    : LRUCache(),
+//      _nParam(2)
+//{
 //}
-
+//
 //void FilterCache::setPar(std::string parName, std::string parValue) {
 //    if(parName.compare("n") == 0) {
 //        const uint64_t n = std::stoull(parValue);
@@ -189,36 +194,21 @@ void FIFOCache::hit(lruCacheMapType::const_iterator it, uint64_t size)
 //        std::cerr << "unrecognized parameter: " << parName << std::endl;
 //    }
 //}
-
-
+//
+//
 //bool FilterCache::lookup(SimpleRequest& req)
 //{
 //    CacheObject obj(req);
 //    _filter[obj]++;
 //    return LRUCache::lookup(req);
 //}
-
-//void FilterCache::admit(SimpleRequest &req) {
-//    auto &id = req._id;
-//    _filter[id]++;
 //
-//    if (_filter[id] <= _nParam) {
+//void FilterCache::admit(SimpleRequest& req)
+//{
+//    CacheObject obj(req);
+//    if (_filter[obj] <= _nParam) {
 //        return;
 //    }
-//    LRUCache::admit(req);
-//}
-
-
-//void BloomFilterCache::admit(SimpleRequest &req) {
-//    auto &id = req._id;
-//
-//    if ((!_filter[0].count(req._id)) && (!_filter[1].count(req._id))) {
-//        _filter[current_filter].insert(req._id);
-//        return;
-//    }
-//
-//    if (!_filter[current_filter].count(req._id))
-//        _filter[current_filter].insert(req._id);
 //    LRUCache::admit(req);
 //}
 
@@ -500,16 +490,17 @@ double AdaptSizeCache::modelHitRate(double log2c) {
   not optimal: actually segment 0 can hold more than 1/4 if total segments are not full
 */
 
-void S4LRUCache::setSize(uint64_t cs) {
+void S4LRUCache::setSize(const uint64_t &cs) {
+    Cache::setSize(cs);
     uint64_t total = cs;
-    for(int i=3; i>=0; i--) {
+    for (int i = 3; i >= 0; i--) {
         if (i) {
-            segments[i].setSize(cs/4);
-            total -= cs/4;
+            segments[i].setSize(cs / 4);
+            total -= cs / 4;
         } else {
             segments[i].setSize(total);
         }
-        std::cerr << "segment " << i << " size : " <<segments[i].getSize()  << "\n";
+        std::cerr << "segment " << i << " size : " << segments[i].getSize() << "\n";
     }
 }
 

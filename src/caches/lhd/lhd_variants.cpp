@@ -16,7 +16,6 @@
 LHD::LHD()
 {
     lhdcache = new cache::Cache();
-    lhdcache->availableCapacity = (uint64_t)1 * 1024 * 1024;
 
     // constants
     int assoc = 64;
@@ -24,7 +23,7 @@ LHD::LHD()
     lhdcache->repl = new repl::LHD(assoc, admissionSamples, lhdcache);
 }
 
-void LHD::setSize(uint64_t cs) {
+void LHD::setSize(const uint64_t &cs) {
     _cacheSize = cs;
     lhdcache->availableCapacity = cs;
 }
@@ -39,11 +38,6 @@ bool LHD::lookup(SimpleRequest& req)
 }
 
 void LHD::admit(SimpleRequest& req)
-{
-    // nop
-}
-
-void LHD::evict(SimpleRequest& req)
 {
     // nop
 }

@@ -23,7 +23,7 @@ LHDBase::LHDBase()
     lhdcache->repl = new repl_competitors::LRU();
 }
 
-void LHDBase::setSize(uint64_t cs) {
+void LHDBase::setSize(const uint64_t &cs) {
     _cacheSize = cs;
     lhdcache->availableCapacity = cs;
 }
@@ -35,11 +35,6 @@ bool LHDBase::lookup(SimpleRequest& req)
 }
 
 void LHDBase::admit(SimpleRequest& req)
-{
-    // nop
-}
-
-void LHDBase::evict(SimpleRequest& req)
 {
     // nop
 }

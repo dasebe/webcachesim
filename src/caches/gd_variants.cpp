@@ -15,6 +15,7 @@ using namespace std;
 bool GreedyDualBase::lookup(SimpleRequest& req)
 {
 
+#ifdef EVICTION_LOGGING
     {
         auto &_req = dynamic_cast<AnnotatedRequest &>(req);
         current_t = req._t;
@@ -25,6 +26,7 @@ bool GreedyDualBase::lookup(SimpleRequest& req)
             it->second = _req._next_seq;
         }
     }
+#endif
 
     uint64_t& obj = req._id;
     auto it = _cacheMap.find(obj);
@@ -83,8 +85,8 @@ void GreedyDualBase::admit(SimpleRequest& req)
 #endif
 }
 
-void GreedyDualBase::evict(SimpleRequest& req)
-{
+//void GreedyDualBase::evict(SimpleRequest& req)
+//{
 //    // evict the object match id, type, size of this request
 //    CacheObject obj(req);
 //    auto it = _cacheMap.find(obj);
@@ -96,7 +98,7 @@ void GreedyDualBase::evict(SimpleRequest& req)
 //        _valueMap.erase(lit);
 //        _cacheMap.erase(it);
 //    }
-}
+//}
 
 void GreedyDualBase::evict()
 {
@@ -109,6 +111,7 @@ void GreedyDualBase::evict()
         assert(lit != _valueMap.end()); // bug if this happens
         uint64_t toDelObj = lit->second;
 
+#ifdef EVICTION_LOGGING
         {
             auto it = future_timestamps.find(toDelObj);
             unsigned int decision_qulity =
@@ -117,6 +120,7 @@ void GreedyDualBase::evict()
             eviction_qualities.emplace_back(decision_qulity);
             eviction_logic_timestamps.emplace_back(current_t / 65536);
         }
+#endif
 
         LOG("e", lit->first, toDelObj.id, toDelObj.size);
         auto size = _sizemap[toDelObj];
@@ -192,35 +196,30 @@ LRUKCache::LRUKCache()
 }
 
 
-
-
-bool LRUKCache::lookup(SimpleRequest& req)
-{
-    uint64_t & obj = req._id;
+bool LRUKCache::lookup(SimpleRequest &req) {
+    uint64_t &obj = req._id;
     _curTime++;
     _refsMap[obj].push(_curTime);
     bool hit = GreedyDualBase::lookup(req);
     return hit;
 }
 
-void LRUKCache::evict(SimpleRequest& req)
-{
-    uint64_t & obj = req._id;
-    _refsMap.erase(obj); // delete LRU-K info
-    GreedyDualBase::evict(req);
-}
+//void LRUKCache::evict(SimpleRequest& req)
+//{
+//    uint64_t & obj = req._id;
+//    _refsMap.erase(obj); // delete LRU-K info
+//    GreedyDualBase::evict(req);
+//}
 
-void LRUKCache::evict()
-{
+void LRUKCache::evict() {
     // evict first list element (smallest value)
     if (_valueMap.size() > 0) {
-        ValueMapIteratorType lit  = _valueMap.begin();
+        ValueMapIteratorType lit = _valueMap.begin();
         if (lit == _valueMap.end()) {
             std::cerr << "underun: " << _currentSize << ' ' << _cacheSize << std::endl;
         }
         assert(lit != _valueMap.end()); // bug if this happens
         uint64_t obj = lit->second;
-
         _refsMap.erase(obj); // delete LRU-K info
         GreedyDualBase::evict();
     }

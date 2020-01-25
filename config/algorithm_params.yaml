@@ -1,3 +1,7 @@
+LRU:
+  bloom_filter:
+    - 0
+    - 1
 LRUK:
   k:
     #    - 1
@@ -30,11 +34,40 @@ LR:
   version: not_future
 LRUKSample:
   sample_rate: 32
+PercentRelaxedBelady:
+  p:
+    - 0.01
+    - 0.02
+    - 0.03
+    - 0.04
+    - 0.05
+    - 0.1
+    - 0.15
+    - 0.2
+    - 0.25
+    - 0.3
+    - 0.4
+    - 0.5
+    - 0.6
+    - 0.7
+    - 0.8
+    - 0.9
+  sample_rate: 128
+  memorize_sample:
+    - 0
+    - 1
 BeladySample:
   sample_rate:
     - 64
+  #    - 128
+  #    - 256
+  #    - 512
+  #    - 1024
   threshold:
     - 40000000
+  memorize_sample:
+    - 0
+#    - 1
 ThLRU:
   t: 1073741824
 ThS4LRU:
@@ -113,8 +146,6 @@ Bins:
     - 0.1
     - 0
 WLC:
-  training_sample_interval:
-    - 64
   sample_rate:
     - 64
   memory_window: 10000000
@@ -172,7 +203,35 @@ WLC:
   wlc_bloom_filter:
     - 0
   #    - 1
-  version: log1p_variable_leaves
+  range_log:
+    - 1000000
+  version: vari_len_logging
+ParallelWLC:
+  training_sample_interval:
+    - 64
+  sample_rate:
+    - 64
+  batch_size:
+    - 131072
+  max_n_past_timestamps:
+    - 32
+  num_iterations:
+    - 32
+  num_leaves:
+    - 32
+  num_threads:
+    - 4
+  learning_rate:
+    - 0.1
+  objective:
+    - byte_miss_ratio
+  #    - object_miss_ratio
+  n_edc_feature:
+    - 10
+  wlc_bloom_filter:
+    - 0
+  #    - 1
+  version: prototype
 Hyperbolic:
   sample_rate: 64
 LeCaR:

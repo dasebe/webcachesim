@@ -38,7 +38,7 @@ void annotate(const string &trace_file, int n_extra_fields) {
 
     ifstream infile(trace_file);
     if (!infile) {
-        cerr << "Exception opening/reading annotate original file"<<endl;
+        cerr << "Exception opening/reading annotate original file " << trace_file << endl;
         exit(-1);
     }
 
@@ -80,7 +80,7 @@ void annotate(const string &trace_file, int n_extra_fields) {
 
     ofstream outfile(tmp_file);
     if (!outfile) {
-        cerr << "Exception opening/reading tmp file"<<endl;
+        cerr << "Exception opening/reading tmp file " << tmp_file << endl;
         exit(-1);
     }
 

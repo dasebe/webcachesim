@@ -13,10 +13,10 @@ def parse_cmd_args():
                         help='debug mode only run 1 task locally',
                         type=bool,
                         choices=[True, False])
+    parser.add_argument('--authentication_file', type=str, nargs='?', help='authentication for database', required=True)
     parser.add_argument('--config_file', type=str, nargs='?', help='runner configuration file', required=True)
     parser.add_argument('--algorithm_param_file', type=str, help='algorithm parameter config file', required=True)
     parser.add_argument('--trace_param_file', type=str, help='trace parameter config file', required=True)
-    parser.add_argument('--nodefile', type=str, help='node file to use for gnu parallel', required=True)
     args = parser.parse_args()
 
     return vars(args)
@@ -51,10 +51,12 @@ def job_to_tasks(args):
     convert job config to list of task
     @:returns dict/[dict]
     """
-    # job config file
-    assert args.get('config_file') is not None
-    with open(args['config_file']) as f:
+    # authentication
+    with open(args['authentication_file']) as f:
         file_params = yaml.load(f)
+    # job config file
+    with open(args['config_file']) as f:
+        file_params = {**file_params, **yaml.load(f)}
     for k, v in file_params.items():
         if args.get(k) is None:
             args[k] = v
@@ -109,7 +111,8 @@ def job_to_tasks(args):
                             'algorithm_param_file',
                             'trace_param_file',
                             'config_file',
-                            'nodefile',
+                            'debug',
+                            'nodes',
                         ] and v is not None:
                             task[k] = v
                     tasks.append(task)

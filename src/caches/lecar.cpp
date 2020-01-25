@@ -7,6 +7,7 @@
 bool LeCaRCache::lookup(SimpleRequest& req)
 {
 
+#ifdef EVICTION_LOGGING
     {
         auto &_req = dynamic_cast<AnnotatedRequest &>(req);
         current_t = req._t;
@@ -17,6 +18,7 @@ bool LeCaRCache::lookup(SimpleRequest& req)
             it->second = _req._next_seq;
         }
     }
+#endif
 
 
     auto & key = req._id;
@@ -100,6 +102,7 @@ void LeCaRCache::evict(uint64_t & t, uint64_t & counter) {
 //        cout<<(it_size == size_map.end())<<endl;
         auto & size = it_size->second;
         //add new to h
+#ifdef EVICTION_LOGGING
         {
             auto it = future_timestamps.find(key);
             unsigned int decision_qulity =
@@ -108,6 +111,7 @@ void LeCaRCache::evict(uint64_t & t, uint64_t & counter) {
             eviction_qualities.emplace_back(decision_qulity);
             eviction_logic_timestamps.emplace_back(current_t / 65536);
         }
+#endif
 //        cout<<"before inserting t: "<<t<<" k: "<<key<<" size: "<<size<<" map size: "<<h_lfu.left.size()<<endl;
         auto tmp_it = h_lru.left.find(make_pair(t, counter));
 //        cout<<(tmp_it == h_lfu.left.end())<<endl;
@@ -127,6 +131,7 @@ void LeCaRCache::evict(uint64_t & t, uint64_t & counter) {
             auto & key = lru_it->second;
             auto & size = h_size_map.find(key)->second;
 
+#ifdef EVICTION_LOGGING
             {
                 auto it = future_timestamps.find(key);
                 unsigned int decision_qulity =
@@ -135,6 +140,7 @@ void LeCaRCache::evict(uint64_t & t, uint64_t & counter) {
                 eviction_qualities.emplace_back(decision_qulity);
                 eviction_logic_timestamps.emplace_back(current_t / 65536);
             }
+#endif
 
             h_lru_current_size -= size;
             h_size_map.erase(key);
@@ -147,6 +153,7 @@ void LeCaRCache::evict(uint64_t & t, uint64_t & counter) {
         auto it_size = size_map.find(key);
 //        cout<<(it_size == size_map.end())<<endl;
         auto & size = it_size->second;
+#ifdef EVICTION_LOGGING
         {
             auto it = future_timestamps.find(key);
             unsigned int decision_qulity =
@@ -155,6 +162,7 @@ void LeCaRCache::evict(uint64_t & t, uint64_t & counter) {
             eviction_qualities.emplace_back(decision_qulity);
             eviction_logic_timestamps.emplace_back(current_t / 65536);
         }
+#endif
         //add new to h
 //        cout<<"before inserting t: "<<t<<" k: "<<key<<" size: "<<size<<" map size: "<<h_lfu.left.size()<<endl;
         auto tmp_it = h_lfu.left.find(make_pair(t, counter));
@@ -174,6 +182,7 @@ void LeCaRCache::evict(uint64_t & t, uint64_t & counter) {
             auto lfu_it = h_lfu.left.begin();
             auto & key = lfu_it->second;
             auto & size = h_size_map.find(key)->second;
+#ifdef EVICTION_LOGGING
             {
                 auto it = future_timestamps.find(key);
                 unsigned int decision_qulity =
@@ -182,6 +191,7 @@ void LeCaRCache::evict(uint64_t & t, uint64_t & counter) {
                 eviction_qualities.emplace_back(decision_qulity);
                 eviction_logic_timestamps.emplace_back(current_t / 65536);
             }
+#endif
 //            cout<<(lfu_it == h_lfu.left.end())<<endl;
             h_lfu_current_size -= size;
             h_size_map.erase(key);
