@@ -138,8 +138,8 @@ wiki2018.tr:
   segment_window: 1000000
   real_time_segment_window: 600
   is_metadata_in_cache_size:
-    #    - 1
-    - 0
+    - 1
+  #    - 0
   #  bloom_filter: 1
   byte_million_req: 35234263115
   n_req: 2800000000

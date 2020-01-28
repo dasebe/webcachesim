@@ -710,6 +710,12 @@ public:
                 child.append(element);
         }));
 
+        auto v = get_object_distribution_n_past_timestamps();
+        doc.append(kvp("object_distribution_n_past_timestamps", [v](sub_array child) {
+            for (const auto &element : v)
+                child.append(element);
+        }));
+
 
 #ifdef EVICTION_LOGGING
         doc.append(kvp("near_bytes", [this](sub_array child) {
@@ -751,6 +757,25 @@ public:
 //            abort();
         }
 #endif
+    }
+
+    vector<int> get_object_distribution_n_past_timestamps() {
+        vector<int> distribution(WLC::max_n_past_timestamps, 0);
+        for (auto &meta: in_cache_metas) {
+            if (nullptr == meta._extra) {
+                ++distribution[0];
+            } else {
+                ++distribution[meta._extra->_past_distances.size()];
+            }
+        }
+        for (auto &meta: out_cache_metas) {
+            if (nullptr == meta._extra) {
+                ++distribution[0];
+            } else {
+                ++distribution[meta._extra->_past_distances.size()];
+            }
+        }
+        return distribution;
     }
 
 };

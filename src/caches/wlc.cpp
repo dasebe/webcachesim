@@ -132,6 +132,10 @@ bool WLCCache::lookup(SimpleRequest &req) {
     if (WLC::current_t && !((WLC::current_t) % segment_window))
         print_stats();
 
+    if (WLC::current_t == 5000000) {
+        int a = 1;
+    }
+
 #ifdef EVICTION_LOGGING
     {
         AnnotatedRequest *_req = (AnnotatedRequest *) &req;

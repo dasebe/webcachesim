@@ -205,7 +205,7 @@ WLC:
   #    - 1
   range_log:
     - 1000000
-  version: vari_len_logging
+  version: object_distribution_logging
 ParallelWLC:
   training_sample_interval:
     - 64
