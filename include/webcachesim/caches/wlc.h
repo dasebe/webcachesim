@@ -470,7 +470,7 @@ public:
 
     InCacheLRUQueue in_cache_lru_queue;
     //TODO: negative queue should have a better abstraction, at least hide the round-up
-    sparse_hash_map<uint32_t, uint64_t> negative_candidate_queue;
+    sparse_hash_map<uint64_t, uint64_t> negative_candidate_queue;
     WLCTrainingData *training_data;
 #ifdef EVICTION_LOGGING
     WLCEvictionTrainingData *eviction_training_data;
@@ -645,7 +645,7 @@ public:
 
     void sample();
 
-    void print_stats();
+    void log_stats();
 
     bool has(const uint64_t &id) {
         auto it = key_map.find(id);

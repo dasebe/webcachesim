@@ -100,7 +100,7 @@ void WLCCache::sample() {
 }
 
 
-void WLCCache::print_stats() {
+void WLCCache::log_stats() {
     uint64_t feature_overhead = 0;
     uint64_t sample_overhead = 0;
     for (auto &m: in_cache_metas) {
@@ -112,7 +112,7 @@ void WLCCache::print_stats() {
         sample_overhead += m.sample_overhead();
     }
     cerr
-            << "in/out metadata " << in_cache_metas.size() << " / " << out_cache_metas.size() << endl
+            << "in/out metadata: " << in_cache_metas.size() << " / " << out_cache_metas.size() << endl
             //    cerr << "feature overhead: "<<feature_overhead<<endl;
             << "feature overhead per entry: " << feature_overhead / key_map.size() << endl
             //    cerr << "sample overhead: "<<sample_overhead<<endl;
@@ -130,11 +130,7 @@ bool WLCCache::lookup(SimpleRequest &req) {
     ++WLC::current_t;
     //piggy back
     if (WLC::current_t && !((WLC::current_t) % segment_window))
-        print_stats();
-
-    if (WLC::current_t == 5000000) {
-        int a = 1;
-    }
+        log_stats();
 
 #ifdef EVICTION_LOGGING
     {
