@@ -13,19 +13,19 @@ wiki2018.tr:
             - 9751797
         WLC:
           memory_window:
-            #            # Belady min boundary
-            #            - 9751797
-            #            # Belady max boundary
-            #            - 21453954
-            #            - 33554432
-            #            - 41943040
-            #            - 50331648
+            # Belady min boundary
+            - 9751797
+            # Belady max boundary
+            - 21453954
+            - 33554432
+            - 41943040
+            - 50331648
             - 58720256
-    #            - 67108864
-    #            - 83886080
-    #            - 100663296
-    #            - 117440512
-    #            - 134217728
+            - 67108864
+            - 83886080
+            - 100663296
+            - 117440512
+            - 134217728
     - 137438953472:
         Belady:
           is_metadata_in_cache_size: 0
@@ -39,19 +39,19 @@ wiki2018.tr:
             - 19503594
         WLC:
           memory_window:
-            #            # Belady min boundary
-            #            - 19503594
-            #            # Belady max boundary
-            #            - 46808626
-            #            - 67108864
-            #            - 83886080
+            # Belady min boundary
+            - 19503594
+            # Belady max boundary
+            - 46808626
+            - 67108864
+            - 83886080
             - 100663296
-    #            - 117440512
-    #            - 134217728
-    #            - 167772160
-    #            - 201326592
-    #            - 234881024
-    #            - 268435456
+            - 117440512
+            - 134217728
+            - 167772160
+            - 201326592
+            - 234881024
+            - 268435456
     - 274877906944:
         Belady:
           is_metadata_in_cache_size: 0
@@ -65,20 +65,20 @@ wiki2018.tr:
             - 46808625
         WLC:
           memory_window:
-            #            # Belady min boundary
-            #            - 46808625
-            #            # Belady max boundary
-            #            - 109220127
-            #            - 117440512
-            #            - 134217728
+            # Belady min boundary
+            - 46808625
+            # Belady max boundary
+            - 109220127
+            - 117440512
+            - 134217728
             - 167772160
-    #            - 201326592
-    #            - 234881024
-    #            - 268435456
-    #            - 335544320
-    #            - 402653184
-    #            - 469762048
-    #            - 536870912
+            - 201326592
+            - 234881024
+            - 268435456
+            - 335544320
+            - 402653184
+            - 469762048
+            - 536870912
     - 549755813888:
         Belady:
           is_metadata_in_cache_size: 0
@@ -92,22 +92,22 @@ wiki2018.tr:
             - 124823002
         WLC:
           memory_window:
-            #            # Belady min boundary
-            #            - 124823002
-            #            # Belady max boundary
-            #            - 265248880
-            #            - 167772160
-            #            - 201326592
-            #            - 234881024
-            #            - 268435456
+            # Belady min boundary
+            - 124823002
+            # Belady max boundary
+            - 265248880
+            - 167772160
+            - 201326592
+            - 234881024
+            - 268435456
             - 335544320
-    #            - 402653184
-    #            - 469762048
-    #            - 536870912
-    #            - 671088640
-    #            - 805306368
-    #            - 939524096
-    #            - 1073741824
+            - 402653184
+            - 469762048
+            - 536870912
+            - 671088640
+            - 805306368
+            - 939524096
+            - 1073741824
     - 1099511627776:
         Belady:
           is_metadata_in_cache_size: 0
@@ -121,19 +121,19 @@ wiki2018.tr:
             - 374469007
         WLC:
           memory_window:
-            #            # Belady min boundary
-            #            - 374469007
-            #            # Belady max boundary
-            #            - 780143765
-            #            - 335544320
-            #            - 402653184
-            #            - 469762048
-            #            - 536870912
+            # Belady min boundary
+            - 374469007
+            # Belady max boundary
+            - 780143765
+            - 335544320
+            - 402653184
+            - 469762048
+            - 536870912
             - 671088640
-  #            - 805306368
-  #            - 939524096
-  #            - 1073741824
-  #            - 1610612736
+            - 805306368
+            - 939524096
+            - 1073741824
+            - 1610612736
   n_extra_fields: 1
   segment_window: 1000000
   real_time_segment_window: 600
@@ -151,7 +151,140 @@ wiki2018.tr:
 
 wiki2018_4mb.tr:
   cache_sizes:
+    - 68719476736:
+        Belady:
+          is_metadata_in_cache_size: 0
+        BeladySample:
+          is_metadata_in_cache_size: 0
+          threshold:
+            - 9751797
+        RelaxedBelady:
+          is_metadata_in_cache_size: 0
+          belady_boundary:
+            - 9751797
+        WLC:
+          memory_window:
+            # Belady min boundary
+            - 9751797
+            # Belady max boundary
+            - 21453954
+            - 33554432
+            - 41943040
+            - 50331648
+            - 58720256
+            - 67108864
+            - 83886080
+            - 100663296
+            - 117440512
+            - 134217728
+    - 137438953472:
+        Belady:
+          is_metadata_in_cache_size: 0
+        BeladySample:
+          is_metadata_in_cache_size: 0
+          threshold:
+            - 19503594
+        RelaxedBelady:
+          is_metadata_in_cache_size: 0
+          belady_boundary:
+            - 19503594
+        WLC:
+          memory_window:
+            # Belady min boundary
+            - 19503594
+            # Belady max boundary
+            - 46808626
+            - 67108864
+            - 83886080
+            - 100663296
+            - 117440512
+            - 134217728
+            - 167772160
+            - 201326592
+            - 234881024
+            - 268435456
+    - 274877906944:
+        Belady:
+          is_metadata_in_cache_size: 0
+        BeladySample:
+          is_metadata_in_cache_size: 0
+          threshold:
+            - 46808625
+        RelaxedBelady:
+          is_metadata_in_cache_size: 0
+          belady_boundary:
+            - 46808625
+        WLC:
+          memory_window:
+            # Belady min boundary
+            - 46808625
+            # Belady max boundary
+            - 109220127
+            - 117440512
+            - 134217728
+            - 167772160
+            - 201326592
+            - 234881024
+            - 268435456
+            - 335544320
+            - 402653184
+            - 469762048
+            - 536870912
+    - 549755813888:
+        Belady:
+          is_metadata_in_cache_size: 0
+        BeladySample:
+          is_metadata_in_cache_size: 0
+          threshold:
+            - 124823002
+        RelaxedBelady:
+          is_metadata_in_cache_size: 0
+          belady_boundary:
+            - 124823002
+        WLC:
+          memory_window:
+            # Belady min boundary
+            - 124823002
+            # Belady max boundary
+            - 265248880
+            - 167772160
+            - 201326592
+            - 234881024
+            - 268435456
+            - 335544320
+            - 402653184
+            - 469762048
+            - 536870912
+            - 671088640
+            - 805306368
+            - 939524096
+            - 1073741824
     - 1099511627776:
+        Belady:
+          is_metadata_in_cache_size: 0
+        BeladySample:
+          is_metadata_in_cache_size: 0
+          threshold:
+            - 374469007
+        RelaxedBelady:
+          is_metadata_in_cache_size: 0
+          belady_boundary:
+            - 374469007
+        WLC:
+          memory_window:
+            # Belady min boundary
+            - 374469007
+            # Belady max boundary
+            - 780143765
+            - 335544320
+            - 402653184
+            - 469762048
+            - 536870912
+            - 671088640
+            - 805306368
+            - 939524096
+            - 1073741824
+            - 1610612736
         ParallelLRU:
           bloom_filter: 1
         ParallelWLC:
@@ -165,8 +298,8 @@ wiki2018_4mb.tr:
   segment_window: 1000000
   real_time_segment_window: 600
   is_metadata_in_cache_size:
-    #    - 1
-    - 0
+    - 1
+  #    - 0
   #  bloom_filter: 1
   byte_million_req: 35234263115
   n_req: 2800000000
