@@ -45,6 +45,7 @@ bsoncxx::builder::basic::document _simulation_tinylfu(string trace_file, string 
     for (auto k: params) {
         cmd += " " + k.first + " " + k.second;
     }
+    cerr << "calling external command: " << cmd << endl;
     string r = exec(cmd.c_str());
     vector<string> strs;
     split(strs, r, is_any_of(" "));

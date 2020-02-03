@@ -40,12 +40,12 @@ public class tinylfu {
         long byte_req = 0, byte_miss = 0, obj_req = 0, obj_miss = 0;
         long seq = 0;
         try {
-            reader = new BufferedReader(new FileReader(trace_file+".ant"));
+            reader = new BufferedReader(new FileReader(trace_file));
             String line = reader.readLine();
             while (line != null) {
                 String[] values = line.split(" ");
-                id = Long.parseUnsignedLong(values[2]);
-                size = Integer.valueOf(values[3]);
+                id = Long.parseUnsignedLong(values[1]);
+                size = Integer.valueOf(values[2]);
 
                 if (!size_map.containsKey(id))
                     size_map.put(id, size);
