@@ -285,8 +285,6 @@ wiki2018_4mb.tr:
             - 939524096
             - 1073741824
             - 1610612736
-        ParallelLRU:
-          bloom_filter: 1
         ParallelWLC:
           memory_window:
             - 469762048
@@ -313,8 +311,6 @@ wiki2018_4mb.tr:
 wiki_1400m_4mb.tr:
   cache_sizes:
     - 549755813888:
-        ParallelLRU:
-          bloom_filter: 1
         ParallelWLC:
           memory_window:
             - 469762048
