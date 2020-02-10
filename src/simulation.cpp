@@ -123,7 +123,11 @@ void FrameWork::check_trace_format() {
 
 void FrameWork::adjust_real_time_offset() {
     // Zhenyu: not assume t start from any constant, so need to compute the first window
-    infile >> next_seq >> t;
+    if (is_offline) {
+        infile >> next_seq >> t;
+    } else {
+        infile >> t;
+    }
     time_window_end =
             real_time_segment_window * (t / real_time_segment_window + (t % real_time_segment_window != 0));
     infile.clear();
@@ -159,7 +163,6 @@ void FrameWork::update_stats() {
     byte_miss = obj_miss = byte_req = obj_req = 0;
     //reduce cache size by metadata
     auto metadata_overhead = get_rss();
-    rt_seg_rss.emplace_back(metadata_overhead);
     seg_rss.emplace_back(metadata_overhead);
     webcache->update_stat_periodic();
     if (is_metadata_in_cache_size)
