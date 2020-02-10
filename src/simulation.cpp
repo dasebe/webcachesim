@@ -22,21 +22,16 @@ using bsoncxx::builder::basic::sub_array;
 
 FrameWork::FrameWork(const string &trace_file, const string &cache_type, const uint64_t &cache_size,
                      map<string, string> &params) {
-
-    if (params.find("n_extra_fields") == params.end()) {
-        cerr << "error: field n_extra_fields is required" << endl;
-        abort();
-    }
-
-    _trace_file = trace_file;
+    //set cache_type related
     _cache_type = cache_type;
     _cache_size = cache_size;
     is_offline = offline_algorithms.count(_cache_type);
+
 #ifdef EVICTION_LOGGING
+    //logging eviction requires next_seq information
     is_offline = true;
 #endif
-    if (is_offline)
-        annotate(trace_file, stoul(params["n_extra_fields"]));
+
 
     // create cache
     webcache = move(Cache::create_unique(cache_type));
@@ -73,52 +68,51 @@ FrameWork::FrameWork(const string &trace_file, const string &cache_type, const u
         } else if (it->first == "n_early_stop") {
             n_early_stop = stoll((it->second));
             ++it;
-        } else if (it->first == "n_extra_fields") {
-            n_extra_fields = stoull(it->second);
-            ++it;
         } else {
             ++it;
         }
     }
     webcache->init_with_params(params);
-    auto trace_filename = trace_file;
-    if (is_offline)
-        trace_filename = trace_file + ".ant";
 
-    infile.open(trace_filename);
+    //trace_file related init
+    _trace_file = trace_file;
+    check_n_extra_field();
+    if (is_offline) {
+        annotate(trace_file, n_extra_fields);
+    }
+
+    if (is_offline) {
+        _trace_file = _trace_file + ".ant";
+    }
+    infile.open(trace_file);
     if (!infile) {
-        cerr << "Exception opening/reading file " << trace_filename << endl;
+        cerr << "Exception opening/reading file " << trace_file << endl;
         exit(-1);
     }
-    check_trace_format();
     adjust_real_time_offset();
     extra_features = vector<uint16_t>(n_extra_fields);
 }
 
-void FrameWork::check_trace_format() {
+void FrameWork::check_n_extra_field() {
+    //TODO: take trace_file_name as an argument?
+    std::ifstream in_file(_trace_file);
+    if (!in_file) {
+        throw std::runtime_error("Exception opening/reading file " + _trace_file);
+    }
+
     //get whether file is in a correct format
     std::string line;
-    getline(infile, line);
+    getline(in_file, line);
     istringstream iss(line);
     uint64_t tmp;
     int counter = 0;
     while (iss >> tmp) {
         ++counter;
     }
-    //todo: check the type of each argument
     //format: n_seq t id size [extra]
-    int n_base_field;
-    if (is_offline)
-        n_base_field = 4;
-    else
-        n_base_field = 3;
-    if (counter != n_base_field + n_extra_fields) {
-        cerr << "error: input file column should be " << n_base_field << " + " << n_extra_fields << endl
-             << "first line: " << line << endl;
-        abort();
-    }
-    infile.clear();
-    infile.seekg(0, ios::beg);
+    int n_base_field = 3;
+    n_extra_fields = counter - n_base_field;
+    in_file.close();
 }
 
 void FrameWork::adjust_real_time_offset() {

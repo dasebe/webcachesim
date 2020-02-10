@@ -126,13 +126,13 @@ See config_example for more examples
 
 ##### Running LRU on Wiki trace
 ```bash
-webcachesim_cli_db wc2800m_ts.tr LRU 1099511627776 n_extra_fields 1 segment_window 1000000 real_time_segment_window 600 dburl ${YOUR mongodb uri} dbcollection ${YOUR prefer mongodb collection} 
+webcachesim_cli_db wc2800m_ts.tr LRU 1099511627776 segment_window 1000000 real_time_segment_window 600 dburl ${YOUR mongodb uri} dbcollection ${YOUR prefer mongodb collection} 
 # Results will be sent to database
 ```
 
 ##### Running WLC on Wiki trace
 ```bash
-webcachesim_cli_db wc2800m_ts.tr WLC 1099511627776 n_extra_fields 1 segment_window 1000000 real_time_segment_window 600 memory_window 536870912 dburl ${YOUR mongodb uri} dbcollection ${YOUR prefer mongodb collection} 
+webcachesim_cli_db wc2800m_ts.tr WLC 1099511627776 segment_window 1000000 real_time_segment_window 600 memory_window 536870912 dburl ${YOUR mongodb uri} dbcollection ${YOUR prefer mongodb collection} 
 # Results will be sent to database
 ```
 

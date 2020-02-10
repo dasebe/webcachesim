@@ -134,7 +134,6 @@ wiki2018.tr:
             - 939524096
             - 1073741824
             - 1610612736
-  n_extra_fields: 1
   segment_window: 1000000
   real_time_segment_window: 600
   is_metadata_in_cache_size:
@@ -291,7 +290,6 @@ wiki2018_4mb.tr:
             - 671088640
             - 805306368
             - 939524096
-  n_extra_fields: 1
   segment_window: 1000000
   real_time_segment_window: 600
   is_metadata_in_cache_size:
@@ -387,7 +385,6 @@ traceHK_ts.tr:
   #            - 167772160
   #            - 201326592
   #            - 234881024
-  n_extra_fields: 0
   segment_window: 1000000
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
@@ -496,7 +493,6 @@ traceUS_ts.tr:
   #            - 201326592
   #            - 234881024
   ##            - 268435456
-  n_extra_fields: 0
   segment_window: 1000000
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
@@ -623,7 +619,6 @@ ntg1_base.tr:
   #            - 939524096
   ##            - 1073741824
   ##            - 2147483648
-  n_extra_fields: 2
   segment_window: 1000000
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
@@ -783,7 +778,6 @@ ntg1_500m_base.tr:
             - 100663296
             - 117440512
             - 134217728
-  n_extra_fields: 2
   segment_window: 1000000
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
@@ -890,7 +884,6 @@ ntg2_base.tr:
   #            - 939524096
   ##            - 1073741824
   ##            - 2147483648
-  n_extra_fields: 2
   segment_window: 1000000
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
@@ -997,7 +990,6 @@ ntg3_base.tr:
   #            - 939524096
   ##            - 1073741824
   ##            - 21474836488
-  n_extra_fields: 2
   segment_window: 1000000
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0

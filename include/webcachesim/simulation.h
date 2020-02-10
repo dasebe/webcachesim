@@ -77,7 +77,7 @@ public:
 
     bsoncxx::builder::basic::document simulation_results();
 
-    void check_trace_format();
+    void check_n_extra_field();
 
     void adjust_real_time_offset();
 
