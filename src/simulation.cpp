@@ -5,7 +5,6 @@
 #include "simulation.h"
 #include "annotate.h"
 #include "simulation_tinylfu.h"
-////#include "simulation_truncate.h"
 #include <sstream>
 #include "utils.h"
 ////remove the code related with decouple because not using it for a long time
