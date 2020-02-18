@@ -50,7 +50,6 @@ namespace webcachesim {
 
         virtual bool has(const uint64_t &id) {
 //        cerr<<"has() interface is not implemented for this cache algorithm, "
-//              "do not compile with DECOUPLE_CACHE_SIZE flag"<<endl;
 //        abort();
             return false;
         }

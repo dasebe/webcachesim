@@ -7,14 +7,10 @@
 #include "simulation_tinylfu.h"
 #include <sstream>
 #include "utils.h"
-////remove the code related with decouple because not using it for a long time
-////#include "miss_decouple.h"
-////#include "cache_size_decouple.h"
 #include "rss.h"
 #include <cstdint>
 #include <unordered_map>
 #include <numeric>
-#include <assert.h>
 #include "bsoncxx/builder/basic/document.hpp"
 #include "bsoncxx/json.hpp"
 

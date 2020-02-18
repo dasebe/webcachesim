@@ -9,14 +9,6 @@ set(CMAKE_CXX_STANDARD 17)
 #endif()
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffast-math")
 
-#set this flag to get statistics of miss decouple
-#add_definitions(-DMISS_DECOUPLE)
-remove_definitions(-DMISS_DECOUPLE)
-
-#set this flag to get statistics of cache sizes decouple
-#add_definitions(-DCACHE_SIZE_DECOUPLE)
-remove_definitions(-DCACHE_SIZE_DECOUPLE)
-
 #logging eviction information
 #add_definitions(-DEVICTION_LOGGING)
 remove_definitions(-DEVICTION_LOGGING)
