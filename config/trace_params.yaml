@@ -140,7 +140,6 @@ wiki2018.tr:
   is_metadata_in_cache_size:
     - 1
   #    - 0
-  #  bloom_filter: 1
   byte_million_req: 35234263115
   n_req: 2800000000
   uni_size: 0
@@ -298,7 +297,6 @@ wiki2018_4mb.tr:
   is_metadata_in_cache_size:
     - 1
   #    - 0
-  #  bloom_filter: 1
   byte_million_req: 35234263115
   n_req: 2800000000
   uni_size: 0
@@ -306,28 +304,6 @@ wiki2018_4mb.tr:
   n_early_stop:
     - -1
 #    - 500000000
-
-
-wiki_1400m_4mb.tr:
-  cache_sizes:
-    - 549755813888:
-        ParallelWLC:
-          memory_window:
-            - 469762048
-          sample_rate:
-            - 64
-  n_extra_fields: 1
-  segment_window: 1000000
-  real_time_segment_window: 600
-  is_metadata_in_cache_size: 0
-  bloom_filter:
-    - 0
-  #    - 1
-  byte_million_req: 35234263115
-  n_req: 1400000000
-  uni_size: 0
-  # stop at exactly before req id n, so finish reqs [0, n-1]
-  n_early_stop: -1
 
 
 traceHK_ts.tr:
@@ -415,9 +391,6 @@ traceHK_ts.tr:
   segment_window: 1000000
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
-  bloom_filter:
-    - 0
-#    - 1
   byte_million_req: 378055367727
   n_req: 453490596
   uni_size: 0
@@ -527,9 +500,6 @@ traceUS_ts.tr:
   segment_window: 1000000
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
-  bloom_filter:
-    - 0
-#    - 1
   byte_million_req: 406036951298
   n_req: 410634759
   uni_size: 0
@@ -557,9 +527,6 @@ traceUS_ts.tr:
       - 64
 #      - 128
 #      - 256
-
-
-
 
 ntg1_base.tr:
   cache_sizes:
@@ -660,9 +627,6 @@ ntg1_base.tr:
   segment_window: 1000000
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
-  bloom_filter:
-    - 0
-#    - 1
   byte_million_req: 382836853735
   n_req: 1832408226
   uni_size: 0
@@ -690,7 +654,6 @@ ntg1_base.tr:
       - 64
 #      - 128
 #      - 256
-
 
 ntg1_500m_base.tr:
   cache_sizes:
@@ -824,9 +787,6 @@ ntg1_500m_base.tr:
   segment_window: 1000000
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
-  bloom_filter:
-    - 0
-  #    - 1
   byte_million_req: 382836853735
   n_req: 500000000
   uni_size: 0
@@ -834,92 +794,6 @@ ntg1_500m_base.tr:
   n_early_stop:
     #    - -1
     - 200000000
-  WLC:
-    memory_window:
-      #      - 131072
-      #      - 262144
-      #      - 524288
-      #      - 1048576
-      #      - 2097152
-      - 4194304
-      - 8388608
-      - 16777216
-      - 33554432
-      - 67108864
-      - 134217728
-      - 268435456
-      - 536870912
-      - 1073741824
-    sample_rate:
-      - 64
-#      - 128
-#      - 256
-
-
-ntg1_200m_base.tr:
-  cache_sizes:
-    - 4294967296:
-        WLC:
-          memory_window:
-            - 131072
-    - 8589934592:
-        WLC:
-          memory_window:
-            - 524288
-    - 17179869184:
-        WLC:
-          memory_window:
-            - 2097152
-    - 34359738368:
-        WLC:
-          memory_window:
-            - 4194304
-    - 68719476736:
-        WLC:
-          memory_window:
-            - 8388608
-    - 137438953472:
-        WLC:
-          memory_window:
-            - 16777216
-    - 274877906944:
-        WLC:
-          memory_window:
-            - 33554432
-    - 549755813888:
-        WLC:
-          memory_window:
-            - 33554432
-            - 67108864
-  n_extra_fields: 2
-  segment_window: 1000000
-  real_time_segment_window: 600
-  is_metadata_in_cache_size: 0
-  bloom_filter:
-    - 0
-  #    - 1
-  byte_million_req: 382836853735
-  n_req: 200000000
-  uni_size: 0
-  # stop at exactly before req id n, so finish reqs [0, n-1]
-  n_early_stop:
-    - -1
-  WLC:
-    memory_window:
-      #      - 131072
-      #      - 262144
-      #      - 524288
-      #      - 1048576
-      #      - 2097152
-      - 4194304
-      - 8388608
-      - 16777216
-      - 33554432
-      - 67108864
-      - 134217728
-      - 268435456
-      - 536870912
-      - 1073741824
 
 ntg2_base.tr:
   cache_sizes:
@@ -1020,9 +894,6 @@ ntg2_base.tr:
   segment_window: 1000000
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
-  bloom_filter:
-    - 0
-#    - 1
   byte_million_req: 246201729549
   n_req: 2348079768
   uni_size: 0
@@ -1030,26 +901,6 @@ ntg2_base.tr:
   n_early_stop:
     #    - -1
     - 300000000
-  WLC:
-    memory_window:
-      #      - 131072
-      #      - 262144
-      #      - 524288
-      #      - 1048576
-      #      - 2097152
-      - 4194304
-      - 8388608
-      - 16777216
-      - 33554432
-      - 67108864
-      - 134217728
-      - 268435456
-      - 536870912
-      - 1073741824
-    sample_rate:
-      - 64
-#      - 128
-#      - 256
 
 ntg3_base.tr:
   cache_sizes:
@@ -1150,9 +1001,6 @@ ntg3_base.tr:
   segment_window: 1000000
   real_time_segment_window: 600
   is_metadata_in_cache_size: 0
-  bloom_filter:
-    - 0
-#    - 1
   byte_million_req: 318057140120
   n_req: 1987460177
   uni_size: 0
@@ -1160,134 +1008,3 @@ ntg3_base.tr:
   n_early_stop:
     #    - -1
     - 300000000
-  WLC:
-    memory_window:
-      #      - 131072
-      #      - 262144
-      #      - 524288
-      #      - 1048576
-      #      - 2097152
-      - 4194304
-      - 8388608
-      - 16777216
-      - 33554432
-      - 67108864
-      - 134217728
-      - 268435456
-      - 536870912
-      - 1073741824
-    sample_rate:
-      - 64
-#      - 128
-#      - 256
-
-wiki2019.tr:
-  cache_sizes:
-    - 68719476736:
-        WLC:
-          sample_rate:
-            - 64
-          memory_window:
-            - 33554432
-            - 41943040
-            - 50331648
-            - 58720256
-            - 67108864
-            - 83886080
-            - 100663296
-            - 117440512
-            - 134217728
-    - 137438953472:
-        WLC:
-          memory_window:
-            - 67108864
-            - 83886080
-            - 100663296
-            - 117440512
-            - 134217728
-            - 167772160
-            - 201326592
-            - 234881024
-            - 268435456
-    - 274877906944:
-        WLC:
-          memory_window:
-            - 134217728
-            - 167772160
-            - 201326592
-            - 234881024
-            - 268435456
-            - 335544320
-            - 402653184
-            - 469762048
-            - 536870912
-    - 549755813888:
-        WLC:
-          memory_window:
-            - 167772160
-            - 201326592
-            - 234881024
-            - 268435456
-            - 335544320
-            - 402653184
-            - 469762048
-            - 536870912
-            - 671088640
-            - 805306368
-            - 939524096
-            - 1073741824
-    - 1099511627776:
-        WLC:
-          memory_window:
-            - 335544320
-            - 402653184
-            - 469762048
-            - 536870912
-            - 671088640
-            - 805306368
-            - 939524096
-            - 1073741824
-            - 1610612736
-  n_extra_fields: 1
-  segment_window: 1000000
-  real_time_segment_window: 600
-  is_metadata_in_cache_size: 0
-  #  bloom_filter:
-  #    - 0
-  #    - 1
-  byte_million_req: 40855121764
-  n_req: 2800000000
-  uni_size: 0
-  # stop at exactly before req id n, so finish reqs [0, n-1]
-  n_early_stop:
-    - -1
-
-#    - 500000000
-#  WLC:
-#    memory_window:
-#      #      - 134217728
-#      #- 268435456
-#      #     - 536870912
-#      #      - 1073741824
-#      - 67108864
-#      - 134217728
-#      - 268435456
-#      - 536870912
-#      - 1073741824
-#    #      - 1342177280
-#    #      - 1610612736
-#    #      - 1879048192
-#    #      - 2147483648
-#    sample_rate:
-#      - 64
-##      - 128
-#      - 256
-
-
-test.tr:
-  cache_sizes:
-    - 500
-  # trace specific algorithm parameter, which overwrite the default params
-  LRUK:
-    k: 3
-
