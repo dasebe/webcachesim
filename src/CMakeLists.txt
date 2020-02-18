@@ -13,7 +13,6 @@ set(LIB_SOURCE
         caches/annotate.cpp
         ${WEBCACHESIM_HEADER_DIR}/rss.h
         rss.cpp
-        ${WEBCACHESIM_HEADER_DIR}/bloom_filter.h
         ${WEBCACHESIM_HEADER_DIR}/random_helper.h
         random_helper.cpp
         ${WEBCACHESIM_HEADER_DIR}/bloom_filter.h
@@ -59,12 +58,7 @@ set(LIB_SOURCE
         caches/relaxed_belady.cpp
         ${WEBCACHESIM_HEADER_DIR}/caches/static_parallel_cache.h
         caches/static_parallel_cache.cpp
-        #        caches/lfo.cpp
-        #        caches/lruk_sample.cpp
         #        caches/lfu_sample.cpp
-        #        simulation_lr_belady.cpp
-        #        simulation_belady_static.cpp
-        #        caches/belady_truncate.cpp
         #        ${WEBCACHESIM_HEADER_DIR}/simulation_truncate.h
         #        simulation_truncate.cpp
         )
