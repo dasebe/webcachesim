@@ -307,10 +307,6 @@ bsoncxx::builder::basic::document simulation(string trace_file, string cache_typ
                                              uint64_t cache_size, map<string, string> params) {
     if (cache_type == "Adaptive-TinyLFU")
         return _simulation_tinylfu(trace_file, cache_type, cache_size, params);
-//    else if (cache_type == "LFO")
-//        return LFO::_simulation_lfo(trace_file, cache_type, cache_size, params);
-//    else if (cache_type == "BeladyTruncate")
-//       return _simulation_truncate(trace_file, cache_type, cache_size, params);
     else
         return _simulation(trace_file, cache_type, cache_size, params);
 }
