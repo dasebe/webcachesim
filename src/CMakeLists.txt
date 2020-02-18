@@ -58,12 +58,7 @@ set(LIB_SOURCE
         caches/relaxed_belady.cpp
         ${WEBCACHESIM_HEADER_DIR}/caches/static_parallel_cache.h
         caches/static_parallel_cache.cpp
-        #        caches/lfu_sample.cpp
-        #        ${WEBCACHESIM_HEADER_DIR}/simulation_truncate.h
-        #        simulation_truncate.cpp
         )
-#message(123)
-
 
 add_library(webcachesim SHARED ${LIB_SOURCE})
 target_include_directories(webcachesim PUBLIC ${WEBCACHESIM_HEADER_DIR})
