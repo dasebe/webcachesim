@@ -11,6 +11,20 @@ LRUK:
 # Bad but equivalent implementation of Bloom Filter
 Filter:
   n: 1
+LR:
+  sample_rate:
+    - 64
+  objective:
+    - byte_hit_rate
+  #    - object_hit_rate
+  training_sample_interval: 64
+  forget_window: 10000000
+  batch_size:
+    - 1000000
+  learning_rate:
+    - 0.000001
+  max_n_past_timestamps: 4
+  version: not_future
 LRUKSample:
   sample_rate: 32
 PercentRelaxedBelady:
