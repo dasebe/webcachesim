@@ -5,13 +5,10 @@ set(LIB_SOURCE
         ${WEBCACHESIM_HEADER_DIR}/parallel_cache.h
         ${WEBCACHESIM_HEADER_DIR}/simulation.h
         simulation.cpp
-        ${WEBCACHESIM_HEADER_DIR}/simulation_lfo.h
-        simulation_lfo.cpp
         ${WEBCACHESIM_HEADER_DIR}/simulation_tinylfu.h
         simulation_tinylfu.cpp
         ${WEBCACHESIM_HEADER_DIR}/api.h
         api.cpp
-
         ${WEBCACHESIM_HEADER_DIR}/annotate.h
         caches/annotate.cpp
         ${WEBCACHESIM_HEADER_DIR}/rss.h

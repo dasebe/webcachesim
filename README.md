@@ -12,7 +12,7 @@ The webcachesim simulator was built for the [AdaptSize project](https://github.c
 * Add example for using pywebcachesim to run batch job of simulations
 * Logging eviction decisions and Belady Boundary. Didn't add this because this would need a large database
 * Rename WLC to LRB for whole project
-* Sync a few algorithms (LFO, BeladyTruncate)
+* Sync a few algorithms (BeladyTruncate)
 
 ## Set up simulation environment
 * Recommend OS: Ubuntu 18

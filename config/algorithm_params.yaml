@@ -11,13 +11,6 @@ LRUK:
 # Bad but equivalent implementation of Bloom Filter
 Filter:
   n: 1
-LFO:
-  cutoff: 0.5
-  window: 10000000
-  sample_size: 1000000
-  sample_type: 2
-LFO2:
-  window: 10000000
 LR:
   sample_rate:
     - 64

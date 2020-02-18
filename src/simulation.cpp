@@ -8,7 +8,6 @@
 ////#include "simulation_truncate.h"
 #include <sstream>
 #include "utils.h"
-////#include "simulation_lfo.h"
 ////remove the code related with decouple because not using it for a long time
 ////#include "miss_decouple.h"
 ////#include "cache_size_decouple.h"
