@@ -43,8 +43,6 @@ set(LIB_SOURCE
         caches/hyperbolic.cpp
         ${WEBCACHESIM_HEADER_DIR}/caches/lecar.h
         caches/lecar.cpp
-        ${WEBCACHESIM_HEADER_DIR}/caches/lr.h
-        caches/lr.cpp
         ${WEBCACHESIM_HEADER_DIR}/caches/parallel_lru.h
         caches/parallel_lru.cpp
         ${WEBCACHESIM_HEADER_DIR}/caches/parallel_fifo.h
@@ -59,16 +57,7 @@ set(LIB_SOURCE
         caches/relaxed_belady.cpp
         ${WEBCACHESIM_HEADER_DIR}/caches/static_parallel_cache.h
         caches/static_parallel_cache.cpp
-        #        caches/lfo.cpp
-        #        caches/lruk_sample.cpp
-        #        caches/lfu_sample.cpp
-        #        simulation_lr_belady.cpp
-        #        simulation_belady_static.cpp
-        #        caches/belady_truncate.cpp
-        #        ${WEBCACHESIM_HEADER_DIR}/simulation_truncate.h
-        #        simulation_truncate.cpp
         )
-#message(123)
 
 
 add_library(webcachesim SHARED ${LIB_SOURCE})
