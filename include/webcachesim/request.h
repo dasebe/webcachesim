@@ -95,25 +95,6 @@ public:
 };
 
 
-class ClassifiedRequest: public SimpleRequest
-{
-public:
-    double rehit_probability;
-
-    // Create request
-    ClassifiedRequest(KeyT id, uint64_t size, double _rehit_probability)
-            : SimpleRequest(id, size),
-              rehit_probability(_rehit_probability)
-    {
-    }
-
-    inline void reinit(KeyT id, uint64_t size, double _rehit_probability) {
-        SimpleRequest::reinit(id, size);
-        rehit_probability = _rehit_probability;
-    }
-};
-
-
 #endif /* REQUEST_H */
 
 
