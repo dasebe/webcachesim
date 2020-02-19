@@ -73,7 +73,7 @@ public:
     FrameWork(const std::string &trace_file, const std::string &cache_type, const uint64_t &cache_size,
               std::map<std::string, std::string> &params);
 
-    void simulate();
+    bsoncxx::builder::basic::document simulate();
 
     bsoncxx::builder::basic::document simulation_results();
 

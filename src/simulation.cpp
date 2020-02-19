@@ -168,7 +168,7 @@ void FrameWork::update_stats() {
 }
 
 
-void FrameWork::simulate() {
+bsoncxx::builder::basic::document FrameWork::simulate() {
     cerr << "simulating" << endl;
     unordered_map<uint64_t, uint32_t> future_timestamps;
     vector<uint8_t> eviction_qualities;
@@ -235,6 +235,8 @@ void FrameWork::simulate() {
     update_real_time_stats();
     update_stats();
     infile.close();
+
+    return simulation_results();
 }
 
 
@@ -294,8 +296,8 @@ bsoncxx::builder::basic::document FrameWork::simulation_results() {
 bsoncxx::builder::basic::document _simulation(string trace_file, string cache_type, uint64_t cache_size,
                                               map<string, string> params) {
     FrameWork frame_work(trace_file, cache_type, cache_size, params);
-    frame_work.simulate();
-    return frame_work.simulation_results();
+    auto res = frame_work.simulate();
+    return res;
 }
 
 bsoncxx::builder::basic::document simulation(string trace_file, string cache_type,
