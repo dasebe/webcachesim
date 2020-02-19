@@ -21,7 +21,6 @@ set(LIB_SOURCE
         caches/lru_variants.cpp
         ${WEBCACHESIM_HEADER_DIR}/caches/belady.h
         caches/belady.cpp
-        ${WEBCACHESIM_HEADER_DIR}/caches/lru2.h
         ${WEBCACHESIM_HEADER_DIR}/caches/gd_variants.h
         caches/gd_variants.cpp
         ${WEBCACHESIM_HEADER_DIR}/caches/random_variants.h
