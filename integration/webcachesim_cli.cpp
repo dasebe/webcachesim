@@ -90,9 +90,8 @@ int main(int argc, char *argv[]) {
         auto db = client[mongocxx::uri(params["dburl"]).database()];
         mongocxx::options::replace option;
         db[params["dbcollection"]].replace_one(key_builder.extract(), value_builder.extract(), option.upsert(true));
-        return EXIT_SUCCESS;
     } catch (const std::exception &xcp) {
-        cerr << "error: db connection failed: " << xcp.what() << std::endl;
-        return EXIT_FAILURE;
+        cerr << "warning: db connection failed: " << xcp.what() << std::endl;
     }
+    return EXIT_SUCCESS;
 }
