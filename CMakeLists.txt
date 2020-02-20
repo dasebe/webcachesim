@@ -19,5 +19,4 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 SET(WEBCACHESIM_HEADER_DIR ${PROJECT_SOURCE_DIR}/include/webcachesim)
 
 add_subdirectory(src)
-#add_subdirectory(test)
 add_subdirectory(integration)
