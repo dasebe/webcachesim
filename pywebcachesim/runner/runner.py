@@ -16,7 +16,7 @@ def to_task_str(task: dict):
     task_id = str(int(time.time() * 1000000))
     # use timestamp as task id
     params['task_id'] = task_id
-    params = [f'{k} {v}'for k, v in params.items()]
+    params = [f'--{k}={v}'for k, v in params.items()]
     params = ' '.join(params)
     res = f'webcachesim_cli {task["trace_file"]} {task["cache_type"]} {task["cache_size"]} {params}'
     return task_id, res

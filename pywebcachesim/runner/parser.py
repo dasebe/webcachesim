@@ -109,6 +109,7 @@ def job_to_tasks(args):
                             'cache_types',
                             'trace_files',
                             'algorithm_param_file',
+                            'authentication_file',
                             'trace_param_file',
                             'config_file',
                             'debug',

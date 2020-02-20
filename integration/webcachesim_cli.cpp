@@ -3,6 +3,7 @@
 //
 
 #include <string>
+#include <regex>
 #include "simulation.h"
 #include <map>
 #include <unordered_set>
@@ -29,17 +30,25 @@ int main(int argc, char *argv[]) {
     // output help if insufficient params
     if (argc < 4) {
         cerr
-                << "webcachesim_cli_db traceFile cacheType cacheSize [param_1 value_1] [param_2 value_2] ... [param_n value_n]"
+                << "webcachesim_cli traceFile cacheType cacheSize [--param=value]"
                 << endl;
         return 1;
     }
 
     map<string, string> params;
 
-    for (int i = 4; i < argc; i += 2) {
-        cerr << argv[i] << ": " << argv[i + 1] << endl;
-        params[argv[i]] = argv[i + 1];
+    // parse cache parameters
+    regex opexp ("--(.*)=(.*)");
+    cmatch opmatch;
+    for(int i=4; i<argc; i++) {
+        regex_match (argv[i],opmatch,opexp);
+        if(opmatch.size()!=3) {
+            cerr << "each cacheParam needs to be in form --name=value" << endl;
+            return 1;
+        }
+        params[opmatch[1]] = opmatch[2];
     }
+
 
     auto webcachesim_trace_dir = getenv("WEBCACHESIM_TRACE_DIR");
     if (!webcachesim_trace_dir) {
