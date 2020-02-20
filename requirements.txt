@@ -1,7 +1,0 @@
-boost>=1.68.0
-libssl
-python3.6
-python3.6-dev
-mongo-c-driver
-mongo-cxx-driver
-libprocps
