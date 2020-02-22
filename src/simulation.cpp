@@ -4,6 +4,7 @@
 
 #include "simulation.h"
 #include "annotate.h"
+#include "trace_sanity_check.h"
 #include "simulation_tinylfu.h"
 #include <sstream>
 #include "utils.h"
@@ -299,6 +300,8 @@ bsoncxx::builder::basic::document _simulation(string trace_file, string cache_ty
 
 bsoncxx::builder::basic::document simulation(string trace_file, string cache_type,
                                              uint64_t cache_size, map<string, string> params) {
+    //TODO: always do sanity check on trace is costly. Can cache the sanity check results
+    trace_sanity_check(trace_file);
     if (cache_type == "Adaptive-TinyLFU")
         return _simulation_tinylfu(trace_file, cache_type, cache_size, params);
     else

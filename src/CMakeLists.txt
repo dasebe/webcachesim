@@ -9,6 +9,8 @@ set(LIB_SOURCE
         simulation_tinylfu.cpp
         ${WEBCACHESIM_HEADER_DIR}/api.h
         api.cpp
+        ${WEBCACHESIM_HEADER_DIR}/trace_sanity_check.h
+        trace_sanity_check.cpp
         ${WEBCACHESIM_HEADER_DIR}/annotate.h
         caches/annotate.cpp
         ${WEBCACHESIM_HEADER_DIR}/rss.h
