@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
     map<string, string> params;
 
     // parse cache parameters
-    regex opexp ("--(.*)=(.*)");
+    regex opexp ("--([^=]*)=(.*)");
     cmatch opmatch;
     for(int i=4; i<argc; i++) {
         regex_match (argv[i],opmatch,opexp);

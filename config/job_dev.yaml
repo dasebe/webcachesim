@@ -1,0 +1,44 @@
+debug: false
+dbcollection: dev
+nodes:
+  - 20/fat
+
+trace_files:
+  - wiki2018.tr
+#  - wiki2019.tr
+
+cache_types:
+#  # oracle algorithms
+#  - Inf
+#  - Belady
+#  - BeladySample
+#  - BinaryRelaxedBelady
+#  - PercentRelaxedBelady
+#  - RelaxedBelady
+
+#  # byte miss ratio
+  - LRU
+#  - ParallelLRU
+#  - LRB
+#  - ParallelLRB
+#  - LRUK
+#  - LFU
+#  - LFUDA
+#  - LeCaR
+#  - S4LRU
+#  - UCB
+#  - Hyperbolic
+#  - Adaptive-TinyLFU
+#  - LR
+
+#  # object hit rato
+#  - GDSF
+#  - AdaptSize
+#  - GDWheel
+#  - LHD
+#  - FIFO
+#  - ParallelFIFO
+
+#  # only for debugging
+#  - Random
+
