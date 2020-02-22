@@ -2,9 +2,9 @@
 // Created by zhenyus on 1/16/19.
 //
 
-#include "parallel_wlc.h"
+#include "parallel_lrb.h"
 
-void ParallelWLCCache::train() {
+void ParallelLRBCache::train() {
 //        auto timeBegin = std::chrono::system_clock::now();
     // create training dataset
     DatasetHandle trainData;
@@ -19,8 +19,8 @@ void ParallelWLCCache::train() {
             C_API_DTYPE_FLOAT64,
             background_training_data->indptr.size(),
             background_training_data->data.size(),
-            ParallelWLC::n_feature,  //remove future t
-            WLC_train_params,
+            ParallelLRB::n_feature,  //remove future t
+            LRB_train_params,
             nullptr,
             &trainData);
 
@@ -31,10 +31,10 @@ void ParallelWLCCache::train() {
                          C_API_DTYPE_FLOAT32);
 
     // init booster
-    LGBM_BoosterCreate(trainData, WLC_train_params, &background_booster);
+    LGBM_BoosterCreate(trainData, LRB_train_params, &background_booster);
 
     // train
-    for (int i = 0; i < stoi(WLC_train_params["num_iterations"]); i++) {
+    for (int i = 0; i < stoi(LRB_train_params["num_iterations"]); i++) {
         int isFinished;
         LGBM_BoosterUpdateOneIter(background_booster, &isFinished);
         if (isFinished) {
@@ -60,10 +60,10 @@ void ParallelWLCCache::train() {
 //                                  C_API_DTYPE_FLOAT64,
 //                                  background_training_data->indptr.size(),
 //                                  background_training_data->data.size(),
-//                                  WLC::n_feature,  //remove future t
+//                                  LRB::n_feature,  //remove future t
 //                                  C_API_PREDICT_NORMAL,
 //                                  0,
-//                                  WLC_train_params,
+//                                  LRB_train_params,
 //                                  &len,
 //                                  result.data());
 //        auto time2 = std::chrono::system_clock::now();
@@ -73,7 +73,7 @@ void ParallelWLCCache::train() {
 //            auto diff = result[i] - background_training_data->labels[i];
 //            se += diff * diff;
 //        }
-//        training_loss = training_loss * 0.99 + se/WLC::batch_size*0.01;
+//        training_loss = training_loss * 0.99 + se/LRB::batch_size*0.01;
 
     if (background_booster)
         LGBM_BoosterFree(background_booster);
@@ -82,7 +82,7 @@ void ParallelWLCCache::train() {
 //        training_time = 0.8*training_time + 0.2*std::chrono::duration_cast<std::chrono::microseconds>(time1 - timeBegin).count();
 }
 
-void ParallelWLCCache::sample() {
+void ParallelLRBCache::sample() {
     // warmup not finish
     if (in_cache_metas.empty() || out_cache_metas.empty())
         return;
@@ -102,20 +102,20 @@ void ParallelWLCCache::sample() {
     }
 }
 
-void ParallelWLCCache::async_lookup(const uint64_t &key) {
+void ParallelLRBCache::async_lookup(const uint64_t &key) {
     //first update the metadata: insert/update, which can trigger pending data.mature
     auto it = key_map.find(key);
     if (it != key_map.end()) {
         auto list_idx = it->second.list_idx;
         auto list_pos = it->second.list_pos;
-        ParallelWLCMeta &meta = list_idx ? out_cache_metas[list_pos] : in_cache_metas[list_pos];
+        ParallelLRBMeta &meta = list_idx ? out_cache_metas[list_pos] : in_cache_metas[list_pos];
         //update past timestamps
         assert(meta._key == key);
         uint32_t last_timestamp = meta._past_timestamp;
-        uint32_t forget_timestamp = last_timestamp + ParallelWLC::memory_window;
+        uint32_t forget_timestamp = last_timestamp + ParallelLRB::memory_window;
         //if the key in out_metadata, it must also in forget table
         assert((!list_idx) ||
-               (negative_candidate_queue.find(forget_timestamp % ParallelWLC::memory_window) !=
+               (negative_candidate_queue.find(forget_timestamp % ParallelLRB::memory_window) !=
                 negative_candidate_queue.end()));
         //re-request
         if (!meta._sample_times.empty()) {
@@ -133,11 +133,11 @@ void ParallelWLCCache::async_lookup(const uint64_t &key) {
         //make this update after update training, otherwise the last timestamp will change
         meta.update(t_counter);
         if (list_idx) {
-            negative_candidate_queue.erase(forget_timestamp % ParallelWLC::memory_window);
+            negative_candidate_queue.erase(forget_timestamp % ParallelLRB::memory_window);
             negative_candidate_queue.insert(
-                    {(t_counter + ParallelWLC::memory_window) % ParallelWLC::memory_window, key});
+                    {(t_counter + ParallelLRB::memory_window) % ParallelLRB::memory_window, key});
             assert(negative_candidate_queue.find(
-                    (t_counter + ParallelWLC::memory_window) % ParallelWLC::memory_window) !=
+                    (t_counter + ParallelLRB::memory_window) % ParallelLRB::memory_window) !=
                    negative_candidate_queue.end());
         } else {
             auto *p = dynamic_cast<ParallelInCacheMeta *>(&meta);
@@ -153,13 +153,13 @@ void ParallelWLCCache::async_lookup(const uint64_t &key) {
 }
 
 
-void ParallelWLCCache::forget() {
+void ParallelLRBCache::forget() {
     /*
      * forget happens exactly after the beginning of each time, without doing any other operations. For example, an
      * object is request at time 0 with memory window = 5, and will be forgotten exactly at the start of time 5.
      * */
     //remove item from forget table, which is not going to be affect from update
-    auto it = negative_candidate_queue.find(t_counter % ParallelWLC::memory_window);
+    auto it = negative_candidate_queue.find(t_counter % ParallelLRB::memory_window);
     if (it != negative_candidate_queue.end()) {
         auto forget_key = it->second;
         auto pos = key_map.find(forget_key)->second.list_pos;
@@ -172,7 +172,7 @@ void ParallelWLCCache::forget() {
         //timeout mature
         if (!meta._sample_times.empty()) {
             //mature
-            uint32_t future_distance = ParallelWLC::memory_window * 2;
+            uint32_t future_distance = ParallelLRB::memory_window * 2;
             training_data_mutex.lock();
             for (auto &sample_time: meta._sample_times) {
                 //don't use label within the first forget window because the data is not static
@@ -199,12 +199,12 @@ void ParallelWLCCache::forget() {
         size_map_mutex[shard_id].lock();
         size_map[shard_id].erase(forget_key);
         size_map_mutex[shard_id].unlock();
-        negative_candidate_queue.erase(t_counter % ParallelWLC::memory_window);
+        negative_candidate_queue.erase(t_counter % ParallelLRB::memory_window);
 
     }
 }
 
-void ParallelWLCCache::async_admit(const uint64_t &key, const int64_t &size, const uint16_t *extra_features) {
+void ParallelLRBCache::async_admit(const uint64_t &key, const int64_t &size, const uint16_t *extra_features) {
     auto it = key_map.find(key);
     if (it == key_map.end()) {
         //fresh insert
@@ -227,8 +227,8 @@ void ParallelWLCCache::async_admit(const uint64_t &key, const int64_t &size, con
         //first move meta data, then modify hash table
         uint32_t tail0_pos = in_cache_metas.size();
         auto &meta = out_cache_metas[it->second.list_pos];
-        auto forget_timestamp = meta._past_timestamp + ParallelWLC::memory_window;
-        negative_candidate_queue.erase(forget_timestamp % ParallelWLC::memory_window);
+        auto forget_timestamp = meta._past_timestamp + ParallelLRB::memory_window;
+        negative_candidate_queue.erase(forget_timestamp % ParallelLRB::memory_window);
         auto it_lru = in_cache_lru_queue.request(key);
         in_cache_metas.emplace_back(out_cache_metas[it->second.list_pos], it_lru);
         uint32_t tail1_pos = out_cache_metas.size() - 1;
@@ -260,20 +260,20 @@ void ParallelWLCCache::async_admit(const uint64_t &key, const int64_t &size, con
 }
 
 
-pair<uint64_t, uint32_t> ParallelWLCCache::rank() {
+pair<uint64_t, uint32_t> ParallelLRBCache::rank() {
     //if not trained yet, or in_cache_lru past memory window, use LRU
     uint64_t &candidate_key = in_cache_lru_queue.dq.back();
     auto it = key_map.find(candidate_key);
     auto pos = it->second.list_pos;
     auto &meta = in_cache_metas[pos];
-    if ((!if_trained) || (ParallelWLC::memory_window <= t_counter - meta._past_timestamp))
+    if ((!if_trained) || (ParallelLRB::memory_window <= t_counter - meta._past_timestamp))
         return {meta._key, pos};
 
 
     int32_t indptr[sample_rate + 1];
     indptr[0] = 0;
-    int32_t indices[sample_rate * ParallelWLC::n_feature];
-    double data[sample_rate * ParallelWLC::n_feature];
+    int32_t indices[sample_rate * ParallelLRB::n_feature];
+    double data[sample_rate * ParallelLRB::n_feature];
     int32_t past_timestamps[sample_rate];
 
     uint64_t keys[sample_rate];
@@ -296,14 +296,14 @@ pair<uint64_t, uint32_t> ParallelWLCCache::rank() {
         uint32_t this_past_distance = 0;
         uint8_t n_within = 0;
         if (meta._extra) {
-            for (j = 0; j < meta._extra->_past_distance_idx && j < ParallelWLC::max_n_past_distances; ++j) {
+            for (j = 0; j < meta._extra->_past_distance_idx && j < ParallelLRB::max_n_past_distances; ++j) {
                 uint8_t past_distance_idx =
-                        (meta._extra->_past_distance_idx - 1 - j) % ParallelWLC::max_n_past_distances;
+                        (meta._extra->_past_distance_idx - 1 - j) % ParallelLRB::max_n_past_distances;
                 uint32_t &past_distance = meta._extra->_past_distances[past_distance_idx];
                 this_past_distance += past_distance;
                 indices[idx_feature] = j + 1;
                 data[idx_feature++] = past_distance;
-                if (this_past_distance < ParallelWLC::memory_window) {
+                if (this_past_distance < ParallelLRB::memory_window) {
                     ++n_within;
                 }
 //                } else
@@ -311,26 +311,26 @@ pair<uint64_t, uint32_t> ParallelWLCCache::rank() {
             }
         }
 
-        indices[idx_feature] = ParallelWLC::max_n_past_timestamps;
+        indices[idx_feature] = ParallelLRB::max_n_past_timestamps;
         data[idx_feature++] = meta._size;
 //        sizes[idx_row] = meta._size;
 
-        for (uint k = 0; k < ParallelWLC::n_extra_fields; ++k) {
-            indices[idx_feature] = ParallelWLC::max_n_past_timestamps + k + 1;
+        for (uint k = 0; k < ParallelLRB::n_extra_fields; ++k) {
+            indices[idx_feature] = ParallelLRB::max_n_past_timestamps + k + 1;
             data[idx_feature++] = meta._extra_features[k];
         }
 
-        indices[idx_feature] = ParallelWLC::max_n_past_timestamps + ParallelWLC::n_extra_fields + 1;
+        indices[idx_feature] = ParallelLRB::max_n_past_timestamps + ParallelLRB::n_extra_fields + 1;
         data[idx_feature++] = n_within;
 
-        for (uint8_t k = 0; k < ParallelWLC::n_edc_feature; ++k) {
-            indices[idx_feature] = ParallelWLC::max_n_past_timestamps + ParallelWLC::n_extra_fields + 2 + k;
-            uint32_t _distance_idx = min(uint32_t(t_counter - meta._past_timestamp) / ParallelWLC::edc_windows[k],
-                                         ParallelWLC::max_hash_edc_idx);
+        for (uint8_t k = 0; k < ParallelLRB::n_edc_feature; ++k) {
+            indices[idx_feature] = ParallelLRB::max_n_past_timestamps + ParallelLRB::n_extra_fields + 2 + k;
+            uint32_t _distance_idx = min(uint32_t(t_counter - meta._past_timestamp) / ParallelLRB::edc_windows[k],
+                                         ParallelLRB::max_hash_edc_idx);
             if (meta._extra)
-                data[idx_feature++] = meta._extra->_edc[k] * ParallelWLC::hash_edc[_distance_idx];
+                data[idx_feature++] = meta._extra->_edc[k] * ParallelLRB::hash_edc[_distance_idx];
             else
-                data[idx_feature++] = ParallelWLC::hash_edc[_distance_idx];
+                data[idx_feature++] = ParallelLRB::hash_edc[_distance_idx];
         }
         //remove future t
         indptr[++idx_row] = idx_feature;
@@ -347,10 +347,10 @@ pair<uint64_t, uint32_t> ParallelWLCCache::rank() {
                               C_API_DTYPE_FLOAT64,
                               idx_row + 1,
                               idx_feature,
-                              ParallelWLC::n_feature,  //remove future t
+                              ParallelLRB::n_feature,  //remove future t
                               C_API_PREDICT_NORMAL,
                               0,
-                              WLC_inference_params,
+                              LRB_inference_params,
                               &len,
                               result.data());
     booster_mutex.unlock();
@@ -379,17 +379,17 @@ pair<uint64_t, uint32_t> ParallelWLCCache::rank() {
     return {worst_key, worst_pos};
 }
 
-void ParallelWLCCache::evict() {
+void ParallelLRBCache::evict() {
     auto epair = rank();
     uint64_t &key = epair.first;
     uint32_t &old_pos = epair.second;
 
     auto &meta = in_cache_metas[old_pos];
-    if (ParallelWLC::memory_window <= t_counter - meta._past_timestamp) {
+    if (ParallelLRB::memory_window <= t_counter - meta._past_timestamp) {
         //must be the tail of lru
         if (!meta._sample_times.empty()) {
             //mature
-            uint32_t future_distance = t_counter - meta._past_timestamp + ParallelWLC::memory_window;
+            uint32_t future_distance = t_counter - meta._past_timestamp + ParallelLRB::memory_window;
             training_data_mutex.lock();
             for (auto &sample_time: meta._sample_times) {
                 //don't use label within the first forget window because the data is not static
@@ -428,7 +428,7 @@ void ParallelWLCCache::evict() {
         meta.p_last_request = in_cache_lru_queue.dq.end();
         _currentSize -= meta._size;
         negative_candidate_queue.insert(
-                {(meta._past_timestamp + ParallelWLC::memory_window) % ParallelWLC::memory_window, meta._key});
+                {(meta._past_timestamp + ParallelLRB::memory_window) % ParallelLRB::memory_window, meta._key});
 
         uint32_t new_pos = out_cache_metas.size();
         out_cache_metas.emplace_back(in_cache_metas[old_pos]);

@@ -2,8 +2,8 @@
 // Created by zhenyus on 1/16/19.
 //
 
-#ifndef WEBCACHESIM_PARALLEL_WLC_H
-#define WEBCACHESIM_PARALLEL_WLC_H
+#ifndef WEBCACHESIM_PARALLEL_LRB_H
+#define WEBCACHESIM_PARALLEL_LRB_H
 
 
 #include "parallel_cache.h"
@@ -25,11 +25,11 @@
 using namespace webcachesim;
 using namespace std;
 using spp::sparse_hash_map;
-typedef uint64_t WLCKey;
+typedef uint64_t LRBKey;
 using bsoncxx::builder::basic::kvp;
 using bsoncxx::builder::basic::sub_array;
 
-namespace ParallelWLC {
+namespace ParallelLRB {
     uint8_t max_n_past_timestamps = 32;
     uint8_t max_n_past_distances = 31;
     uint8_t base_edc_window = 10;
@@ -44,7 +44,7 @@ namespace ParallelWLC {
     uint32_t n_feature;
 }
 
-struct ParalllelWLCMetaExtra {
+struct ParalllelLRBMetaExtra {
     //164 byte at most
     //not 1 hit wonder
     float _edc[10];
@@ -52,54 +52,54 @@ struct ParalllelWLCMetaExtra {
     //the next index to put the distance
     uint8_t _past_distance_idx = 1;
 
-    ParalllelWLCMetaExtra(const uint32_t &distance) {
+    ParalllelLRBMetaExtra(const uint32_t &distance) {
         _past_distances = vector<uint32_t>(1, distance);
-        for (uint8_t i = 0; i < ParallelWLC::n_edc_feature; ++i) {
-            uint32_t _distance_idx = min(uint32_t(distance / ParallelWLC::edc_windows[i]),
-                                         ParallelWLC::max_hash_edc_idx);
-            _edc[i] = ParallelWLC::hash_edc[_distance_idx] + 1;
+        for (uint8_t i = 0; i < ParallelLRB::n_edc_feature; ++i) {
+            uint32_t _distance_idx = min(uint32_t(distance / ParallelLRB::edc_windows[i]),
+                                         ParallelLRB::max_hash_edc_idx);
+            _edc[i] = ParallelLRB::hash_edc[_distance_idx] + 1;
         }
     }
 
     void update(const uint32_t &distance) {
-        uint8_t distance_idx = _past_distance_idx % ParallelWLC::max_n_past_distances;
-        if (_past_distances.size() < ParallelWLC::max_n_past_distances)
+        uint8_t distance_idx = _past_distance_idx % ParallelLRB::max_n_past_distances;
+        if (_past_distances.size() < ParallelLRB::max_n_past_distances)
             _past_distances.emplace_back(distance);
         else
             _past_distances[distance_idx] = distance;
-        assert(_past_distances.size() <= ParallelWLC::max_n_past_distances);
+        assert(_past_distances.size() <= ParallelLRB::max_n_past_distances);
         _past_distance_idx = _past_distance_idx + (uint8_t) 1;
-        if (_past_distance_idx >= ParallelWLC::max_n_past_distances * 2)
-            _past_distance_idx -= ParallelWLC::max_n_past_distances;
-        for (uint8_t i = 0; i < ParallelWLC::n_edc_feature; ++i) {
-            uint32_t _distance_idx = min(uint32_t(distance / ParallelWLC::edc_windows[i]),
-                                         ParallelWLC::max_hash_edc_idx);
-            _edc[i] = _edc[i] * ParallelWLC::hash_edc[_distance_idx] + 1;
+        if (_past_distance_idx >= ParallelLRB::max_n_past_distances * 2)
+            _past_distance_idx -= ParallelLRB::max_n_past_distances;
+        for (uint8_t i = 0; i < ParallelLRB::n_edc_feature; ++i) {
+            uint32_t _distance_idx = min(uint32_t(distance / ParallelLRB::edc_windows[i]),
+                                         ParallelLRB::max_hash_edc_idx);
+            _edc[i] = _edc[i] * ParallelLRB::hash_edc[_distance_idx] + 1;
         }
     }
 };
 
-class ParallelWLCMeta {
+class ParallelLRBMeta {
 public:
     //25 byte
     uint64_t _key;
     uint32_t _size;
     uint32_t _past_timestamp;
-    uint16_t _extra_features[ParallelWLC::max_n_extra_feature];
-    ParalllelWLCMetaExtra *_extra = nullptr;
+    uint16_t _extra_features[ParallelLRB::max_n_extra_feature];
+    ParalllelLRBMetaExtra *_extra = nullptr;
     vector<uint32_t> _sample_times;
 
 
-    ParallelWLCMeta(const uint64_t &key, const uint64_t &size, const uint64_t &past_timestamp,
+    ParallelLRBMeta(const uint64_t &key, const uint64_t &size, const uint64_t &past_timestamp,
                     const uint16_t *&extra_features) {
         _key = key;
         _size = size;
         _past_timestamp = past_timestamp;
-        for (int i = 0; i < ParallelWLC::n_extra_fields; ++i)
+        for (int i = 0; i < ParallelLRB::n_extra_fields; ++i)
             _extra_features[i] = extra_features[i];
     }
 
-    virtual ~ParallelWLCMeta() = default;
+    virtual ~ParallelLRBMeta() = default;
 
     void emplace_sample(uint32_t &sample_t) {
         _sample_times.emplace_back(sample_t);
@@ -114,7 +114,7 @@ public:
         uint32_t _distance = past_timestamp - _past_timestamp;
         assert(_distance);
         if (!_extra) {
-            _extra = new ParalllelWLCMetaExtra(_distance);
+            _extra = new ParalllelLRBMetaExtra(_distance);
         } else
             _extra->update(_distance);
         //timestamp
@@ -122,9 +122,9 @@ public:
     }
 
     int feature_overhead() {
-        int ret = sizeof(ParallelWLCMeta);
+        int ret = sizeof(ParallelLRBMeta);
         if (_extra)
-            ret += sizeof(ParalllelWLCMetaExtra) - sizeof(_sample_times) +
+            ret += sizeof(ParalllelLRBMetaExtra) - sizeof(_sample_times) +
                    _extra->_past_distances.capacity() * sizeof(uint32_t);
         return ret;
     }
@@ -135,21 +135,21 @@ public:
 };
 
 
-class ParallelInCacheMeta : public ParallelWLCMeta {
+class ParallelInCacheMeta : public ParallelLRBMeta {
 public:
     //pointer to lru0
-    list<WLCKey>::const_iterator p_last_request;
+    list<LRBKey>::const_iterator p_last_request;
     //any change to functions?
 
     ParallelInCacheMeta(const uint64_t &key,
                         const uint64_t &size,
                         const uint64_t &past_timestamp,
-                        const uint16_t *&extra_features, const list<WLCKey>::const_iterator &it) :
-            ParallelWLCMeta(key, size, past_timestamp, extra_features) {
+                        const uint16_t *&extra_features, const list<LRBKey>::const_iterator &it) :
+            ParallelLRBMeta(key, size, past_timestamp, extra_features) {
         p_last_request = it;
     };
 
-    ParallelInCacheMeta(const ParallelWLCMeta &meta, const list<WLCKey>::const_iterator &it) : ParallelWLCMeta(meta) {
+    ParallelInCacheMeta(const ParallelLRBMeta &meta, const list<LRBKey>::const_iterator &it) : ParallelLRBMeta(meta) {
         p_last_request = it;
     };
 
@@ -157,16 +157,16 @@ public:
 
 class ParallelInCacheLRUQueue {
 public:
-    list<WLCKey> dq;
+    list<LRBKey> dq;
 
     //size?
     //the hashtable (location information is maintained outside, and assume it is always correct)
-    list<WLCKey>::const_iterator request(WLCKey key) {
+    list<LRBKey>::const_iterator request(LRBKey key) {
         dq.emplace_front(key);
         return dq.cbegin();
     }
 
-    list<WLCKey>::const_iterator re_request(list<WLCKey>::const_iterator it) {
+    list<LRBKey>::const_iterator re_request(list<LRBKey>::const_iterator it) {
         if (it != dq.cbegin()) {
             dq.emplace_front(*it);
             dq.erase(it);
@@ -175,22 +175,22 @@ public:
     }
 };
 
-class ParallelWLCTrainingData {
+class ParallelLRBTrainingData {
 public:
     vector<float> labels;
     vector<int32_t> indptr;
     vector<int32_t> indices;
     vector<double> data;
 
-    ParallelWLCTrainingData() {
-        labels.reserve(ParallelWLC::batch_size);
-        indptr.reserve(ParallelWLC::batch_size + 1);
+    ParallelLRBTrainingData() {
+        labels.reserve(ParallelLRB::batch_size);
+        indptr.reserve(ParallelLRB::batch_size + 1);
         indptr.emplace_back(0);
-        indices.reserve(ParallelWLC::batch_size * ParallelWLC::n_feature);
-        data.reserve(ParallelWLC::batch_size * ParallelWLC::n_feature);
+        indices.reserve(ParallelLRB::batch_size * ParallelLRB::n_feature);
+        data.reserve(ParallelLRB::batch_size * ParallelLRB::n_feature);
     }
 
-    void emplace_back(ParallelWLCMeta &meta, uint32_t &sample_timestamp, uint32_t &future_interval) {
+    void emplace_back(ParallelLRBMeta &meta, uint32_t &sample_timestamp, uint32_t &future_interval) {
         int32_t counter = indptr.back();
 
         indices.emplace_back(0);
@@ -201,14 +201,14 @@ public:
         int j = 0;
         uint8_t n_within = 0;
         if (meta._extra) {
-            for (; j < meta._extra->_past_distance_idx && j < ParallelWLC::max_n_past_distances; ++j) {
+            for (; j < meta._extra->_past_distance_idx && j < ParallelLRB::max_n_past_distances; ++j) {
                 uint8_t past_distance_idx =
-                        (meta._extra->_past_distance_idx - 1 - j) % ParallelWLC::max_n_past_distances;
+                        (meta._extra->_past_distance_idx - 1 - j) % ParallelLRB::max_n_past_distances;
                 const uint32_t &past_distance = meta._extra->_past_distances[past_distance_idx];
                 this_past_distance += past_distance;
                 indices.emplace_back(j + 1);
                 data.emplace_back(past_distance);
-                if (this_past_distance < ParallelWLC::memory_window) {
+                if (this_past_distance < ParallelLRB::memory_window) {
                     ++n_within;
                 }
             }
@@ -216,39 +216,39 @@ public:
 
         counter += j;
 
-        indices.emplace_back(ParallelWLC::max_n_past_timestamps);
+        indices.emplace_back(ParallelLRB::max_n_past_timestamps);
         data.push_back(meta._size);
         ++counter;
 
-        for (int k = 0; k < ParallelWLC::n_extra_fields; ++k) {
-            indices.push_back(ParallelWLC::max_n_past_timestamps + k + 1);
+        for (int k = 0; k < ParallelLRB::n_extra_fields; ++k) {
+            indices.push_back(ParallelLRB::max_n_past_timestamps + k + 1);
             data.push_back(meta._extra_features[k]);
         }
-        counter += ParallelWLC::n_extra_fields;
+        counter += ParallelLRB::n_extra_fields;
 
-        indices.push_back(ParallelWLC::max_n_past_timestamps + ParallelWLC::n_extra_fields + 1);
+        indices.push_back(ParallelLRB::max_n_past_timestamps + ParallelLRB::n_extra_fields + 1);
         data.push_back(n_within);
         ++counter;
 
         if (meta._extra) {
-            for (int k = 0; k < ParallelWLC::n_edc_feature; ++k) {
-                indices.push_back(ParallelWLC::max_n_past_timestamps + ParallelWLC::n_extra_fields + 2 + k);
+            for (int k = 0; k < ParallelLRB::n_edc_feature; ++k) {
+                indices.push_back(ParallelLRB::max_n_past_timestamps + ParallelLRB::n_extra_fields + 2 + k);
                 uint32_t _distance_idx = std::min(
-                        uint32_t(sample_timestamp - meta._past_timestamp) / ParallelWLC::edc_windows[k],
-                        ParallelWLC::max_hash_edc_idx);
-                data.push_back(meta._extra->_edc[k] * ParallelWLC::hash_edc[_distance_idx]);
+                        uint32_t(sample_timestamp - meta._past_timestamp) / ParallelLRB::edc_windows[k],
+                        ParallelLRB::max_hash_edc_idx);
+                data.push_back(meta._extra->_edc[k] * ParallelLRB::hash_edc[_distance_idx]);
             }
         } else {
-            for (int k = 0; k < ParallelWLC::n_edc_feature; ++k) {
-                indices.push_back(ParallelWLC::max_n_past_timestamps + ParallelWLC::n_extra_fields + 2 + k);
+            for (int k = 0; k < ParallelLRB::n_edc_feature; ++k) {
+                indices.push_back(ParallelLRB::max_n_past_timestamps + ParallelLRB::n_extra_fields + 2 + k);
                 uint32_t _distance_idx = std::min(
-                        uint32_t(sample_timestamp - meta._past_timestamp) / ParallelWLC::edc_windows[k],
-                        ParallelWLC::max_hash_edc_idx);
-                data.push_back(ParallelWLC::hash_edc[_distance_idx]);
+                        uint32_t(sample_timestamp - meta._past_timestamp) / ParallelLRB::edc_windows[k],
+                        ParallelLRB::max_hash_edc_idx);
+                data.push_back(ParallelLRB::hash_edc[_distance_idx]);
             }
         }
 
-        counter += ParallelWLC::n_edc_feature;
+        counter += ParallelLRB::n_edc_feature;
 
         labels.push_back(log1p(future_interval));
         indptr.push_back(counter);
@@ -268,19 +268,19 @@ struct KeyMapEntryT {
     unsigned int list_pos: 31;
 };
 
-class ParallelWLCCache : public ParallelCache {
+class ParallelLRBCache : public ParallelCache {
 public:
     //key -> (0/1 list, idx)
     sparse_hash_map<uint64_t, KeyMapEntryT> key_map;
     vector<ParallelInCacheMeta> in_cache_metas;
-    vector<ParallelWLCMeta> out_cache_metas;
+    vector<ParallelLRBMeta> out_cache_metas;
 
     ParallelInCacheLRUQueue in_cache_lru_queue;
     //TODO: negative queue should have a better abstraction, at least hide the round-up
     //sparse_hash_map<uint64_t, uint64_t> has smaller memory overhead than <uint32_t, uint64_t>
     sparse_hash_map<uint64_t, uint64_t> negative_candidate_queue;
-    ParallelWLCTrainingData *training_data;
-    ParallelWLCTrainingData *background_training_data;
+    ParallelLRBTrainingData *training_data;
+    ParallelLRBTrainingData *background_training_data;
     std::mutex training_data_mutex;
 
     // sample_size
@@ -296,7 +296,7 @@ public:
     std::mutex booster_mutex;
     bool if_trained = false;
 
-    unordered_map<string, string> WLC_train_params = {
+    unordered_map<string, string> LRB_train_params = {
             //don't use alias here. C api may not recongize
             {"boosting",         "gbdt"},
             {"objective",        "regression"},
@@ -310,7 +310,7 @@ public:
             {"verbosity",        "0"},
     };
 
-    std::unordered_map<std::string, std::string> WLC_inference_params;
+    std::unordered_map<std::string, std::string> LRB_inference_params;
 
 //    enum ObjectiveT: uint8_t {byte_hit_rate=0, object_hit_rate=1};
 //    ObjectiveT objective = byte_hit_rate;
@@ -318,7 +318,7 @@ public:
     std::default_random_engine _generator = std::default_random_engine();
     std::uniform_int_distribution<std::size_t> _distribution = std::uniform_int_distribution<std::size_t>();
 
-    ~ParallelWLCCache() {
+    ~ParallelLRBCache() {
         keep_running = false;
         if (lookup_get_thread.joinable())
             lookup_get_thread.join();
@@ -334,69 +334,69 @@ public:
             if (it.first == "sample_rate") {
                 sample_rate = stoul(it.second);
             } else if (it.first == "memory_window") {
-                ParallelWLC::memory_window = stoull(it.second);
+                ParallelLRB::memory_window = stoull(it.second);
             } else if (it.first == "max_n_past_timestamps") {
-                ParallelWLC::max_n_past_timestamps = (uint8_t) stoi(it.second);
+                ParallelLRB::max_n_past_timestamps = (uint8_t) stoi(it.second);
             } else if (it.first == "batch_size") {
-                ParallelWLC::batch_size = stoull(it.second);
+                ParallelLRB::batch_size = stoull(it.second);
             } else if (it.first == "n_extra_fields") {
-                ParallelWLC::n_extra_fields = stoull(it.second);
+                ParallelLRB::n_extra_fields = stoull(it.second);
             } else if (it.first == "num_iterations") {
-                WLC_train_params["num_iterations"] = it.second;
+                LRB_train_params["num_iterations"] = it.second;
             } else if (it.first == "learning_rate") {
-                WLC_train_params["learning_rate"] = it.second;
+                LRB_train_params["learning_rate"] = it.second;
             } else if (it.first == "num_threads") {
-                WLC_train_params["num_threads"] = it.second;
+                LRB_train_params["num_threads"] = it.second;
             } else if (it.first == "num_leaves") {
-                WLC_train_params["num_leaves"] = it.second;
+                LRB_train_params["num_leaves"] = it.second;
             } else if (it.first == "n_edc_feature") {
-                if (stoull(it.second) != ParallelWLC::n_edc_feature) {
+                if (stoull(it.second) != ParallelLRB::n_edc_feature) {
                     cerr << "error: cannot change n_edc_feature because of const" << endl;
                     abort();
                 }
-//                WLC::n_edc_feature = stoull(it.second);
+//                LRB::n_edc_feature = stoull(it.second);
 //            } else if (it.first == "segment_window") {
 //                segment_window = stoul(it.second);
             } else {
-                cerr << "WLC unrecognized parameter: " << it.first << endl;
+                cerr << "LRB unrecognized parameter: " << it.first << endl;
             }
         }
 
-        negative_candidate_queue.reserve(ParallelWLC::memory_window);
-        ParallelWLC::max_n_past_distances = ParallelWLC::max_n_past_timestamps - 1;
+        negative_candidate_queue.reserve(ParallelLRB::memory_window);
+        ParallelLRB::max_n_past_distances = ParallelLRB::max_n_past_timestamps - 1;
         //init
-        ParallelWLC::edc_windows = vector<uint32_t>(ParallelWLC::n_edc_feature);
-        for (uint8_t i = 0; i < ParallelWLC::n_edc_feature; ++i) {
-            ParallelWLC::edc_windows[i] = pow(2, ParallelWLC::base_edc_window + i);
+        ParallelLRB::edc_windows = vector<uint32_t>(ParallelLRB::n_edc_feature);
+        for (uint8_t i = 0; i < ParallelLRB::n_edc_feature; ++i) {
+            ParallelLRB::edc_windows[i] = pow(2, ParallelLRB::base_edc_window + i);
         }
-        ParallelWLC::max_hash_edc_idx =
-                (uint64_t) (ParallelWLC::memory_window / pow(2, ParallelWLC::base_edc_window)) - 1;
-        ParallelWLC::hash_edc = vector<double>(ParallelWLC::max_hash_edc_idx + 1);
-        for (int i = 0; i < ParallelWLC::hash_edc.size(); ++i)
-            ParallelWLC::hash_edc[i] = pow(0.5, i);
+        ParallelLRB::max_hash_edc_idx =
+                (uint64_t) (ParallelLRB::memory_window / pow(2, ParallelLRB::base_edc_window)) - 1;
+        ParallelLRB::hash_edc = vector<double>(ParallelLRB::max_hash_edc_idx + 1);
+        for (int i = 0; i < ParallelLRB::hash_edc.size(); ++i)
+            ParallelLRB::hash_edc[i] = pow(0.5, i);
 
         //interval, distances, size, extra_features, n_past_intervals, edwt
-        ParallelWLC::n_feature =
-                ParallelWLC::max_n_past_timestamps + ParallelWLC::n_extra_fields + 2 + ParallelWLC::n_edc_feature;
-        if (ParallelWLC::n_extra_fields) {
-            if (ParallelWLC::n_extra_fields > ParallelWLC::max_n_extra_feature) {
-                cerr << "error: only support <= " + to_string(ParallelWLC::max_n_extra_feature)
+        ParallelLRB::n_feature =
+                ParallelLRB::max_n_past_timestamps + ParallelLRB::n_extra_fields + 2 + ParallelLRB::n_edc_feature;
+        if (ParallelLRB::n_extra_fields) {
+            if (ParallelLRB::n_extra_fields > ParallelLRB::max_n_extra_feature) {
+                cerr << "error: only support <= " + to_string(ParallelLRB::max_n_extra_feature)
                         + " extra fields because of static allocation" << endl;
                 abort();
             }
-            string categorical_feature = to_string(ParallelWLC::max_n_past_timestamps + 1);
-            for (uint i = 0; i < ParallelWLC::n_extra_fields - 1; ++i) {
-                categorical_feature += "," + to_string(ParallelWLC::max_n_past_timestamps + 2 + i);
+            string categorical_feature = to_string(ParallelLRB::max_n_past_timestamps + 1);
+            for (uint i = 0; i < ParallelLRB::n_extra_fields - 1; ++i) {
+                categorical_feature += "," + to_string(ParallelLRB::max_n_past_timestamps + 2 + i);
             }
-            WLC_train_params["categorical_feature"] = categorical_feature;
+            LRB_train_params["categorical_feature"] = categorical_feature;
         }
-        WLC_inference_params = WLC_train_params;
-        training_data = new ParallelWLCTrainingData();
-        background_training_data = new ParallelWLCTrainingData();
-        WLC_inference_params = WLC_train_params;
+        LRB_inference_params = LRB_train_params;
+        training_data = new ParallelLRBTrainingData();
+        background_training_data = new ParallelLRBTrainingData();
+        LRB_inference_params = LRB_train_params;
         //TODO: don't believe inference need so large number of threads
-//        WLC_inference_params["num_threads"] = "4";
-        training_thread = std::thread(&ParallelWLCCache::async_training, this);
+//        LRB_inference_params["num_threads"] = "4";
+        training_thread = std::thread(&ParallelLRBCache::async_training, this);
         ParallelCache::init_with_params(params);
     }
 
@@ -420,7 +420,7 @@ public:
     void async_training() {
         while (keep_running) {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            if (training_data->labels.size() >= ParallelWLC::batch_size) {
+            if (training_data->labels.size() >= ParallelLRB::batch_size) {
                 //assume back ground training data is already clear
                 training_data_mutex.lock();
                 std::swap(training_data, background_training_data);
@@ -473,7 +473,7 @@ public:
         doc.append(kvp("sample ", to_string(sample_overhead)));
 
         int res;
-        auto importances = vector<double>(ParallelWLC::n_feature, 0);
+        auto importances = vector<double>(ParallelLRB::n_feature, 0);
 
         if (booster) {
             res = LGBM_BoosterFeatureImportance(booster,
@@ -494,5 +494,5 @@ public:
 
 };
 
-static Factory<ParallelWLCCache> factoryParallelWLC("ParallelWLC");
-#endif //WEBCACHESIM_WLC_H
+static Factory<ParallelLRBCache> factoryParallelLRB("ParallelLRB");
+#endif //WEBCACHESIM_LRB_H

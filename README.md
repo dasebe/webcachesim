@@ -11,7 +11,6 @@ The webcachesim simulator was built for the [AdaptSize project](https://github.c
 * Add example to do analysis from Database
 * Add example for using pywebcachesim to run batch job of simulations
 * Logging eviction decisions and Belady Boundary. Didn't add this because this would need a large database
-* Rename WLC to LRB for whole project
 
 ## Set up simulation environment
 * Recommend OS: Ubuntu 18
@@ -130,9 +129,9 @@ webcachesim_cli_db wc2800m_ts.tr LRU 1099511627776 segment_window 1000000 real_t
 # Results will be sent to database
 ```
 
-##### Running WLC on Wiki trace
+##### Running LRB on Wiki trace
 ```bash
-webcachesim_cli_db wc2800m_ts.tr WLC 1099511627776 segment_window 1000000 real_time_segment_window 600 memory_window 536870912 dburl ${YOUR mongodb uri} dbcollection ${YOUR prefer mongodb collection} 
+webcachesim_cli_db wc2800m_ts.tr LRB 1099511627776 segment_window 1000000 real_time_segment_window 600 memory_window 536870912 dburl ${YOUR mongodb uri} dbcollection ${YOUR prefer mongodb collection} 
 # Results will be sent to database
 ```
 

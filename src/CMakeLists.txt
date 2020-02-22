@@ -35,8 +35,8 @@ set(LIB_SOURCE
         caches/ucb.cpp
         ${WEBCACHESIM_HEADER_DIR}/caches/belady_sample.h
         caches/belady_sample.cpp
-        ${WEBCACHESIM_HEADER_DIR}/caches/wlc.h
-        caches/wlc.cpp
+        ${WEBCACHESIM_HEADER_DIR}/caches/lrb.h
+        caches/lrb.cpp
         ${WEBCACHESIM_HEADER_DIR}/caches/hyperbolic.h
         caches/hyperbolic.cpp
         ${WEBCACHESIM_HEADER_DIR}/caches/lecar.h
@@ -47,8 +47,8 @@ set(LIB_SOURCE
         caches/parallel_lru.cpp
         ${WEBCACHESIM_HEADER_DIR}/caches/parallel_fifo.h
         caches/parallel_fifo.cpp
-        ${WEBCACHESIM_HEADER_DIR}/caches/parallel_wlc.h
-        caches/parallel_wlc.cpp
+        ${WEBCACHESIM_HEADER_DIR}/caches/parallel_lrb.h
+        caches/parallel_lrb.cpp
         ${WEBCACHESIM_HEADER_DIR}/caches/binary_relaxed_belady.h
         caches/binary_relaxed_belady.cpp
         ${WEBCACHESIM_HEADER_DIR}/caches/percent_relaxed_belady.h
