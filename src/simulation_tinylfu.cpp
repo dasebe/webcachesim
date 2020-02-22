@@ -12,13 +12,11 @@
 #include <string.h>
 #include <boost/algorithm/string.hpp>
 #include <vector>
-#include "nlohmann/json.hpp"
 #include "bsoncxx/builder/basic/document.hpp"
 #include "bsoncxx/json.hpp"
 
 using namespace std;
 using namespace boost;
-using json = nlohmann::json;
 using bsoncxx::builder::basic::kvp;
 using bsoncxx::builder::basic::sub_array;
 
