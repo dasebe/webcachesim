@@ -2,13 +2,13 @@
 
 ## A simulator for CDN caching and web caching policies.
 
-Simulate a variety of existing caching policies by replaying request traces, and use this framework as a basis to experiment with new ones.
+Simulate a variety of existing caching policies by replaying request traces, and use this framework as a basis to experiment with new ones. A 14-day long [Wikipedia trace](#trace) is released alongside the simulator.
 
-The webcachesim2 simulator was built for Learning relaxed Belady (LRB), a learning-based caching algorithm. And it was built on top of [webcachesim](https://github.com/dasebe/webcachesim), see [References](#references) for more information.
+The webcachesim2 simulator was built to evaluate the Learning relaxed Belady algorithm (LRB), a new machine-learning-based caching algorithm. The simulator build on top of [webcachesim](https://github.com/dasebe/webcachesim), see [References](#references) for more information.
 
-In addition, we have released a 14-day long [Wikipedia trace](#trace).
 
-Current support algorithms:
+
+Currently supported caching algorithms:
 * Learning Relaxed Belady (LRB)
 * LR (linear-regression based ML caching)
 * Belady (heap-based)
@@ -26,14 +26,15 @@ Current support algorithms:
 * Hyperbolic
 * GDSF
 * GDWheel
-* Adaptive-TinyLFU (java library integration)
+* Adaptive-TinyLFU (via Java library integration)
 * LeCaR
 * UCB
 * LHD
 * AdaptSize
+* LFO
 * Random (random eviction)
 
-You can find the default hyperparameters at [config/algorithm_params.yaml](config/algorithm_params.yaml)
+Almost configuration parameters of these algorithms can be tuned in a single config file [config/algorithm_params.yaml](config/algorithm_params.yaml)
 
 ## Trace
 The Wikipedia trace [download link](http://lrb.cs.princeton.edu/wiki2018.tr.tar.gz). To uncomress:
@@ -42,11 +43,11 @@ tar -xzvf wiki2018.tr.tar.gz
 ```
 
 ## Trace Format
-Request traces must be given in a space-separated format with 3 columns and additionally columns for extra features.
+Request traces are expected to be in a space-separated format with 3 columns and additionally columns for extra features.
 - time should be a long long int, but can be arbitrary (for future TTL feature, not currently in use)
 - id should be a long long int, used to uniquely identify objects
 - size should be uint32, this is object's size in bytes
-- extra features are optional uint16 features. They can be viewed as categorical feature.
+- extra features are optional uint16 features. LRB currently interprets them as categorical features (e.g., object type).
 
 | time |  id | size | \[extra_feature(s)\] |
 | ---- | --- | ---- |  ----               |
@@ -56,15 +57,15 @@ Request traces must be given in a space-separated format with 3 columns and addi
 |   4  |  3  |  14  |
 |   4  |  1 |  120 |
 
-Simulator will run sanity check on the trace at start.
+Simulator will run a sanity check on the trace when starting up.
 
 ## Installation
 
-We have built a docker simulator image for you. This would be the default way in documentation. To run it:
+For ease of use, we also provide a docker image which contains the simulator. Our documentation assumes that you use this image. To run it:
 ```shell script
  docker run -it -v ${YOUR TRACE DIRECTORY}:/trace sunnyszy/webcachesim:v0.1 ${traceFile} ${cacheType} ${cacheSize} [--param=value]
 ```
-Alternatively, you may follow the [instruction](INSTALL.md) to install the simulator.
+Alternatively, you may follow the [instruction](INSTALL.md) to manually install the simulator.
 
 ## Using an exisiting policy
 
@@ -150,7 +151,6 @@ We ask academic works, which built on this code, to reference the LRB/AdaptSize 
     Zhenyu Song, Daniel S. Berger, Kai Li, Wyatt Lloyd
     USENIX NSDI 2020.
     
-
     AdaptSize: Orchestrating the Hot Object Memory Cache in a CDN
     Daniel S. Berger, Ramesh K. Sitaraman, Mor Harchol-Balter
     USENIX NSDI 2017.
