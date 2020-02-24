@@ -48,14 +48,16 @@ Request traces must be given in a space-separated format with 3 columns and addi
 - size should be uint32, this is object's size in bytes
 - extra features are optional uint16 features. They can be viewed as categorical feature.
 
-| time |  id | size | \[extra_feature_1\] | \[extra_feature_2\] | ---- | \[extra_feature_n\] |
-| ---- | --- | ---- |  ----               | ----                | ---- | ----                |
+| time |  id | size | \[extra_feature(s)\] |
+| ---- | --- | ---- |  ----               |
 |   1  |  1  |  120 |
 |   2  |  2  |   64 |
 |   3  |  1  |  120 |
 |   4  |  3  |  14  |
 |   4  |  1 |  120 |
+
 Simulator will run sanity check on the trace at start.
+
 ## Installation
 
 We have built a docker simulator image for you. This would be the default way in documentation. To run it:
@@ -72,7 +74,7 @@ The basic interface is
 
 where
 
- - traceFile: a request trace (see [trace format](trace-format))
+ - traceFile: a request trace (see [trace format](#trace-format))
  - cacheType: one of the caching policies
  - cacheSize: the cache capacity in bytes
  - param, value: optional cache parameter and value, can be used to tune cache policies
