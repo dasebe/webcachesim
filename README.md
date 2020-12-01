@@ -1,5 +1,9 @@
 # webcachesim:
+
+## **Webcachesim** v2 is available,  please check out [here](https://github.com/sunnyszy/lrb).
+
 ## A simulator for CDN caching and web caching policies.
+
 
 Simulate a variety of existing caching policies by replaying request traces, and use this framework as a basis to experiment with new ones.
 
