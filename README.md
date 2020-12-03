@@ -1,6 +1,6 @@
 # webcachesim:
 
-## Webcachesim v2 is available,  please check out [HERE](https://github.com/sunnyszy/lrb).
+## Webcachesim v2 is available, with many improvements. Please it check out [HERE](https://github.com/sunnyszy/lrb).
 
 ## A simulator for CDN caching and web caching policies.
 
