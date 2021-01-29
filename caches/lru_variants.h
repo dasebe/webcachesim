@@ -3,6 +3,7 @@
 
 #include <unordered_map>
 #include <list>
+#include <unordered_set>
 #include <random>
 #include "cache.h"
 #include "cache_object.h"
@@ -208,6 +209,31 @@ public:
 
 static Factory<S4LRUCache> factoryS4LRU("S4LRU");
 
+/*
+  Random: Random eviction
+*/
+class RandomCache : public Cache
+{
+protected:
+    std::vector<CacheObject> _cacheVector;
+    std::unordered_set<CacheObject> _cacheSet;
+
+public:
+    RandomCache()
+        : Cache()
+    {
+    }
+    virtual ~RandomCache()
+    {
+    }
+
+    virtual bool lookup(SimpleRequest* req);
+    virtual void admit(SimpleRequest* req);
+    virtual void evict(SimpleRequest* req);
+    virtual void evict();
+};
+
+static Factory<RandomCache> factoryRandom("Random");
 
 
 #endif

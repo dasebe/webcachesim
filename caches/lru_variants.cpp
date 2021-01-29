@@ -551,4 +551,68 @@ void S4LRUCache::evict()
     segments[0].evict();
 }
 
+/*
+  Random: Random eviction
+*/
+bool RandomCache::lookup(SimpleRequest* req)
+{
+    CacheObject obj(req);
+    auto it = _cacheSet.find(obj);
+    if (it != _cacheSet.end()) {
+        // log hit
+        LOG("h", 0, obj.id, obj.size);
+        return true;
+    }
+    return false;
+}
 
+void RandomCache::admit(SimpleRequest* req)
+{
+    const uint64_t size = req->getSize();
+    // object feasible to store?
+    if (size > _cacheSize) {
+        LOG("L", _cacheSize, req->getId(), size);
+        return;
+    }
+    // check eviction needed
+    while (_currentSize + size > _cacheSize) {
+        evict();
+    }
+    // admit new object
+    CacheObject obj(req);
+    _cacheVector.push_back(obj);
+    _cacheSet.insert(obj);
+    _currentSize += size;
+    LOG("a", _currentSize, obj.id, obj.size);
+}
+
+void RandomCache::evict(SimpleRequest* req)
+{
+    CacheObject obj(req);
+    auto it = _cacheSet.find(obj);
+    if (it != _cacheSet.end()) {
+        LOG("e", _currentSize, obj.id, obj.size);
+        _currentSize -= obj.size;
+        _cacheSet.erase(obj);
+        for (size_t i = 0; i < _cacheVector.size(); i++) {
+            if (_cacheVector[i] == obj) {
+                _cacheVector[i] = _cacheVector.back();
+                _cacheVector.pop_back();
+                break;
+            }
+        }
+    }
+}
+
+void RandomCache::evict()
+{
+    if (_cacheVector.size() > 0) {
+        int index = rand() % _cacheVector.size();
+        CacheObject obj = _cacheVector[index];
+        LOG("e", _currentSize, obj.id, obj.size);
+        _currentSize -= obj.size;
+        _cacheSet.erase(obj);
+        _cacheVector[index] = _cacheVector.back();
+        _cacheVector.pop_back();
+    }
+}
