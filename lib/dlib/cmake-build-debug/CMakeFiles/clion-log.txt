@@ -1,0 +1,69 @@
+/Applications/CLion.app/Contents/bin/cmake/mac/bin/cmake -DCMAKE_BUILD_TYPE=Debug -G "CodeBlocks - Unix Makefiles" /Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib
+CMake Warning (dev) in CMakeLists.txt:
+  No project() command is present.  The top-level CMakeLists.txt file must
+  contain a literal, direct call to the project() command.  Add a line of
+  code such as
+
+    project(ProjectName)
+
+  near the top of the file, but after cmake_minimum_required().
+
+  CMake is pretending there is a "project(Project)" command on the first
+  line.
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- The C compiler identification is AppleClang 10.0.1.10010046
+-- The CXX compiler identification is AppleClang 10.0.1.10010046
+-- Check for working C compiler: /Library/Developer/CommandLineTools/usr/bin/cc
+-- Check for working C compiler: /Library/Developer/CommandLineTools/usr/bin/cc -- works
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Check for working CXX compiler: /Library/Developer/CommandLineTools/usr/bin/c++
+-- Check for working CXX compiler: /Library/Developer/CommandLineTools/usr/bin/c++ -- works
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Using CMake version: 3.15.3
+-- Compiling dlib version: 19.18.0
+-- Looking for pthread.h
+-- Looking for pthread.h - found
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE  
+-- Found system copy of libpng: /usr/local/lib/libpng.dylib;/usr/lib/libz.dylib
+-- Found system copy of libjpeg: /usr/local/lib/libjpeg.dylib
+-- Searching for BLAS and LAPACK
+-- Searching for BLAS and LAPACK
+-- Found PkgConfig: /usr/local/bin/pkg-config (found version "0.29.2") 
+-- Checking for module 'cblas'
+--   No package 'cblas' found
+-- Checking for module 'lapack'
+--   No package 'lapack' found
+-- Looking for sys/types.h
+-- Looking for sys/types.h - found
+-- Looking for stdint.h
+-- Looking for stdint.h - found
+-- Looking for stddef.h
+-- Looking for stddef.h - found
+-- Check size of void*
+-- Check size of void* - done
+-- Found LAPACK library
+-- Found CBLAS library
+-- Looking for cblas_ddot
+-- Looking for cblas_ddot - found
+-- Looking for sgesv
+-- Looking for sgesv - found
+-- Looking for sgesv_
+-- Looking for sgesv_ - found
+CUDA_TOOLKIT_ROOT_DIR not found or specified
+-- Could NOT find CUDA (missing: CUDA_TOOLKIT_ROOT_DIR CUDA_NVCC_EXECUTABLE CUDA_INCLUDE_DIRS CUDA_CUDART_LIBRARY) (Required is at least version "7.5")
+-- DID NOT FIND CUDA
+-- Disabling CUDA support for dlib.  DLIB WILL NOT USE CUDA
+-- Building a C++11 test project to see if your compiler supports C++11
+-- C++11 activated.
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug

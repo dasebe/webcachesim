@@ -1,0 +1,17 @@
+/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/CMakeFiles/install/local.dir
+/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/CMakeFiles/install/strip.dir
+/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/CMakeFiles/install.dir
+/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/CMakeFiles/package_source.dir
+/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/CMakeFiles/edit_cache.dir
+/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/CMakeFiles/list_install_components.dir
+/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/CMakeFiles/package.dir
+/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/dlib/CMakeFiles/install/local.dir
+/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/dlib/CMakeFiles/install/strip.dir
+/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/dlib/CMakeFiles/install.dir
+/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/dlib/CMakeFiles/list_install_components.dir
+/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/dlib/CMakeFiles/package.dir
+/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/dlib/CMakeFiles/package_source.dir
+/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/dlib/CMakeFiles/rebuild_cache.dir
+/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/dlib/CMakeFiles/edit_cache.dir
+/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/cmake-build-debug/dlib/CMakeFiles/dlib.dir

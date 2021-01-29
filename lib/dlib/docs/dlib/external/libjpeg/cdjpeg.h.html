@@ -1,0 +1,190 @@
+<html><!-- Created using the cpp_pretty_printer from the dlib C++ library.  See http://dlib.net for updates. --><head><title>dlib C++ Library - cdjpeg.h</title></head><body bgcolor='white'><pre>
+<font color='#009900'>/*
+ * cdjpeg.h
+ *
+ * Copyright (C) 1994-1997, Thomas G. Lane.
+ * This file is part of the Independent JPEG Group's software.
+ * For conditions of distribution and use, see the accompanying README file.
+ *
+ * This file contains common declarations for the sample applications
+ * cjpeg and djpeg.  It is NOT used by the core JPEG library.
+ */</font>
+
+<font color='#0000FF'>#define</font> JPEG_CJPEG_DJPEG	<font color='#009900'>/* define proper options in jconfig.h */</font>
+<font color='#0000FF'>#define</font> JPEG_INTERNAL_OPTIONS	<font color='#009900'>/* cjpeg.c,djpeg.c need to see xxx_SUPPORTED */</font>
+<font color='#0000FF'>#include</font> "<a style='text-decoration:none' href='jinclude.h.html'>jinclude.h</a>"
+<font color='#0000FF'>#include</font> "<a style='text-decoration:none' href='jpeglib.h.html'>jpeglib.h</a>"
+<font color='#0000FF'>#include</font> "<a style='text-decoration:none' href='jerror.h.html'>jerror.h</a>"		<font color='#009900'>/* get library error codes too */</font>
+<font color='#0000FF'>#include</font> "<a style='text-decoration:none' href='cderror.h.html'>cderror.h</a>"		<font color='#009900'>/* get application-specific error codes */</font>
+
+
+<font color='#009900'>/*
+ * Object interface for cjpeg's source file decoding modules
+ */</font>
+
+<font color='#0000FF'>typedef</font> <font color='#0000FF'>struct</font> cjpeg_source_struct <font color='#5555FF'>*</font> cjpeg_source_ptr;
+
+<font color='#0000FF'>struct</font> <b><a name='cjpeg_source_struct'></a>cjpeg_source_struct</b> <b>{</b>
+  <b><a name='JMETHOD'></a>JMETHOD</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font>, start_input, <font face='Lucida Console'>(</font>j_compress_ptr cinfo,
+			      cjpeg_source_ptr sinfo<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+  <b><a name='JMETHOD'></a>JMETHOD</b><font face='Lucida Console'>(</font>JDIMENSION, get_pixel_rows, <font face='Lucida Console'>(</font>j_compress_ptr cinfo,
+				       cjpeg_source_ptr sinfo<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+  <b><a name='JMETHOD'></a>JMETHOD</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font>, finish_input, <font face='Lucida Console'>(</font>j_compress_ptr cinfo,
+			       cjpeg_source_ptr sinfo<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+
+  FILE <font color='#5555FF'>*</font>input_file;
+
+  JSAMPARRAY buffer;
+  JDIMENSION buffer_height;
+<b>}</b>;
+
+
+<font color='#009900'>/*
+ * Object interface for djpeg's output file encoding modules
+ */</font>
+
+<font color='#0000FF'>typedef</font> <font color='#0000FF'>struct</font> djpeg_dest_struct <font color='#5555FF'>*</font> djpeg_dest_ptr;
+
+<font color='#0000FF'>struct</font> <b><a name='djpeg_dest_struct'></a>djpeg_dest_struct</b> <b>{</b>
+  <font color='#009900'>/* start_output is called after jpeg_start_decompress finishes.
+   * The color map will be ready at this time, if one is needed.
+   */</font>
+  <b><a name='JMETHOD'></a>JMETHOD</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font>, start_output, <font face='Lucida Console'>(</font>j_decompress_ptr cinfo,
+			       djpeg_dest_ptr dinfo<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+  <font color='#009900'>/* Emit the specified number of pixel rows from the buffer. */</font>
+  <b><a name='JMETHOD'></a>JMETHOD</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font>, put_pixel_rows, <font face='Lucida Console'>(</font>j_decompress_ptr cinfo,
+				 djpeg_dest_ptr dinfo,
+				 JDIMENSION rows_supplied<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+  <font color='#009900'>/* Finish up at the end of the image. */</font>
+  <b><a name='JMETHOD'></a>JMETHOD</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font>, finish_output, <font face='Lucida Console'>(</font>j_decompress_ptr cinfo,
+				djpeg_dest_ptr dinfo<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* Target file spec; filled in by djpeg.c after object is created. */</font>
+  FILE <font color='#5555FF'>*</font> output_file;
+
+  <font color='#009900'>/* Output pixel-row buffer.  Created by module init or start_output.
+   * Width is cinfo-&gt;output_width * cinfo-&gt;output_components;
+   * height is buffer_height.
+   */</font>
+  JSAMPARRAY buffer;
+  JDIMENSION buffer_height;
+<b>}</b>;
+
+
+<font color='#009900'>/*
+ * cjpeg/djpeg may need to perform extra passes to convert to or from
+ * the source/destination file format.  The JPEG library does not know
+ * about these passes, but we'd like them to be counted by the progress
+ * monitor.  We use an expanded progress monitor object to hold the
+ * additional pass count.
+ */</font>
+
+<font color='#0000FF'>struct</font> <b><a name='cdjpeg_progress_mgr'></a>cdjpeg_progress_mgr</b> <b>{</b>
+  <font color='#0000FF'>struct</font> jpeg_progress_mgr pub;	<font color='#009900'>/* fields known to JPEG library */</font>
+  <font color='#0000FF'><u>int</u></font> completed_extra_passes;	<font color='#009900'>/* extra passes completed */</font>
+  <font color='#0000FF'><u>int</u></font> total_extra_passes;	<font color='#009900'>/* total extra */</font>
+  <font color='#009900'>/* last printed percentage stored here to avoid multiple printouts */</font>
+  <font color='#0000FF'><u>int</u></font> percent_done;
+<b>}</b>;
+
+<font color='#0000FF'>typedef</font> <font color='#0000FF'>struct</font> cdjpeg_progress_mgr <font color='#5555FF'>*</font> cd_progress_ptr;
+
+
+<font color='#009900'>/* Short forms of external names for systems with brain-damaged linkers. */</font>
+
+<font color='#0000FF'>#ifdef</font> NEED_SHORT_EXTERNAL_NAMES
+<font color='#0000FF'>#define</font> jinit_read_bmp		jIRdBMP
+<font color='#0000FF'>#define</font> jinit_write_bmp		jIWrBMP
+<font color='#0000FF'>#define</font> jinit_read_gif		jIRdGIF
+<font color='#0000FF'>#define</font> jinit_write_gif		jIWrGIF
+<font color='#0000FF'>#define</font> jinit_read_ppm		jIRdPPM
+<font color='#0000FF'>#define</font> jinit_write_ppm		jIWrPPM
+<font color='#0000FF'>#define</font> jinit_read_rle		jIRdRLE
+<font color='#0000FF'>#define</font> jinit_write_rle		jIWrRLE
+<font color='#0000FF'>#define</font> jinit_read_targa	jIRdTarga
+<font color='#0000FF'>#define</font> jinit_write_targa	jIWrTarga
+<font color='#0000FF'>#define</font> read_quant_tables	RdQTables
+<font color='#0000FF'>#define</font> read_scan_script	RdScnScript
+<font color='#0000FF'>#define</font> set_quality_ratings     SetQRates
+<font color='#0000FF'>#define</font> set_quant_slots		SetQSlots
+<font color='#0000FF'>#define</font> set_sample_factors	SetSFacts
+<font color='#0000FF'>#define</font> read_color_map		RdCMap
+<font color='#0000FF'>#define</font> enable_signal_catcher	EnSigCatcher
+<font color='#0000FF'>#define</font> start_progress_monitor	StProgMon
+<font color='#0000FF'>#define</font> end_progress_monitor	EnProgMon
+<font color='#0000FF'>#define</font> read_stdin		RdStdin
+<font color='#0000FF'>#define</font> write_stdout		WrStdout
+<font color='#0000FF'>#endif</font> <font color='#009900'>/* NEED_SHORT_EXTERNAL_NAMES */</font>
+
+<font color='#009900'>/* Module selection routines for I/O modules. */</font>
+
+<b><a name='EXTERN'></a>EXTERN</b><font face='Lucida Console'>(</font>cjpeg_source_ptr<font face='Lucida Console'>)</font> jinit_read_bmp <b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_compress_ptr cinfo<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+<b><a name='EXTERN'></a>EXTERN</b><font face='Lucida Console'>(</font>djpeg_dest_ptr<font face='Lucida Console'>)</font> jinit_write_bmp <b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_decompress_ptr cinfo,
+					    boolean is_os2<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+<b><a name='EXTERN'></a>EXTERN</b><font face='Lucida Console'>(</font>cjpeg_source_ptr<font face='Lucida Console'>)</font> jinit_read_gif <b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_compress_ptr cinfo<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+<b><a name='EXTERN'></a>EXTERN</b><font face='Lucida Console'>(</font>djpeg_dest_ptr<font face='Lucida Console'>)</font> jinit_write_gif <b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_decompress_ptr cinfo<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+<b><a name='EXTERN'></a>EXTERN</b><font face='Lucida Console'>(</font>cjpeg_source_ptr<font face='Lucida Console'>)</font> jinit_read_ppm <b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_compress_ptr cinfo<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+<b><a name='EXTERN'></a>EXTERN</b><font face='Lucida Console'>(</font>djpeg_dest_ptr<font face='Lucida Console'>)</font> jinit_write_ppm <b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_decompress_ptr cinfo<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+<b><a name='EXTERN'></a>EXTERN</b><font face='Lucida Console'>(</font>cjpeg_source_ptr<font face='Lucida Console'>)</font> jinit_read_rle <b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_compress_ptr cinfo<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+<b><a name='EXTERN'></a>EXTERN</b><font face='Lucida Console'>(</font>djpeg_dest_ptr<font face='Lucida Console'>)</font> jinit_write_rle <b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_decompress_ptr cinfo<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+<b><a name='EXTERN'></a>EXTERN</b><font face='Lucida Console'>(</font>cjpeg_source_ptr<font face='Lucida Console'>)</font> jinit_read_targa <b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_compress_ptr cinfo<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+<b><a name='EXTERN'></a>EXTERN</b><font face='Lucida Console'>(</font>djpeg_dest_ptr<font face='Lucida Console'>)</font> jinit_write_targa <b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_decompress_ptr cinfo<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+
+<font color='#009900'>/* cjpeg support routines (in rdswitch.c) */</font>
+
+<b><a name='EXTERN'></a>EXTERN</b><font face='Lucida Console'>(</font>boolean<font face='Lucida Console'>)</font> read_quant_tables <b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_compress_ptr cinfo, <font color='#0000FF'><u>char</u></font> <font color='#5555FF'>*</font> filename,
+				       boolean force_baseline<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+<b><a name='EXTERN'></a>EXTERN</b><font face='Lucida Console'>(</font>boolean<font face='Lucida Console'>)</font> read_scan_script <b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_compress_ptr cinfo, <font color='#0000FF'><u>char</u></font> <font color='#5555FF'>*</font> filename<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+<b><a name='EXTERN'></a>EXTERN</b><font face='Lucida Console'>(</font>boolean<font face='Lucida Console'>)</font> set_quality_ratings <b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_compress_ptr cinfo, <font color='#0000FF'><u>char</u></font> <font color='#5555FF'>*</font>arg,
+					 boolean force_baseline<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+<b><a name='EXTERN'></a>EXTERN</b><font face='Lucida Console'>(</font>boolean<font face='Lucida Console'>)</font> set_quant_slots <b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_compress_ptr cinfo, <font color='#0000FF'><u>char</u></font> <font color='#5555FF'>*</font>arg<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+<b><a name='EXTERN'></a>EXTERN</b><font face='Lucida Console'>(</font>boolean<font face='Lucida Console'>)</font> set_sample_factors <b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_compress_ptr cinfo, <font color='#0000FF'><u>char</u></font> <font color='#5555FF'>*</font>arg<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+
+<font color='#009900'>/* djpeg support routines (in rdcolmap.c) */</font>
+
+<b><a name='EXTERN'></a>EXTERN</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font> read_color_map <b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_decompress_ptr cinfo, FILE <font color='#5555FF'>*</font> infile<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+
+<font color='#009900'>/* common support routines (in cdjpeg.c) */</font>
+
+<b><a name='EXTERN'></a>EXTERN</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font> enable_signal_catcher <b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr cinfo<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+<b><a name='EXTERN'></a>EXTERN</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font> start_progress_monitor <b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr cinfo,
+					 cd_progress_ptr progress<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+<b><a name='EXTERN'></a>EXTERN</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font> end_progress_monitor <b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr cinfo<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+<b><a name='EXTERN'></a>EXTERN</b><font face='Lucida Console'>(</font>boolean<font face='Lucida Console'>)</font> keymatch <b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font><font color='#0000FF'><u>char</u></font> <font color='#5555FF'>*</font> arg, <font color='#0000FF'>const</font> <font color='#0000FF'><u>char</u></font> <font color='#5555FF'>*</font> keyword, <font color='#0000FF'><u>int</u></font> minchars<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+<b><a name='EXTERN'></a>EXTERN</b><font face='Lucida Console'>(</font>FILE <font color='#5555FF'>*</font><font face='Lucida Console'>)</font> read_stdin <b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+<b><a name='EXTERN'></a>EXTERN</b><font face='Lucida Console'>(</font>FILE <font color='#5555FF'>*</font><font face='Lucida Console'>)</font> write_stdout <b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+
+<font color='#009900'>/* miscellaneous useful macros */</font>
+
+<font color='#0000FF'>#ifdef</font> DONT_USE_B_MODE		<font color='#009900'>/* define mode parameters for fopen() */</font>
+<font color='#0000FF'>#define</font> READ_BINARY	"<font color='#CC0000'>r</font>"
+<font color='#0000FF'>#define</font> WRITE_BINARY	"<font color='#CC0000'>w</font>"
+<font color='#0000FF'>#else</font>
+<font color='#0000FF'>#ifdef</font> VMS			<font color='#009900'>/* VMS is very nonstandard */</font>
+<font color='#0000FF'>#define</font> READ_BINARY	"<font color='#CC0000'>rb</font>", "<font color='#CC0000'>ctx=stm</font>"
+<font color='#0000FF'>#define</font> WRITE_BINARY	"<font color='#CC0000'>wb</font>", "<font color='#CC0000'>ctx=stm</font>"
+<font color='#0000FF'>#else</font>				<font color='#009900'>/* standard ANSI-compliant case */</font>
+<font color='#0000FF'>#define</font> READ_BINARY	"<font color='#CC0000'>rb</font>"
+<font color='#0000FF'>#define</font> WRITE_BINARY	"<font color='#CC0000'>wb</font>"
+<font color='#0000FF'>#endif</font>
+<font color='#0000FF'>#endif</font>
+
+<font color='#0000FF'>#ifndef</font> EXIT_FAILURE		<font color='#009900'>/* define exit() codes if not provided */</font>
+<font color='#0000FF'>#define</font> EXIT_FAILURE  <font color='#979000'>1</font>
+<font color='#0000FF'>#endif</font>
+<font color='#0000FF'>#ifndef</font> EXIT_SUCCESS
+<font color='#0000FF'>#ifdef</font> VMS
+<font color='#0000FF'>#define</font> EXIT_SUCCESS  <font color='#979000'>1</font>		<font color='#009900'>/* VMS is very nonstandard */</font>
+<font color='#0000FF'>#else</font>
+<font color='#0000FF'>#define</font> EXIT_SUCCESS  <font color='#979000'>0</font>
+<font color='#0000FF'>#endif</font>
+<font color='#0000FF'>#endif</font>
+<font color='#0000FF'>#ifndef</font> EXIT_WARNING
+<font color='#0000FF'>#ifdef</font> VMS
+<font color='#0000FF'>#define</font> EXIT_WARNING  <font color='#979000'>1</font>		<font color='#009900'>/* VMS is very nonstandard */</font>
+<font color='#0000FF'>#else</font>
+<font color='#0000FF'>#define</font> EXIT_WARNING  <font color='#979000'>2</font>
+<font color='#0000FF'>#endif</font>
+<font color='#0000FF'>#endif</font>
+
+</pre></body></html>

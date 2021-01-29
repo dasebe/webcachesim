@@ -1,0 +1,1600 @@
+<html><!-- Created using the cpp_pretty_printer from the dlib C++ library.  See http://dlib.net for updates. --><head><title>dlib C++ Library - transupp.c</title></head><body bgcolor='white'><pre>
+<font color='#009900'>/*
+ * transupp.c
+ *
+ * Copyright (C) 1997-2011, Thomas G. Lane, Guido Vollbeding.
+ * This file is part of the Independent JPEG Group's software.
+ * For conditions of distribution and use, see the accompanying README file.
+ *
+ * This file contains image transformation routines and other utility code
+ * used by the jpegtran sample application.  These are NOT part of the core
+ * JPEG library.  But we keep these routines separate from jpegtran.c to
+ * ease the task of maintaining jpegtran-like programs that have other user
+ * interfaces.
+ */</font>
+
+<font color='#009900'>/* Although this file really shouldn't have access to the library internals,
+ * it's helpful to let it call jround_up() and jcopy_block_row().
+ */</font>
+<font color='#0000FF'>#define</font> JPEG_INTERNALS
+
+<font color='#0000FF'>#include</font> "<a style='text-decoration:none' href='jinclude.h.html'>jinclude.h</a>"
+<font color='#0000FF'>#include</font> "<a style='text-decoration:none' href='jpeglib.h.html'>jpeglib.h</a>"
+<font color='#0000FF'>#include</font> "<a style='text-decoration:none' href='transupp.h.html'>transupp.h</a>"		<font color='#009900'>/* My own external interface */</font>
+<font color='#0000FF'>#include</font> <font color='#5555FF'>&lt;</font>ctype.h<font color='#5555FF'>&gt;</font>		<font color='#009900'>/* to declare isdigit() */</font>
+
+
+<font color='#0000FF'>#if</font> TRANSFORMS_SUPPORTED
+
+<font color='#009900'>/*
+ * Lossless image transformation routines.  These routines work on DCT
+ * coefficient arrays and thus do not require any lossy decompression
+ * or recompression of the image.
+ * Thanks to Guido Vollbeding for the initial design and code of this feature,
+ * and to Ben Jackson for introducing the cropping feature.
+ *
+ * Horizontal flipping is done in-place, using a single top-to-bottom
+ * pass through the virtual source array.  It will thus be much the
+ * fastest option for images larger than main memory.
+ *
+ * The other routines require a set of destination virtual arrays, so they
+ * need twice as much memory as jpegtran normally does.  The destination
+ * arrays are always written in normal scan order (top to bottom) because
+ * the virtual array manager expects this.  The source arrays will be scanned
+ * in the corresponding order, which means multiple passes through the source
+ * arrays for most of the transforms.  That could result in much thrashing
+ * if the image is larger than main memory.
+ *
+ * If cropping or trimming is involved, the destination arrays may be smaller
+ * than the source arrays.  Note it is not possible to do horizontal flip
+ * in-place when a nonzero Y crop offset is specified, since we'd have to move
+ * data from one block row to another but the virtual array manager doesn't
+ * guarantee we can touch more than one row at a time.  So in that case,
+ * we have to use a separate destination array.
+ *
+ * Some notes about the operating environment of the individual transform
+ * routines:
+ * 1. Both the source and destination virtual arrays are allocated from the
+ *    source JPEG object, and therefore should be manipulated by calling the
+ *    source's memory manager.
+ * 2. The destination's component count should be used.  It may be smaller
+ *    than the source's when forcing to grayscale.
+ * 3. Likewise the destination's sampling factors should be used.  When
+ *    forcing to grayscale the destination's sampling factors will be all 1,
+ *    and we may as well take that as the effective iMCU size.
+ * 4. When "trim" is in effect, the destination's dimensions will be the
+ *    trimmed values but the source's will be untrimmed.
+ * 5. When "crop" is in effect, the destination's dimensions will be the
+ *    cropped values but the source's will be uncropped.  Each transform
+ *    routine is responsible for picking up source data starting at the
+ *    correct X and Y offset for the crop region.  (The X and Y offsets
+ *    passed to the transform routines are measured in iMCU blocks of the
+ *    destination.)
+ * 6. All the routines assume that the source and destination buffers are
+ *    padded out to a full iMCU boundary.  This is true, although for the
+ *    source buffer it is an undocumented property of jdcoefct.c.
+ */</font>
+
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='do_crop'></a>do_crop</b> <font face='Lucida Console'>(</font>j_decompress_ptr srcinfo, j_compress_ptr dstinfo,
+	 JDIMENSION x_crop_offset, JDIMENSION y_crop_offset,
+	 jvirt_barray_ptr <font color='#5555FF'>*</font>src_coef_arrays,
+	 jvirt_barray_ptr <font color='#5555FF'>*</font>dst_coef_arrays<font face='Lucida Console'>)</font>
+<font color='#009900'>/* Crop.  This is only used when no rotate/flip is requested with the crop. */</font>
+<b>{</b>
+  JDIMENSION dst_blk_y, x_crop_blocks, y_crop_blocks;
+  <font color='#0000FF'><u>int</u></font> ci, offset_y;
+  JBLOCKARRAY src_buffer, dst_buffer;
+  jpeg_component_info <font color='#5555FF'>*</font>compptr;
+
+  <font color='#009900'>/* We simply have to copy the right amount of data (the destination's
+   * image size) starting at the given X and Y offsets in the source.
+   */</font>
+  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>ci <font color='#5555FF'>=</font> <font color='#979000'>0</font>; ci <font color='#5555FF'>&lt;</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>num_components; ci<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+    compptr <font color='#5555FF'>=</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>comp_info <font color='#5555FF'>+</font> ci;
+    x_crop_blocks <font color='#5555FF'>=</font> x_crop_offset <font color='#5555FF'>*</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor;
+    y_crop_blocks <font color='#5555FF'>=</font> y_crop_offset <font color='#5555FF'>*</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor;
+    <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>dst_blk_y <font color='#5555FF'>=</font> <font color='#979000'>0</font>; dst_blk_y <font color='#5555FF'>&lt;</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>height_in_blocks;
+	 dst_blk_y <font color='#5555FF'>+</font><font color='#5555FF'>=</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor<font face='Lucida Console'>)</font> <b>{</b>
+      dst_buffer <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>access_virt_barray<font face='Lucida Console'>)</font>
+	<font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> srcinfo, dst_coef_arrays[ci], dst_blk_y,
+	 <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor, TRUE<font face='Lucida Console'>)</font>;
+      src_buffer <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>access_virt_barray<font face='Lucida Console'>)</font>
+	<font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> srcinfo, src_coef_arrays[ci],
+	 dst_blk_y <font color='#5555FF'>+</font> y_crop_blocks,
+	 <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor, FALSE<font face='Lucida Console'>)</font>;
+      <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>offset_y <font color='#5555FF'>=</font> <font color='#979000'>0</font>; offset_y <font color='#5555FF'>&lt;</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor; offset_y<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+	<font color='#BB00BB'>jcopy_block_row</font><font face='Lucida Console'>(</font>src_buffer[offset_y] <font color='#5555FF'>+</font> x_crop_blocks,
+			dst_buffer[offset_y],
+			compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>width_in_blocks<font face='Lucida Console'>)</font>;
+      <b>}</b>
+    <b>}</b>
+  <b>}</b>
+<b>}</b>
+
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='do_flip_h_no_crop'></a>do_flip_h_no_crop</b> <font face='Lucida Console'>(</font>j_decompress_ptr srcinfo, j_compress_ptr dstinfo,
+		   JDIMENSION x_crop_offset,
+		   jvirt_barray_ptr <font color='#5555FF'>*</font>src_coef_arrays<font face='Lucida Console'>)</font>
+<font color='#009900'>/* Horizontal flip; done in-place, so no separate dest array is required.
+ * NB: this only works when y_crop_offset is zero.
+ */</font>
+<b>{</b>
+  JDIMENSION MCU_cols, comp_width, blk_x, blk_y, x_crop_blocks;
+  <font color='#0000FF'><u>int</u></font> ci, k, offset_y;
+  JBLOCKARRAY buffer;
+  JCOEFPTR ptr1, ptr2;
+  JCOEF temp1, temp2;
+  jpeg_component_info <font color='#5555FF'>*</font>compptr;
+
+  <font color='#009900'>/* Horizontal mirroring of DCT blocks is accomplished by swapping
+   * pairs of blocks in-place.  Within a DCT block, we perform horizontal
+   * mirroring by changing the signs of odd-numbered columns.
+   * Partial iMCUs at the right edge are left untouched.
+   */</font>
+  MCU_cols <font color='#5555FF'>=</font> srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width <font color='#5555FF'>/</font>
+    <font face='Lucida Console'>(</font>dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>max_h_samp_factor <font color='#5555FF'>*</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>min_DCT_h_scaled_size<font face='Lucida Console'>)</font>;
+
+  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>ci <font color='#5555FF'>=</font> <font color='#979000'>0</font>; ci <font color='#5555FF'>&lt;</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>num_components; ci<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+    compptr <font color='#5555FF'>=</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>comp_info <font color='#5555FF'>+</font> ci;
+    comp_width <font color='#5555FF'>=</font> MCU_cols <font color='#5555FF'>*</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor;
+    x_crop_blocks <font color='#5555FF'>=</font> x_crop_offset <font color='#5555FF'>*</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor;
+    <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>blk_y <font color='#5555FF'>=</font> <font color='#979000'>0</font>; blk_y <font color='#5555FF'>&lt;</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>height_in_blocks;
+	 blk_y <font color='#5555FF'>+</font><font color='#5555FF'>=</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor<font face='Lucida Console'>)</font> <b>{</b>
+      buffer <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>access_virt_barray<font face='Lucida Console'>)</font>
+	<font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> srcinfo, src_coef_arrays[ci], blk_y,
+	 <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor, TRUE<font face='Lucida Console'>)</font>;
+      <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>offset_y <font color='#5555FF'>=</font> <font color='#979000'>0</font>; offset_y <font color='#5555FF'>&lt;</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor; offset_y<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+	<font color='#009900'>/* Do the mirroring */</font>
+	<font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>blk_x <font color='#5555FF'>=</font> <font color='#979000'>0</font>; blk_x <font color='#5555FF'>*</font> <font color='#979000'>2</font> <font color='#5555FF'>&lt;</font> comp_width; blk_x<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+	  ptr1 <font color='#5555FF'>=</font> buffer[offset_y][blk_x];
+	  ptr2 <font color='#5555FF'>=</font> buffer[offset_y][comp_width <font color='#5555FF'>-</font> blk_x <font color='#5555FF'>-</font> <font color='#979000'>1</font>];
+	  <font color='#009900'>/* this unrolled loop doesn't need to know which row it's on... */</font>
+	  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>k <font color='#5555FF'>=</font> <font color='#979000'>0</font>; k <font color='#5555FF'>&lt;</font> DCTSIZE2; k <font color='#5555FF'>+</font><font color='#5555FF'>=</font> <font color='#979000'>2</font><font face='Lucida Console'>)</font> <b>{</b>
+	    temp1 <font color='#5555FF'>=</font> <font color='#5555FF'>*</font>ptr1;	<font color='#009900'>/* swap even column */</font>
+	    temp2 <font color='#5555FF'>=</font> <font color='#5555FF'>*</font>ptr2;
+	    <font color='#5555FF'>*</font>ptr1<font color='#5555FF'>+</font><font color='#5555FF'>+</font> <font color='#5555FF'>=</font> temp2;
+	    <font color='#5555FF'>*</font>ptr2<font color='#5555FF'>+</font><font color='#5555FF'>+</font> <font color='#5555FF'>=</font> temp1;
+	    temp1 <font color='#5555FF'>=</font> <font color='#5555FF'>*</font>ptr1;	<font color='#009900'>/* swap odd column with sign change */</font>
+	    temp2 <font color='#5555FF'>=</font> <font color='#5555FF'>*</font>ptr2;
+	    <font color='#5555FF'>*</font>ptr1<font color='#5555FF'>+</font><font color='#5555FF'>+</font> <font color='#5555FF'>=</font> <font color='#5555FF'>-</font>temp2;
+	    <font color='#5555FF'>*</font>ptr2<font color='#5555FF'>+</font><font color='#5555FF'>+</font> <font color='#5555FF'>=</font> <font color='#5555FF'>-</font>temp1;
+	  <b>}</b>
+	<b>}</b>
+	<font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>x_crop_blocks <font color='#5555FF'>&gt;</font> <font color='#979000'>0</font><font face='Lucida Console'>)</font> <b>{</b>
+	  <font color='#009900'>/* Now left-justify the portion of the data to be kept.
+	   * We can't use a single jcopy_block_row() call because that routine
+	   * depends on memcpy(), whose behavior is unspecified for overlapping
+	   * source and destination areas.  Sigh.
+	   */</font>
+	  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>blk_x <font color='#5555FF'>=</font> <font color='#979000'>0</font>; blk_x <font color='#5555FF'>&lt;</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>width_in_blocks; blk_x<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+	    <font color='#BB00BB'>jcopy_block_row</font><font face='Lucida Console'>(</font>buffer[offset_y] <font color='#5555FF'>+</font> blk_x <font color='#5555FF'>+</font> x_crop_blocks,
+			    buffer[offset_y] <font color='#5555FF'>+</font> blk_x,
+			    <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> <font color='#979000'>1</font><font face='Lucida Console'>)</font>;
+	  <b>}</b>
+	<b>}</b>
+      <b>}</b>
+    <b>}</b>
+  <b>}</b>
+<b>}</b>
+
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='do_flip_h'></a>do_flip_h</b> <font face='Lucida Console'>(</font>j_decompress_ptr srcinfo, j_compress_ptr dstinfo,
+	   JDIMENSION x_crop_offset, JDIMENSION y_crop_offset,
+	   jvirt_barray_ptr <font color='#5555FF'>*</font>src_coef_arrays,
+	   jvirt_barray_ptr <font color='#5555FF'>*</font>dst_coef_arrays<font face='Lucida Console'>)</font>
+<font color='#009900'>/* Horizontal flip in general cropping case */</font>
+<b>{</b>
+  JDIMENSION MCU_cols, comp_width, dst_blk_x, dst_blk_y;
+  JDIMENSION x_crop_blocks, y_crop_blocks;
+  <font color='#0000FF'><u>int</u></font> ci, k, offset_y;
+  JBLOCKARRAY src_buffer, dst_buffer;
+  JBLOCKROW src_row_ptr, dst_row_ptr;
+  JCOEFPTR src_ptr, dst_ptr;
+  jpeg_component_info <font color='#5555FF'>*</font>compptr;
+
+  <font color='#009900'>/* Here we must output into a separate array because we can't touch
+   * different rows of a single virtual array simultaneously.  Otherwise,
+   * this is essentially the same as the routine above.
+   */</font>
+  MCU_cols <font color='#5555FF'>=</font> srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width <font color='#5555FF'>/</font>
+    <font face='Lucida Console'>(</font>dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>max_h_samp_factor <font color='#5555FF'>*</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>min_DCT_h_scaled_size<font face='Lucida Console'>)</font>;
+
+  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>ci <font color='#5555FF'>=</font> <font color='#979000'>0</font>; ci <font color='#5555FF'>&lt;</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>num_components; ci<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+    compptr <font color='#5555FF'>=</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>comp_info <font color='#5555FF'>+</font> ci;
+    comp_width <font color='#5555FF'>=</font> MCU_cols <font color='#5555FF'>*</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor;
+    x_crop_blocks <font color='#5555FF'>=</font> x_crop_offset <font color='#5555FF'>*</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor;
+    y_crop_blocks <font color='#5555FF'>=</font> y_crop_offset <font color='#5555FF'>*</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor;
+    <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>dst_blk_y <font color='#5555FF'>=</font> <font color='#979000'>0</font>; dst_blk_y <font color='#5555FF'>&lt;</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>height_in_blocks;
+	 dst_blk_y <font color='#5555FF'>+</font><font color='#5555FF'>=</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor<font face='Lucida Console'>)</font> <b>{</b>
+      dst_buffer <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>access_virt_barray<font face='Lucida Console'>)</font>
+	<font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> srcinfo, dst_coef_arrays[ci], dst_blk_y,
+	 <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor, TRUE<font face='Lucida Console'>)</font>;
+      src_buffer <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>access_virt_barray<font face='Lucida Console'>)</font>
+	<font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> srcinfo, src_coef_arrays[ci],
+	 dst_blk_y <font color='#5555FF'>+</font> y_crop_blocks,
+	 <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor, FALSE<font face='Lucida Console'>)</font>;
+      <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>offset_y <font color='#5555FF'>=</font> <font color='#979000'>0</font>; offset_y <font color='#5555FF'>&lt;</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor; offset_y<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+	dst_row_ptr <font color='#5555FF'>=</font> dst_buffer[offset_y];
+	src_row_ptr <font color='#5555FF'>=</font> src_buffer[offset_y];
+	<font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>dst_blk_x <font color='#5555FF'>=</font> <font color='#979000'>0</font>; dst_blk_x <font color='#5555FF'>&lt;</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>width_in_blocks; dst_blk_x<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+	  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>x_crop_blocks <font color='#5555FF'>+</font> dst_blk_x <font color='#5555FF'>&lt;</font> comp_width<font face='Lucida Console'>)</font> <b>{</b>
+	    <font color='#009900'>/* Do the mirrorable blocks */</font>
+	    dst_ptr <font color='#5555FF'>=</font> dst_row_ptr[dst_blk_x];
+	    src_ptr <font color='#5555FF'>=</font> src_row_ptr[comp_width <font color='#5555FF'>-</font> x_crop_blocks <font color='#5555FF'>-</font> dst_blk_x <font color='#5555FF'>-</font> <font color='#979000'>1</font>];
+	    <font color='#009900'>/* this unrolled loop doesn't need to know which row it's on... */</font>
+	    <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>k <font color='#5555FF'>=</font> <font color='#979000'>0</font>; k <font color='#5555FF'>&lt;</font> DCTSIZE2; k <font color='#5555FF'>+</font><font color='#5555FF'>=</font> <font color='#979000'>2</font><font face='Lucida Console'>)</font> <b>{</b>
+	      <font color='#5555FF'>*</font>dst_ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font> <font color='#5555FF'>=</font> <font color='#5555FF'>*</font>src_ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;	 <font color='#009900'>/* copy even column */</font>
+	      <font color='#5555FF'>*</font>dst_ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font> <font color='#5555FF'>=</font> <font color='#5555FF'>-</font> <font color='#5555FF'>*</font>src_ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font>; <font color='#009900'>/* copy odd column with sign change */</font>
+	    <b>}</b>
+	  <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+	    <font color='#009900'>/* Copy last partial block(s) verbatim */</font>
+	    <font color='#BB00BB'>jcopy_block_row</font><font face='Lucida Console'>(</font>src_row_ptr <font color='#5555FF'>+</font> dst_blk_x <font color='#5555FF'>+</font> x_crop_blocks,
+			    dst_row_ptr <font color='#5555FF'>+</font> dst_blk_x,
+			    <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> <font color='#979000'>1</font><font face='Lucida Console'>)</font>;
+	  <b>}</b>
+	<b>}</b>
+      <b>}</b>
+    <b>}</b>
+  <b>}</b>
+<b>}</b>
+
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='do_flip_v'></a>do_flip_v</b> <font face='Lucida Console'>(</font>j_decompress_ptr srcinfo, j_compress_ptr dstinfo,
+	   JDIMENSION x_crop_offset, JDIMENSION y_crop_offset,
+	   jvirt_barray_ptr <font color='#5555FF'>*</font>src_coef_arrays,
+	   jvirt_barray_ptr <font color='#5555FF'>*</font>dst_coef_arrays<font face='Lucida Console'>)</font>
+<font color='#009900'>/* Vertical flip */</font>
+<b>{</b>
+  JDIMENSION MCU_rows, comp_height, dst_blk_x, dst_blk_y;
+  JDIMENSION x_crop_blocks, y_crop_blocks;
+  <font color='#0000FF'><u>int</u></font> ci, i, j, offset_y;
+  JBLOCKARRAY src_buffer, dst_buffer;
+  JBLOCKROW src_row_ptr, dst_row_ptr;
+  JCOEFPTR src_ptr, dst_ptr;
+  jpeg_component_info <font color='#5555FF'>*</font>compptr;
+
+  <font color='#009900'>/* We output into a separate array because we can't touch different
+   * rows of the source virtual array simultaneously.  Otherwise, this
+   * is a pretty straightforward analog of horizontal flip.
+   * Within a DCT block, vertical mirroring is done by changing the signs
+   * of odd-numbered rows.
+   * Partial iMCUs at the bottom edge are copied verbatim.
+   */</font>
+  MCU_rows <font color='#5555FF'>=</font> srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height <font color='#5555FF'>/</font>
+    <font face='Lucida Console'>(</font>dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>max_v_samp_factor <font color='#5555FF'>*</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>min_DCT_v_scaled_size<font face='Lucida Console'>)</font>;
+
+  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>ci <font color='#5555FF'>=</font> <font color='#979000'>0</font>; ci <font color='#5555FF'>&lt;</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>num_components; ci<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+    compptr <font color='#5555FF'>=</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>comp_info <font color='#5555FF'>+</font> ci;
+    comp_height <font color='#5555FF'>=</font> MCU_rows <font color='#5555FF'>*</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor;
+    x_crop_blocks <font color='#5555FF'>=</font> x_crop_offset <font color='#5555FF'>*</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor;
+    y_crop_blocks <font color='#5555FF'>=</font> y_crop_offset <font color='#5555FF'>*</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor;
+    <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>dst_blk_y <font color='#5555FF'>=</font> <font color='#979000'>0</font>; dst_blk_y <font color='#5555FF'>&lt;</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>height_in_blocks;
+	 dst_blk_y <font color='#5555FF'>+</font><font color='#5555FF'>=</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor<font face='Lucida Console'>)</font> <b>{</b>
+      dst_buffer <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>access_virt_barray<font face='Lucida Console'>)</font>
+	<font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> srcinfo, dst_coef_arrays[ci], dst_blk_y,
+	 <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor, TRUE<font face='Lucida Console'>)</font>;
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>y_crop_blocks <font color='#5555FF'>+</font> dst_blk_y <font color='#5555FF'>&lt;</font> comp_height<font face='Lucida Console'>)</font> <b>{</b>
+	<font color='#009900'>/* Row is within the mirrorable area. */</font>
+	src_buffer <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>access_virt_barray<font face='Lucida Console'>)</font>
+	  <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> srcinfo, src_coef_arrays[ci],
+	   comp_height <font color='#5555FF'>-</font> y_crop_blocks <font color='#5555FF'>-</font> dst_blk_y <font color='#5555FF'>-</font>
+	   <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor,
+	   <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor, FALSE<font face='Lucida Console'>)</font>;
+      <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+	<font color='#009900'>/* Bottom-edge blocks will be copied verbatim. */</font>
+	src_buffer <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>access_virt_barray<font face='Lucida Console'>)</font>
+	  <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> srcinfo, src_coef_arrays[ci],
+	   dst_blk_y <font color='#5555FF'>+</font> y_crop_blocks,
+	   <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor, FALSE<font face='Lucida Console'>)</font>;
+      <b>}</b>
+      <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>offset_y <font color='#5555FF'>=</font> <font color='#979000'>0</font>; offset_y <font color='#5555FF'>&lt;</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor; offset_y<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+	<font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>y_crop_blocks <font color='#5555FF'>+</font> dst_blk_y <font color='#5555FF'>&lt;</font> comp_height<font face='Lucida Console'>)</font> <b>{</b>
+	  <font color='#009900'>/* Row is within the mirrorable area. */</font>
+	  dst_row_ptr <font color='#5555FF'>=</font> dst_buffer[offset_y];
+	  src_row_ptr <font color='#5555FF'>=</font> src_buffer[compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor <font color='#5555FF'>-</font> offset_y <font color='#5555FF'>-</font> <font color='#979000'>1</font>];
+	  src_row_ptr <font color='#5555FF'>+</font><font color='#5555FF'>=</font> x_crop_blocks;
+	  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>dst_blk_x <font color='#5555FF'>=</font> <font color='#979000'>0</font>; dst_blk_x <font color='#5555FF'>&lt;</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>width_in_blocks;
+	       dst_blk_x<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+	    dst_ptr <font color='#5555FF'>=</font> dst_row_ptr[dst_blk_x];
+	    src_ptr <font color='#5555FF'>=</font> src_row_ptr[dst_blk_x];
+	    <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>i <font color='#5555FF'>=</font> <font color='#979000'>0</font>; i <font color='#5555FF'>&lt;</font> DCTSIZE; i <font color='#5555FF'>+</font><font color='#5555FF'>=</font> <font color='#979000'>2</font><font face='Lucida Console'>)</font> <b>{</b>
+	      <font color='#009900'>/* copy even row */</font>
+	      <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>j <font color='#5555FF'>=</font> <font color='#979000'>0</font>; j <font color='#5555FF'>&lt;</font> DCTSIZE; j<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font>
+		<font color='#5555FF'>*</font>dst_ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font> <font color='#5555FF'>=</font> <font color='#5555FF'>*</font>src_ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;
+	      <font color='#009900'>/* copy odd row with sign change */</font>
+	      <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>j <font color='#5555FF'>=</font> <font color='#979000'>0</font>; j <font color='#5555FF'>&lt;</font> DCTSIZE; j<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font>
+		<font color='#5555FF'>*</font>dst_ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font> <font color='#5555FF'>=</font> <font color='#5555FF'>-</font> <font color='#5555FF'>*</font>src_ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;
+	    <b>}</b>
+	  <b>}</b>
+	<b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+	  <font color='#009900'>/* Just copy row verbatim. */</font>
+	  <font color='#BB00BB'>jcopy_block_row</font><font face='Lucida Console'>(</font>src_buffer[offset_y] <font color='#5555FF'>+</font> x_crop_blocks,
+			  dst_buffer[offset_y],
+			  compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>width_in_blocks<font face='Lucida Console'>)</font>;
+	<b>}</b>
+      <b>}</b>
+    <b>}</b>
+  <b>}</b>
+<b>}</b>
+
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='do_transpose'></a>do_transpose</b> <font face='Lucida Console'>(</font>j_decompress_ptr srcinfo, j_compress_ptr dstinfo,
+	      JDIMENSION x_crop_offset, JDIMENSION y_crop_offset,
+	      jvirt_barray_ptr <font color='#5555FF'>*</font>src_coef_arrays,
+	      jvirt_barray_ptr <font color='#5555FF'>*</font>dst_coef_arrays<font face='Lucida Console'>)</font>
+<font color='#009900'>/* Transpose source into destination */</font>
+<b>{</b>
+  JDIMENSION dst_blk_x, dst_blk_y, x_crop_blocks, y_crop_blocks;
+  <font color='#0000FF'><u>int</u></font> ci, i, j, offset_x, offset_y;
+  JBLOCKARRAY src_buffer, dst_buffer;
+  JCOEFPTR src_ptr, dst_ptr;
+  jpeg_component_info <font color='#5555FF'>*</font>compptr;
+
+  <font color='#009900'>/* Transposing pixels within a block just requires transposing the
+   * DCT coefficients.
+   * Partial iMCUs at the edges require no special treatment; we simply
+   * process all the available DCT blocks for every component.
+   */</font>
+  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>ci <font color='#5555FF'>=</font> <font color='#979000'>0</font>; ci <font color='#5555FF'>&lt;</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>num_components; ci<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+    compptr <font color='#5555FF'>=</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>comp_info <font color='#5555FF'>+</font> ci;
+    x_crop_blocks <font color='#5555FF'>=</font> x_crop_offset <font color='#5555FF'>*</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor;
+    y_crop_blocks <font color='#5555FF'>=</font> y_crop_offset <font color='#5555FF'>*</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor;
+    <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>dst_blk_y <font color='#5555FF'>=</font> <font color='#979000'>0</font>; dst_blk_y <font color='#5555FF'>&lt;</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>height_in_blocks;
+	 dst_blk_y <font color='#5555FF'>+</font><font color='#5555FF'>=</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor<font face='Lucida Console'>)</font> <b>{</b>
+      dst_buffer <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>access_virt_barray<font face='Lucida Console'>)</font>
+	<font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> srcinfo, dst_coef_arrays[ci], dst_blk_y,
+	 <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor, TRUE<font face='Lucida Console'>)</font>;
+      <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>offset_y <font color='#5555FF'>=</font> <font color='#979000'>0</font>; offset_y <font color='#5555FF'>&lt;</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor; offset_y<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+	<font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>dst_blk_x <font color='#5555FF'>=</font> <font color='#979000'>0</font>; dst_blk_x <font color='#5555FF'>&lt;</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>width_in_blocks;
+	     dst_blk_x <font color='#5555FF'>+</font><font color='#5555FF'>=</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor<font face='Lucida Console'>)</font> <b>{</b>
+	  src_buffer <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>access_virt_barray<font face='Lucida Console'>)</font>
+	    <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> srcinfo, src_coef_arrays[ci],
+	     dst_blk_x <font color='#5555FF'>+</font> x_crop_blocks,
+	     <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor, FALSE<font face='Lucida Console'>)</font>;
+	  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>offset_x <font color='#5555FF'>=</font> <font color='#979000'>0</font>; offset_x <font color='#5555FF'>&lt;</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor; offset_x<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+	    dst_ptr <font color='#5555FF'>=</font> dst_buffer[offset_y][dst_blk_x <font color='#5555FF'>+</font> offset_x];
+	    src_ptr <font color='#5555FF'>=</font> src_buffer[offset_x][dst_blk_y <font color='#5555FF'>+</font> offset_y <font color='#5555FF'>+</font> y_crop_blocks];
+	    <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>i <font color='#5555FF'>=</font> <font color='#979000'>0</font>; i <font color='#5555FF'>&lt;</font> DCTSIZE; i<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font>
+	      <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>j <font color='#5555FF'>=</font> <font color='#979000'>0</font>; j <font color='#5555FF'>&lt;</font> DCTSIZE; j<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font>
+		dst_ptr[j<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>i] <font color='#5555FF'>=</font> src_ptr[i<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>j];
+	  <b>}</b>
+	<b>}</b>
+      <b>}</b>
+    <b>}</b>
+  <b>}</b>
+<b>}</b>
+
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='do_rot_90'></a>do_rot_90</b> <font face='Lucida Console'>(</font>j_decompress_ptr srcinfo, j_compress_ptr dstinfo,
+	   JDIMENSION x_crop_offset, JDIMENSION y_crop_offset,
+	   jvirt_barray_ptr <font color='#5555FF'>*</font>src_coef_arrays,
+	   jvirt_barray_ptr <font color='#5555FF'>*</font>dst_coef_arrays<font face='Lucida Console'>)</font>
+<font color='#009900'>/* 90 degree rotation is equivalent to
+ *   1. Transposing the image;
+ *   2. Horizontal mirroring.
+ * These two steps are merged into a single processing routine.
+ */</font>
+<b>{</b>
+  JDIMENSION MCU_cols, comp_width, dst_blk_x, dst_blk_y;
+  JDIMENSION x_crop_blocks, y_crop_blocks;
+  <font color='#0000FF'><u>int</u></font> ci, i, j, offset_x, offset_y;
+  JBLOCKARRAY src_buffer, dst_buffer;
+  JCOEFPTR src_ptr, dst_ptr;
+  jpeg_component_info <font color='#5555FF'>*</font>compptr;
+
+  <font color='#009900'>/* Because of the horizontal mirror step, we can't process partial iMCUs
+   * at the (output) right edge properly.  They just get transposed and
+   * not mirrored.
+   */</font>
+  MCU_cols <font color='#5555FF'>=</font> srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height <font color='#5555FF'>/</font>
+    <font face='Lucida Console'>(</font>dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>max_h_samp_factor <font color='#5555FF'>*</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>min_DCT_h_scaled_size<font face='Lucida Console'>)</font>;
+
+  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>ci <font color='#5555FF'>=</font> <font color='#979000'>0</font>; ci <font color='#5555FF'>&lt;</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>num_components; ci<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+    compptr <font color='#5555FF'>=</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>comp_info <font color='#5555FF'>+</font> ci;
+    comp_width <font color='#5555FF'>=</font> MCU_cols <font color='#5555FF'>*</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor;
+    x_crop_blocks <font color='#5555FF'>=</font> x_crop_offset <font color='#5555FF'>*</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor;
+    y_crop_blocks <font color='#5555FF'>=</font> y_crop_offset <font color='#5555FF'>*</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor;
+    <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>dst_blk_y <font color='#5555FF'>=</font> <font color='#979000'>0</font>; dst_blk_y <font color='#5555FF'>&lt;</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>height_in_blocks;
+	 dst_blk_y <font color='#5555FF'>+</font><font color='#5555FF'>=</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor<font face='Lucida Console'>)</font> <b>{</b>
+      dst_buffer <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>access_virt_barray<font face='Lucida Console'>)</font>
+	<font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> srcinfo, dst_coef_arrays[ci], dst_blk_y,
+	 <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor, TRUE<font face='Lucida Console'>)</font>;
+      <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>offset_y <font color='#5555FF'>=</font> <font color='#979000'>0</font>; offset_y <font color='#5555FF'>&lt;</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor; offset_y<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+	<font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>dst_blk_x <font color='#5555FF'>=</font> <font color='#979000'>0</font>; dst_blk_x <font color='#5555FF'>&lt;</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>width_in_blocks;
+	     dst_blk_x <font color='#5555FF'>+</font><font color='#5555FF'>=</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor<font face='Lucida Console'>)</font> <b>{</b>
+	  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>x_crop_blocks <font color='#5555FF'>+</font> dst_blk_x <font color='#5555FF'>&lt;</font> comp_width<font face='Lucida Console'>)</font> <b>{</b>
+	    <font color='#009900'>/* Block is within the mirrorable area. */</font>
+	    src_buffer <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>access_virt_barray<font face='Lucida Console'>)</font>
+	      <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> srcinfo, src_coef_arrays[ci],
+	       comp_width <font color='#5555FF'>-</font> x_crop_blocks <font color='#5555FF'>-</font> dst_blk_x <font color='#5555FF'>-</font>
+	       <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor,
+	       <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor, FALSE<font face='Lucida Console'>)</font>;
+	  <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+	    <font color='#009900'>/* Edge blocks are transposed but not mirrored. */</font>
+	    src_buffer <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>access_virt_barray<font face='Lucida Console'>)</font>
+	      <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> srcinfo, src_coef_arrays[ci],
+	       dst_blk_x <font color='#5555FF'>+</font> x_crop_blocks,
+	       <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor, FALSE<font face='Lucida Console'>)</font>;
+	  <b>}</b>
+	  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>offset_x <font color='#5555FF'>=</font> <font color='#979000'>0</font>; offset_x <font color='#5555FF'>&lt;</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor; offset_x<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+	    dst_ptr <font color='#5555FF'>=</font> dst_buffer[offset_y][dst_blk_x <font color='#5555FF'>+</font> offset_x];
+	    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>x_crop_blocks <font color='#5555FF'>+</font> dst_blk_x <font color='#5555FF'>&lt;</font> comp_width<font face='Lucida Console'>)</font> <b>{</b>
+	      <font color='#009900'>/* Block is within the mirrorable area. */</font>
+	      src_ptr <font color='#5555FF'>=</font> src_buffer[compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor <font color='#5555FF'>-</font> offset_x <font color='#5555FF'>-</font> <font color='#979000'>1</font>]
+		[dst_blk_y <font color='#5555FF'>+</font> offset_y <font color='#5555FF'>+</font> y_crop_blocks];
+	      <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>i <font color='#5555FF'>=</font> <font color='#979000'>0</font>; i <font color='#5555FF'>&lt;</font> DCTSIZE; i<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+		<font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>j <font color='#5555FF'>=</font> <font color='#979000'>0</font>; j <font color='#5555FF'>&lt;</font> DCTSIZE; j<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font>
+		  dst_ptr[j<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>i] <font color='#5555FF'>=</font> src_ptr[i<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>j];
+		i<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;
+		<font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>j <font color='#5555FF'>=</font> <font color='#979000'>0</font>; j <font color='#5555FF'>&lt;</font> DCTSIZE; j<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font>
+		  dst_ptr[j<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>i] <font color='#5555FF'>=</font> <font color='#5555FF'>-</font>src_ptr[i<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>j];
+	      <b>}</b>
+	    <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+	      <font color='#009900'>/* Edge blocks are transposed but not mirrored. */</font>
+	      src_ptr <font color='#5555FF'>=</font> src_buffer[offset_x]
+		[dst_blk_y <font color='#5555FF'>+</font> offset_y <font color='#5555FF'>+</font> y_crop_blocks];
+	      <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>i <font color='#5555FF'>=</font> <font color='#979000'>0</font>; i <font color='#5555FF'>&lt;</font> DCTSIZE; i<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font>
+		<font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>j <font color='#5555FF'>=</font> <font color='#979000'>0</font>; j <font color='#5555FF'>&lt;</font> DCTSIZE; j<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font>
+		  dst_ptr[j<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>i] <font color='#5555FF'>=</font> src_ptr[i<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>j];
+	    <b>}</b>
+	  <b>}</b>
+	<b>}</b>
+      <b>}</b>
+    <b>}</b>
+  <b>}</b>
+<b>}</b>
+
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='do_rot_270'></a>do_rot_270</b> <font face='Lucida Console'>(</font>j_decompress_ptr srcinfo, j_compress_ptr dstinfo,
+	    JDIMENSION x_crop_offset, JDIMENSION y_crop_offset,
+	    jvirt_barray_ptr <font color='#5555FF'>*</font>src_coef_arrays,
+	    jvirt_barray_ptr <font color='#5555FF'>*</font>dst_coef_arrays<font face='Lucida Console'>)</font>
+<font color='#009900'>/* 270 degree rotation is equivalent to
+ *   1. Horizontal mirroring;
+ *   2. Transposing the image.
+ * These two steps are merged into a single processing routine.
+ */</font>
+<b>{</b>
+  JDIMENSION MCU_rows, comp_height, dst_blk_x, dst_blk_y;
+  JDIMENSION x_crop_blocks, y_crop_blocks;
+  <font color='#0000FF'><u>int</u></font> ci, i, j, offset_x, offset_y;
+  JBLOCKARRAY src_buffer, dst_buffer;
+  JCOEFPTR src_ptr, dst_ptr;
+  jpeg_component_info <font color='#5555FF'>*</font>compptr;
+
+  <font color='#009900'>/* Because of the horizontal mirror step, we can't process partial iMCUs
+   * at the (output) bottom edge properly.  They just get transposed and
+   * not mirrored.
+   */</font>
+  MCU_rows <font color='#5555FF'>=</font> srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width <font color='#5555FF'>/</font>
+    <font face='Lucida Console'>(</font>dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>max_v_samp_factor <font color='#5555FF'>*</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>min_DCT_v_scaled_size<font face='Lucida Console'>)</font>;
+
+  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>ci <font color='#5555FF'>=</font> <font color='#979000'>0</font>; ci <font color='#5555FF'>&lt;</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>num_components; ci<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+    compptr <font color='#5555FF'>=</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>comp_info <font color='#5555FF'>+</font> ci;
+    comp_height <font color='#5555FF'>=</font> MCU_rows <font color='#5555FF'>*</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor;
+    x_crop_blocks <font color='#5555FF'>=</font> x_crop_offset <font color='#5555FF'>*</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor;
+    y_crop_blocks <font color='#5555FF'>=</font> y_crop_offset <font color='#5555FF'>*</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor;
+    <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>dst_blk_y <font color='#5555FF'>=</font> <font color='#979000'>0</font>; dst_blk_y <font color='#5555FF'>&lt;</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>height_in_blocks;
+	 dst_blk_y <font color='#5555FF'>+</font><font color='#5555FF'>=</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor<font face='Lucida Console'>)</font> <b>{</b>
+      dst_buffer <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>access_virt_barray<font face='Lucida Console'>)</font>
+	<font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> srcinfo, dst_coef_arrays[ci], dst_blk_y,
+	 <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor, TRUE<font face='Lucida Console'>)</font>;
+      <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>offset_y <font color='#5555FF'>=</font> <font color='#979000'>0</font>; offset_y <font color='#5555FF'>&lt;</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor; offset_y<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+	<font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>dst_blk_x <font color='#5555FF'>=</font> <font color='#979000'>0</font>; dst_blk_x <font color='#5555FF'>&lt;</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>width_in_blocks;
+	     dst_blk_x <font color='#5555FF'>+</font><font color='#5555FF'>=</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor<font face='Lucida Console'>)</font> <b>{</b>
+	  src_buffer <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>access_virt_barray<font face='Lucida Console'>)</font>
+	    <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> srcinfo, src_coef_arrays[ci],
+	     dst_blk_x <font color='#5555FF'>+</font> x_crop_blocks,
+	     <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor, FALSE<font face='Lucida Console'>)</font>;
+	  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>offset_x <font color='#5555FF'>=</font> <font color='#979000'>0</font>; offset_x <font color='#5555FF'>&lt;</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor; offset_x<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+	    dst_ptr <font color='#5555FF'>=</font> dst_buffer[offset_y][dst_blk_x <font color='#5555FF'>+</font> offset_x];
+	    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>y_crop_blocks <font color='#5555FF'>+</font> dst_blk_y <font color='#5555FF'>&lt;</font> comp_height<font face='Lucida Console'>)</font> <b>{</b>
+	      <font color='#009900'>/* Block is within the mirrorable area. */</font>
+	      src_ptr <font color='#5555FF'>=</font> src_buffer[offset_x]
+		[comp_height <font color='#5555FF'>-</font> y_crop_blocks <font color='#5555FF'>-</font> dst_blk_y <font color='#5555FF'>-</font> offset_y <font color='#5555FF'>-</font> <font color='#979000'>1</font>];
+	      <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>i <font color='#5555FF'>=</font> <font color='#979000'>0</font>; i <font color='#5555FF'>&lt;</font> DCTSIZE; i<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+		<font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>j <font color='#5555FF'>=</font> <font color='#979000'>0</font>; j <font color='#5555FF'>&lt;</font> DCTSIZE; j<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+		  dst_ptr[j<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>i] <font color='#5555FF'>=</font> src_ptr[i<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>j];
+		  j<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;
+		  dst_ptr[j<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>i] <font color='#5555FF'>=</font> <font color='#5555FF'>-</font>src_ptr[i<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>j];
+		<b>}</b>
+	      <b>}</b>
+	    <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+	      <font color='#009900'>/* Edge blocks are transposed but not mirrored. */</font>
+	      src_ptr <font color='#5555FF'>=</font> src_buffer[offset_x]
+		[dst_blk_y <font color='#5555FF'>+</font> offset_y <font color='#5555FF'>+</font> y_crop_blocks];
+	      <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>i <font color='#5555FF'>=</font> <font color='#979000'>0</font>; i <font color='#5555FF'>&lt;</font> DCTSIZE; i<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font>
+		<font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>j <font color='#5555FF'>=</font> <font color='#979000'>0</font>; j <font color='#5555FF'>&lt;</font> DCTSIZE; j<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font>
+		  dst_ptr[j<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>i] <font color='#5555FF'>=</font> src_ptr[i<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>j];
+	    <b>}</b>
+	  <b>}</b>
+	<b>}</b>
+      <b>}</b>
+    <b>}</b>
+  <b>}</b>
+<b>}</b>
+
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='do_rot_180'></a>do_rot_180</b> <font face='Lucida Console'>(</font>j_decompress_ptr srcinfo, j_compress_ptr dstinfo,
+	    JDIMENSION x_crop_offset, JDIMENSION y_crop_offset,
+	    jvirt_barray_ptr <font color='#5555FF'>*</font>src_coef_arrays,
+	    jvirt_barray_ptr <font color='#5555FF'>*</font>dst_coef_arrays<font face='Lucida Console'>)</font>
+<font color='#009900'>/* 180 degree rotation is equivalent to
+ *   1. Vertical mirroring;
+ *   2. Horizontal mirroring.
+ * These two steps are merged into a single processing routine.
+ */</font>
+<b>{</b>
+  JDIMENSION MCU_cols, MCU_rows, comp_width, comp_height, dst_blk_x, dst_blk_y;
+  JDIMENSION x_crop_blocks, y_crop_blocks;
+  <font color='#0000FF'><u>int</u></font> ci, i, j, offset_y;
+  JBLOCKARRAY src_buffer, dst_buffer;
+  JBLOCKROW src_row_ptr, dst_row_ptr;
+  JCOEFPTR src_ptr, dst_ptr;
+  jpeg_component_info <font color='#5555FF'>*</font>compptr;
+
+  MCU_cols <font color='#5555FF'>=</font> srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width <font color='#5555FF'>/</font>
+    <font face='Lucida Console'>(</font>dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>max_h_samp_factor <font color='#5555FF'>*</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>min_DCT_h_scaled_size<font face='Lucida Console'>)</font>;
+  MCU_rows <font color='#5555FF'>=</font> srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height <font color='#5555FF'>/</font>
+    <font face='Lucida Console'>(</font>dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>max_v_samp_factor <font color='#5555FF'>*</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>min_DCT_v_scaled_size<font face='Lucida Console'>)</font>;
+
+  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>ci <font color='#5555FF'>=</font> <font color='#979000'>0</font>; ci <font color='#5555FF'>&lt;</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>num_components; ci<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+    compptr <font color='#5555FF'>=</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>comp_info <font color='#5555FF'>+</font> ci;
+    comp_width <font color='#5555FF'>=</font> MCU_cols <font color='#5555FF'>*</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor;
+    comp_height <font color='#5555FF'>=</font> MCU_rows <font color='#5555FF'>*</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor;
+    x_crop_blocks <font color='#5555FF'>=</font> x_crop_offset <font color='#5555FF'>*</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor;
+    y_crop_blocks <font color='#5555FF'>=</font> y_crop_offset <font color='#5555FF'>*</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor;
+    <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>dst_blk_y <font color='#5555FF'>=</font> <font color='#979000'>0</font>; dst_blk_y <font color='#5555FF'>&lt;</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>height_in_blocks;
+	 dst_blk_y <font color='#5555FF'>+</font><font color='#5555FF'>=</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor<font face='Lucida Console'>)</font> <b>{</b>
+      dst_buffer <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>access_virt_barray<font face='Lucida Console'>)</font>
+	<font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> srcinfo, dst_coef_arrays[ci], dst_blk_y,
+	 <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor, TRUE<font face='Lucida Console'>)</font>;
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>y_crop_blocks <font color='#5555FF'>+</font> dst_blk_y <font color='#5555FF'>&lt;</font> comp_height<font face='Lucida Console'>)</font> <b>{</b>
+	<font color='#009900'>/* Row is within the vertically mirrorable area. */</font>
+	src_buffer <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>access_virt_barray<font face='Lucida Console'>)</font>
+	  <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> srcinfo, src_coef_arrays[ci],
+	   comp_height <font color='#5555FF'>-</font> y_crop_blocks <font color='#5555FF'>-</font> dst_blk_y <font color='#5555FF'>-</font>
+	   <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor,
+	   <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor, FALSE<font face='Lucida Console'>)</font>;
+      <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+	<font color='#009900'>/* Bottom-edge rows are only mirrored horizontally. */</font>
+	src_buffer <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>access_virt_barray<font face='Lucida Console'>)</font>
+	  <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> srcinfo, src_coef_arrays[ci],
+	   dst_blk_y <font color='#5555FF'>+</font> y_crop_blocks,
+	   <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor, FALSE<font face='Lucida Console'>)</font>;
+      <b>}</b>
+      <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>offset_y <font color='#5555FF'>=</font> <font color='#979000'>0</font>; offset_y <font color='#5555FF'>&lt;</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor; offset_y<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+	dst_row_ptr <font color='#5555FF'>=</font> dst_buffer[offset_y];
+	<font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>y_crop_blocks <font color='#5555FF'>+</font> dst_blk_y <font color='#5555FF'>&lt;</font> comp_height<font face='Lucida Console'>)</font> <b>{</b>
+	  <font color='#009900'>/* Row is within the mirrorable area. */</font>
+	  src_row_ptr <font color='#5555FF'>=</font> src_buffer[compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor <font color='#5555FF'>-</font> offset_y <font color='#5555FF'>-</font> <font color='#979000'>1</font>];
+	  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>dst_blk_x <font color='#5555FF'>=</font> <font color='#979000'>0</font>; dst_blk_x <font color='#5555FF'>&lt;</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>width_in_blocks; dst_blk_x<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+	    dst_ptr <font color='#5555FF'>=</font> dst_row_ptr[dst_blk_x];
+	    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>x_crop_blocks <font color='#5555FF'>+</font> dst_blk_x <font color='#5555FF'>&lt;</font> comp_width<font face='Lucida Console'>)</font> <b>{</b>
+	      <font color='#009900'>/* Process the blocks that can be mirrored both ways. */</font>
+	      src_ptr <font color='#5555FF'>=</font> src_row_ptr[comp_width <font color='#5555FF'>-</font> x_crop_blocks <font color='#5555FF'>-</font> dst_blk_x <font color='#5555FF'>-</font> <font color='#979000'>1</font>];
+	      <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>i <font color='#5555FF'>=</font> <font color='#979000'>0</font>; i <font color='#5555FF'>&lt;</font> DCTSIZE; i <font color='#5555FF'>+</font><font color='#5555FF'>=</font> <font color='#979000'>2</font><font face='Lucida Console'>)</font> <b>{</b>
+		<font color='#009900'>/* For even row, negate every odd column. */</font>
+		<font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>j <font color='#5555FF'>=</font> <font color='#979000'>0</font>; j <font color='#5555FF'>&lt;</font> DCTSIZE; j <font color='#5555FF'>+</font><font color='#5555FF'>=</font> <font color='#979000'>2</font><font face='Lucida Console'>)</font> <b>{</b>
+		  <font color='#5555FF'>*</font>dst_ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font> <font color='#5555FF'>=</font> <font color='#5555FF'>*</font>src_ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;
+		  <font color='#5555FF'>*</font>dst_ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font> <font color='#5555FF'>=</font> <font color='#5555FF'>-</font> <font color='#5555FF'>*</font>src_ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;
+		<b>}</b>
+		<font color='#009900'>/* For odd row, negate every even column. */</font>
+		<font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>j <font color='#5555FF'>=</font> <font color='#979000'>0</font>; j <font color='#5555FF'>&lt;</font> DCTSIZE; j <font color='#5555FF'>+</font><font color='#5555FF'>=</font> <font color='#979000'>2</font><font face='Lucida Console'>)</font> <b>{</b>
+		  <font color='#5555FF'>*</font>dst_ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font> <font color='#5555FF'>=</font> <font color='#5555FF'>-</font> <font color='#5555FF'>*</font>src_ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;
+		  <font color='#5555FF'>*</font>dst_ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font> <font color='#5555FF'>=</font> <font color='#5555FF'>*</font>src_ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;
+		<b>}</b>
+	      <b>}</b>
+	    <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+	      <font color='#009900'>/* Any remaining right-edge blocks are only mirrored vertically. */</font>
+	      src_ptr <font color='#5555FF'>=</font> src_row_ptr[x_crop_blocks <font color='#5555FF'>+</font> dst_blk_x];
+	      <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>i <font color='#5555FF'>=</font> <font color='#979000'>0</font>; i <font color='#5555FF'>&lt;</font> DCTSIZE; i <font color='#5555FF'>+</font><font color='#5555FF'>=</font> <font color='#979000'>2</font><font face='Lucida Console'>)</font> <b>{</b>
+		<font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>j <font color='#5555FF'>=</font> <font color='#979000'>0</font>; j <font color='#5555FF'>&lt;</font> DCTSIZE; j<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font>
+		  <font color='#5555FF'>*</font>dst_ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font> <font color='#5555FF'>=</font> <font color='#5555FF'>*</font>src_ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;
+		<font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>j <font color='#5555FF'>=</font> <font color='#979000'>0</font>; j <font color='#5555FF'>&lt;</font> DCTSIZE; j<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font>
+		  <font color='#5555FF'>*</font>dst_ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font> <font color='#5555FF'>=</font> <font color='#5555FF'>-</font> <font color='#5555FF'>*</font>src_ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;
+	      <b>}</b>
+	    <b>}</b>
+	  <b>}</b>
+	<b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+	  <font color='#009900'>/* Remaining rows are just mirrored horizontally. */</font>
+	  src_row_ptr <font color='#5555FF'>=</font> src_buffer[offset_y];
+	  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>dst_blk_x <font color='#5555FF'>=</font> <font color='#979000'>0</font>; dst_blk_x <font color='#5555FF'>&lt;</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>width_in_blocks; dst_blk_x<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+	    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>x_crop_blocks <font color='#5555FF'>+</font> dst_blk_x <font color='#5555FF'>&lt;</font> comp_width<font face='Lucida Console'>)</font> <b>{</b>
+	      <font color='#009900'>/* Process the blocks that can be mirrored. */</font>
+	      dst_ptr <font color='#5555FF'>=</font> dst_row_ptr[dst_blk_x];
+	      src_ptr <font color='#5555FF'>=</font> src_row_ptr[comp_width <font color='#5555FF'>-</font> x_crop_blocks <font color='#5555FF'>-</font> dst_blk_x <font color='#5555FF'>-</font> <font color='#979000'>1</font>];
+	      <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>i <font color='#5555FF'>=</font> <font color='#979000'>0</font>; i <font color='#5555FF'>&lt;</font> DCTSIZE2; i <font color='#5555FF'>+</font><font color='#5555FF'>=</font> <font color='#979000'>2</font><font face='Lucida Console'>)</font> <b>{</b>
+		<font color='#5555FF'>*</font>dst_ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font> <font color='#5555FF'>=</font> <font color='#5555FF'>*</font>src_ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;
+		<font color='#5555FF'>*</font>dst_ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font> <font color='#5555FF'>=</font> <font color='#5555FF'>-</font> <font color='#5555FF'>*</font>src_ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;
+	      <b>}</b>
+	    <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+	      <font color='#009900'>/* Any remaining right-edge blocks are only copied. */</font>
+	      <font color='#BB00BB'>jcopy_block_row</font><font face='Lucida Console'>(</font>src_row_ptr <font color='#5555FF'>+</font> dst_blk_x <font color='#5555FF'>+</font> x_crop_blocks,
+			      dst_row_ptr <font color='#5555FF'>+</font> dst_blk_x,
+			      <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> <font color='#979000'>1</font><font face='Lucida Console'>)</font>;
+	    <b>}</b>
+	  <b>}</b>
+	<b>}</b>
+      <b>}</b>
+    <b>}</b>
+  <b>}</b>
+<b>}</b>
+
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='do_transverse'></a>do_transverse</b> <font face='Lucida Console'>(</font>j_decompress_ptr srcinfo, j_compress_ptr dstinfo,
+	       JDIMENSION x_crop_offset, JDIMENSION y_crop_offset,
+	       jvirt_barray_ptr <font color='#5555FF'>*</font>src_coef_arrays,
+	       jvirt_barray_ptr <font color='#5555FF'>*</font>dst_coef_arrays<font face='Lucida Console'>)</font>
+<font color='#009900'>/* Transverse transpose is equivalent to
+ *   1. 180 degree rotation;
+ *   2. Transposition;
+ * or
+ *   1. Horizontal mirroring;
+ *   2. Transposition;
+ *   3. Horizontal mirroring.
+ * These steps are merged into a single processing routine.
+ */</font>
+<b>{</b>
+  JDIMENSION MCU_cols, MCU_rows, comp_width, comp_height, dst_blk_x, dst_blk_y;
+  JDIMENSION x_crop_blocks, y_crop_blocks;
+  <font color='#0000FF'><u>int</u></font> ci, i, j, offset_x, offset_y;
+  JBLOCKARRAY src_buffer, dst_buffer;
+  JCOEFPTR src_ptr, dst_ptr;
+  jpeg_component_info <font color='#5555FF'>*</font>compptr;
+
+  MCU_cols <font color='#5555FF'>=</font> srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height <font color='#5555FF'>/</font>
+    <font face='Lucida Console'>(</font>dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>max_h_samp_factor <font color='#5555FF'>*</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>min_DCT_h_scaled_size<font face='Lucida Console'>)</font>;
+  MCU_rows <font color='#5555FF'>=</font> srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width <font color='#5555FF'>/</font>
+    <font face='Lucida Console'>(</font>dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>max_v_samp_factor <font color='#5555FF'>*</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>min_DCT_v_scaled_size<font face='Lucida Console'>)</font>;
+
+  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>ci <font color='#5555FF'>=</font> <font color='#979000'>0</font>; ci <font color='#5555FF'>&lt;</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>num_components; ci<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+    compptr <font color='#5555FF'>=</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>comp_info <font color='#5555FF'>+</font> ci;
+    comp_width <font color='#5555FF'>=</font> MCU_cols <font color='#5555FF'>*</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor;
+    comp_height <font color='#5555FF'>=</font> MCU_rows <font color='#5555FF'>*</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor;
+    x_crop_blocks <font color='#5555FF'>=</font> x_crop_offset <font color='#5555FF'>*</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor;
+    y_crop_blocks <font color='#5555FF'>=</font> y_crop_offset <font color='#5555FF'>*</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor;
+    <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>dst_blk_y <font color='#5555FF'>=</font> <font color='#979000'>0</font>; dst_blk_y <font color='#5555FF'>&lt;</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>height_in_blocks;
+	 dst_blk_y <font color='#5555FF'>+</font><font color='#5555FF'>=</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor<font face='Lucida Console'>)</font> <b>{</b>
+      dst_buffer <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>access_virt_barray<font face='Lucida Console'>)</font>
+	<font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> srcinfo, dst_coef_arrays[ci], dst_blk_y,
+	 <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor, TRUE<font face='Lucida Console'>)</font>;
+      <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>offset_y <font color='#5555FF'>=</font> <font color='#979000'>0</font>; offset_y <font color='#5555FF'>&lt;</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor; offset_y<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+	<font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>dst_blk_x <font color='#5555FF'>=</font> <font color='#979000'>0</font>; dst_blk_x <font color='#5555FF'>&lt;</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>width_in_blocks;
+	     dst_blk_x <font color='#5555FF'>+</font><font color='#5555FF'>=</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor<font face='Lucida Console'>)</font> <b>{</b>
+	  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>x_crop_blocks <font color='#5555FF'>+</font> dst_blk_x <font color='#5555FF'>&lt;</font> comp_width<font face='Lucida Console'>)</font> <b>{</b>
+	    <font color='#009900'>/* Block is within the mirrorable area. */</font>
+	    src_buffer <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>access_virt_barray<font face='Lucida Console'>)</font>
+	      <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> srcinfo, src_coef_arrays[ci],
+	       comp_width <font color='#5555FF'>-</font> x_crop_blocks <font color='#5555FF'>-</font> dst_blk_x <font color='#5555FF'>-</font>
+	       <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor,
+	       <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor, FALSE<font face='Lucida Console'>)</font>;
+	  <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+	    src_buffer <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>access_virt_barray<font face='Lucida Console'>)</font>
+	      <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> srcinfo, src_coef_arrays[ci],
+	       dst_blk_x <font color='#5555FF'>+</font> x_crop_blocks,
+	       <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor, FALSE<font face='Lucida Console'>)</font>;
+	  <b>}</b>
+	  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>offset_x <font color='#5555FF'>=</font> <font color='#979000'>0</font>; offset_x <font color='#5555FF'>&lt;</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor; offset_x<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+	    dst_ptr <font color='#5555FF'>=</font> dst_buffer[offset_y][dst_blk_x <font color='#5555FF'>+</font> offset_x];
+	    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>y_crop_blocks <font color='#5555FF'>+</font> dst_blk_y <font color='#5555FF'>&lt;</font> comp_height<font face='Lucida Console'>)</font> <b>{</b>
+	      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>x_crop_blocks <font color='#5555FF'>+</font> dst_blk_x <font color='#5555FF'>&lt;</font> comp_width<font face='Lucida Console'>)</font> <b>{</b>
+		<font color='#009900'>/* Block is within the mirrorable area. */</font>
+		src_ptr <font color='#5555FF'>=</font> src_buffer[compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor <font color='#5555FF'>-</font> offset_x <font color='#5555FF'>-</font> <font color='#979000'>1</font>]
+		  [comp_height <font color='#5555FF'>-</font> y_crop_blocks <font color='#5555FF'>-</font> dst_blk_y <font color='#5555FF'>-</font> offset_y <font color='#5555FF'>-</font> <font color='#979000'>1</font>];
+		<font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>i <font color='#5555FF'>=</font> <font color='#979000'>0</font>; i <font color='#5555FF'>&lt;</font> DCTSIZE; i<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+		  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>j <font color='#5555FF'>=</font> <font color='#979000'>0</font>; j <font color='#5555FF'>&lt;</font> DCTSIZE; j<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+		    dst_ptr[j<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>i] <font color='#5555FF'>=</font> src_ptr[i<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>j];
+		    j<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;
+		    dst_ptr[j<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>i] <font color='#5555FF'>=</font> <font color='#5555FF'>-</font>src_ptr[i<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>j];
+		  <b>}</b>
+		  i<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;
+		  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>j <font color='#5555FF'>=</font> <font color='#979000'>0</font>; j <font color='#5555FF'>&lt;</font> DCTSIZE; j<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+		    dst_ptr[j<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>i] <font color='#5555FF'>=</font> <font color='#5555FF'>-</font>src_ptr[i<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>j];
+		    j<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;
+		    dst_ptr[j<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>i] <font color='#5555FF'>=</font> src_ptr[i<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>j];
+		  <b>}</b>
+		<b>}</b>
+	      <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+		<font color='#009900'>/* Right-edge blocks are mirrored in y only */</font>
+		src_ptr <font color='#5555FF'>=</font> src_buffer[offset_x]
+		  [comp_height <font color='#5555FF'>-</font> y_crop_blocks <font color='#5555FF'>-</font> dst_blk_y <font color='#5555FF'>-</font> offset_y <font color='#5555FF'>-</font> <font color='#979000'>1</font>];
+		<font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>i <font color='#5555FF'>=</font> <font color='#979000'>0</font>; i <font color='#5555FF'>&lt;</font> DCTSIZE; i<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+		  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>j <font color='#5555FF'>=</font> <font color='#979000'>0</font>; j <font color='#5555FF'>&lt;</font> DCTSIZE; j<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+		    dst_ptr[j<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>i] <font color='#5555FF'>=</font> src_ptr[i<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>j];
+		    j<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;
+		    dst_ptr[j<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>i] <font color='#5555FF'>=</font> <font color='#5555FF'>-</font>src_ptr[i<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>j];
+		  <b>}</b>
+		<b>}</b>
+	      <b>}</b>
+	    <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+	      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>x_crop_blocks <font color='#5555FF'>+</font> dst_blk_x <font color='#5555FF'>&lt;</font> comp_width<font face='Lucida Console'>)</font> <b>{</b>
+		<font color='#009900'>/* Bottom-edge blocks are mirrored in x only */</font>
+		src_ptr <font color='#5555FF'>=</font> src_buffer[compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor <font color='#5555FF'>-</font> offset_x <font color='#5555FF'>-</font> <font color='#979000'>1</font>]
+		  [dst_blk_y <font color='#5555FF'>+</font> offset_y <font color='#5555FF'>+</font> y_crop_blocks];
+		<font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>i <font color='#5555FF'>=</font> <font color='#979000'>0</font>; i <font color='#5555FF'>&lt;</font> DCTSIZE; i<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+		  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>j <font color='#5555FF'>=</font> <font color='#979000'>0</font>; j <font color='#5555FF'>&lt;</font> DCTSIZE; j<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font>
+		    dst_ptr[j<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>i] <font color='#5555FF'>=</font> src_ptr[i<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>j];
+		  i<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;
+		  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>j <font color='#5555FF'>=</font> <font color='#979000'>0</font>; j <font color='#5555FF'>&lt;</font> DCTSIZE; j<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font>
+		    dst_ptr[j<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>i] <font color='#5555FF'>=</font> <font color='#5555FF'>-</font>src_ptr[i<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>j];
+		<b>}</b>
+	      <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+		<font color='#009900'>/* At lower right corner, just transpose, no mirroring */</font>
+		src_ptr <font color='#5555FF'>=</font> src_buffer[offset_x]
+		  [dst_blk_y <font color='#5555FF'>+</font> offset_y <font color='#5555FF'>+</font> y_crop_blocks];
+		<font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>i <font color='#5555FF'>=</font> <font color='#979000'>0</font>; i <font color='#5555FF'>&lt;</font> DCTSIZE; i<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font>
+		  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>j <font color='#5555FF'>=</font> <font color='#979000'>0</font>; j <font color='#5555FF'>&lt;</font> DCTSIZE; j<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font>
+		    dst_ptr[j<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>i] <font color='#5555FF'>=</font> src_ptr[i<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>j];
+	      <b>}</b>
+	    <b>}</b>
+	  <b>}</b>
+	<b>}</b>
+      <b>}</b>
+    <b>}</b>
+  <b>}</b>
+<b>}</b>
+
+
+<font color='#009900'>/* Parse an unsigned integer: subroutine for jtransform_parse_crop_spec.
+ * Returns TRUE if valid integer found, FALSE if not.
+ * *strptr is advanced over the digit string, and *result is set to its value.
+ */</font>
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font>boolean<font face='Lucida Console'>)</font>
+<b><a name='jt_read_integer'></a>jt_read_integer</b> <font face='Lucida Console'>(</font><font color='#0000FF'>const</font> <font color='#0000FF'><u>char</u></font> <font color='#5555FF'>*</font><font color='#5555FF'>*</font> strptr, JDIMENSION <font color='#5555FF'>*</font> result<font face='Lucida Console'>)</font>
+<b>{</b>
+  <font color='#0000FF'>const</font> <font color='#0000FF'><u>char</u></font> <font color='#5555FF'>*</font> ptr <font color='#5555FF'>=</font> <font color='#5555FF'>*</font>strptr;
+  JDIMENSION val <font color='#5555FF'>=</font> <font color='#979000'>0</font>;
+
+  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>; <font color='#BB00BB'>isdigit</font><font face='Lucida Console'>(</font><font color='#5555FF'>*</font>ptr<font face='Lucida Console'>)</font>; ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+    val <font color='#5555FF'>=</font> val <font color='#5555FF'>*</font> <font color='#979000'>10</font> <font color='#5555FF'>+</font> <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>ptr <font color='#5555FF'>-</font> '<font color='#FF0000'>0</font>'<font face='Lucida Console'>)</font>;
+  <b>}</b>
+  <font color='#5555FF'>*</font>result <font color='#5555FF'>=</font> val;
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>ptr <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#5555FF'>*</font>strptr<font face='Lucida Console'>)</font>
+    <font color='#0000FF'>return</font> FALSE;		<font color='#009900'>/* oops, no digits */</font>
+  <font color='#5555FF'>*</font>strptr <font color='#5555FF'>=</font> ptr;
+  <font color='#0000FF'>return</font> TRUE;
+<b>}</b>
+
+
+<font color='#009900'>/* Parse a crop specification (written in X11 geometry style).
+ * The routine returns TRUE if the spec string is valid, FALSE if not.
+ *
+ * The crop spec string should have the format
+ *	&lt;width&gt;[f]x&lt;height&gt;[f]{+-}&lt;xoffset&gt;{+-}&lt;yoffset&gt;
+ * where width, height, xoffset, and yoffset are unsigned integers.
+ * Each of the elements can be omitted to indicate a default value.
+ * (A weakness of this style is that it is not possible to omit xoffset
+ * while specifying yoffset, since they look alike.)
+ *
+ * This code is loosely based on XParseGeometry from the X11 distribution.
+ */</font>
+
+<b><a name='GLOBAL'></a>GLOBAL</b><font face='Lucida Console'>(</font>boolean<font face='Lucida Console'>)</font>
+<b><a name='jtransform_parse_crop_spec'></a>jtransform_parse_crop_spec</b> <font face='Lucida Console'>(</font>jpeg_transform_info <font color='#5555FF'>*</font>info, <font color='#0000FF'>const</font> <font color='#0000FF'><u>char</u></font> <font color='#5555FF'>*</font>spec<font face='Lucida Console'>)</font>
+<b>{</b>
+  info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop <font color='#5555FF'>=</font> FALSE;
+  info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_width_set <font color='#5555FF'>=</font> JCROP_UNSET;
+  info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_height_set <font color='#5555FF'>=</font> JCROP_UNSET;
+  info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_xoffset_set <font color='#5555FF'>=</font> JCROP_UNSET;
+  info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_yoffset_set <font color='#5555FF'>=</font> JCROP_UNSET;
+
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>isdigit</font><font face='Lucida Console'>(</font><font color='#5555FF'>*</font>spec<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#009900'>/* fetch width */</font>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>!</font> <font color='#BB00BB'>jt_read_integer</font><font face='Lucida Console'>(</font><font color='#5555FF'>&amp;</font>spec, <font color='#5555FF'>&amp;</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_width<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>
+      <font color='#0000FF'>return</font> FALSE;
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>spec <font color='#5555FF'>=</font><font color='#5555FF'>=</font> '<font color='#FF0000'>f</font>' <font color='#5555FF'>|</font><font color='#5555FF'>|</font> <font color='#5555FF'>*</font>spec <font color='#5555FF'>=</font><font color='#5555FF'>=</font> '<font color='#FF0000'>F</font>'<font face='Lucida Console'>)</font> <b>{</b>
+      spec<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;
+      info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_width_set <font color='#5555FF'>=</font> JCROP_FORCE;
+    <b>}</b> <font color='#0000FF'>else</font>
+      info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_width_set <font color='#5555FF'>=</font> JCROP_POS;
+  <b>}</b>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>spec <font color='#5555FF'>=</font><font color='#5555FF'>=</font> '<font color='#FF0000'>x</font>' <font color='#5555FF'>|</font><font color='#5555FF'>|</font> <font color='#5555FF'>*</font>spec <font color='#5555FF'>=</font><font color='#5555FF'>=</font> '<font color='#FF0000'>X</font>'<font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#009900'>/* fetch height */</font>
+    spec<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>!</font> <font color='#BB00BB'>jt_read_integer</font><font face='Lucida Console'>(</font><font color='#5555FF'>&amp;</font>spec, <font color='#5555FF'>&amp;</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_height<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>
+      <font color='#0000FF'>return</font> FALSE;
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>spec <font color='#5555FF'>=</font><font color='#5555FF'>=</font> '<font color='#FF0000'>f</font>' <font color='#5555FF'>|</font><font color='#5555FF'>|</font> <font color='#5555FF'>*</font>spec <font color='#5555FF'>=</font><font color='#5555FF'>=</font> '<font color='#FF0000'>F</font>'<font face='Lucida Console'>)</font> <b>{</b>
+      spec<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;
+      info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_height_set <font color='#5555FF'>=</font> JCROP_FORCE;
+    <b>}</b> <font color='#0000FF'>else</font>
+      info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_height_set <font color='#5555FF'>=</font> JCROP_POS;
+  <b>}</b>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>spec <font color='#5555FF'>=</font><font color='#5555FF'>=</font> '<font color='#FF0000'>+</font>' <font color='#5555FF'>|</font><font color='#5555FF'>|</font> <font color='#5555FF'>*</font>spec <font color='#5555FF'>=</font><font color='#5555FF'>=</font> '<font color='#FF0000'>-</font>'<font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#009900'>/* fetch xoffset */</font>
+    info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_xoffset_set <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>spec <font color='#5555FF'>=</font><font color='#5555FF'>=</font> '<font color='#FF0000'>-</font>'<font face='Lucida Console'>)</font> ? JCROP_NEG : JCROP_POS;
+    spec<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>!</font> <font color='#BB00BB'>jt_read_integer</font><font face='Lucida Console'>(</font><font color='#5555FF'>&amp;</font>spec, <font color='#5555FF'>&amp;</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_xoffset<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>
+      <font color='#0000FF'>return</font> FALSE;
+  <b>}</b>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>spec <font color='#5555FF'>=</font><font color='#5555FF'>=</font> '<font color='#FF0000'>+</font>' <font color='#5555FF'>|</font><font color='#5555FF'>|</font> <font color='#5555FF'>*</font>spec <font color='#5555FF'>=</font><font color='#5555FF'>=</font> '<font color='#FF0000'>-</font>'<font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#009900'>/* fetch yoffset */</font>
+    info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_yoffset_set <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>spec <font color='#5555FF'>=</font><font color='#5555FF'>=</font> '<font color='#FF0000'>-</font>'<font face='Lucida Console'>)</font> ? JCROP_NEG : JCROP_POS;
+    spec<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>!</font> <font color='#BB00BB'>jt_read_integer</font><font face='Lucida Console'>(</font><font color='#5555FF'>&amp;</font>spec, <font color='#5555FF'>&amp;</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_yoffset<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>
+      <font color='#0000FF'>return</font> FALSE;
+  <b>}</b>
+  <font color='#009900'>/* We had better have gotten to the end of the string. */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>spec <font color='#5555FF'>!</font><font color='#5555FF'>=</font> '<font color='#FF0000'>\0</font>'<font face='Lucida Console'>)</font>
+    <font color='#0000FF'>return</font> FALSE;
+  info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop <font color='#5555FF'>=</font> TRUE;
+  <font color='#0000FF'>return</font> TRUE;
+<b>}</b>
+
+
+<font color='#009900'>/* Trim off any partial iMCUs on the indicated destination edge */</font>
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='trim_right_edge'></a>trim_right_edge</b> <font face='Lucida Console'>(</font>jpeg_transform_info <font color='#5555FF'>*</font>info, JDIMENSION full_width<font face='Lucida Console'>)</font>
+<b>{</b>
+  JDIMENSION MCU_cols;
+
+  MCU_cols <font color='#5555FF'>=</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width <font color='#5555FF'>/</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>iMCU_sample_width;
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>MCU_cols <font color='#5555FF'>&gt;</font> <font color='#979000'>0</font> <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>x_crop_offset <font color='#5555FF'>+</font> MCU_cols <font color='#5555FF'>=</font><font color='#5555FF'>=</font>
+      full_width <font color='#5555FF'>/</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>iMCU_sample_width<font face='Lucida Console'>)</font>
+    info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width <font color='#5555FF'>=</font> MCU_cols <font color='#5555FF'>*</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>iMCU_sample_width;
+<b>}</b>
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='trim_bottom_edge'></a>trim_bottom_edge</b> <font face='Lucida Console'>(</font>jpeg_transform_info <font color='#5555FF'>*</font>info, JDIMENSION full_height<font face='Lucida Console'>)</font>
+<b>{</b>
+  JDIMENSION MCU_rows;
+
+  MCU_rows <font color='#5555FF'>=</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height <font color='#5555FF'>/</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>iMCU_sample_height;
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>MCU_rows <font color='#5555FF'>&gt;</font> <font color='#979000'>0</font> <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>y_crop_offset <font color='#5555FF'>+</font> MCU_rows <font color='#5555FF'>=</font><font color='#5555FF'>=</font>
+      full_height <font color='#5555FF'>/</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>iMCU_sample_height<font face='Lucida Console'>)</font>
+    info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height <font color='#5555FF'>=</font> MCU_rows <font color='#5555FF'>*</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>iMCU_sample_height;
+<b>}</b>
+
+
+<font color='#009900'>/* Request any required workspace.
+ *
+ * This routine figures out the size that the output image will be
+ * (which implies that all the transform parameters must be set before
+ * it is called).
+ *
+ * We allocate the workspace virtual arrays from the source decompression
+ * object, so that all the arrays (both the original data and the workspace)
+ * will be taken into account while making memory management decisions.
+ * Hence, this routine must be called after jpeg_read_header (which reads
+ * the image dimensions) and before jpeg_read_coefficients (which realizes
+ * the source's virtual arrays).
+ *
+ * This function returns FALSE right away if -perfect is given
+ * and transformation is not perfect.  Otherwise returns TRUE.
+ */</font>
+
+<b><a name='GLOBAL'></a>GLOBAL</b><font face='Lucida Console'>(</font>boolean<font face='Lucida Console'>)</font>
+<b><a name='jtransform_request_workspace'></a>jtransform_request_workspace</b> <font face='Lucida Console'>(</font>j_decompress_ptr srcinfo,
+			      jpeg_transform_info <font color='#5555FF'>*</font>info<font face='Lucida Console'>)</font>
+<b>{</b>
+  jvirt_barray_ptr <font color='#5555FF'>*</font>coef_arrays;
+  boolean need_workspace, transpose_it;
+  jpeg_component_info <font color='#5555FF'>*</font>compptr;
+  JDIMENSION xoffset, yoffset;
+  JDIMENSION width_in_iMCUs, height_in_iMCUs;
+  JDIMENSION width_in_blocks, height_in_blocks;
+  <font color='#0000FF'><u>int</u></font> ci, h_samp_factor, v_samp_factor;
+
+  <font color='#009900'>/* Determine number of components in output image */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>force_grayscale <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+      srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>jpeg_color_space <font color='#5555FF'>=</font><font color='#5555FF'>=</font> JCS_YCbCr <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+      srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>num_components <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>3</font><font face='Lucida Console'>)</font>
+    <font color='#009900'>/* We'll only process the first component */</font>
+    info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>num_components <font color='#5555FF'>=</font> <font color='#979000'>1</font>;
+  <font color='#0000FF'>else</font>
+    <font color='#009900'>/* Process all the components */</font>
+    info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>num_components <font color='#5555FF'>=</font> srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>num_components;
+
+  <font color='#009900'>/* Compute output image dimensions and related values. */</font>
+  <font color='#BB00BB'>jpeg_core_output_dimensions</font><font face='Lucida Console'>(</font>srcinfo<font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* Return right away if -perfect is given and transformation is not perfect.
+   */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>perfect<font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>num_components <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>1</font><font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>!</font><font color='#BB00BB'>jtransform_perfect_transform</font><font face='Lucida Console'>(</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width,
+	  srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height,
+	  srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>min_DCT_h_scaled_size,
+	  srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>min_DCT_v_scaled_size,
+	  info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>transform<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>
+	<font color='#0000FF'>return</font> FALSE;
+    <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>!</font><font color='#BB00BB'>jtransform_perfect_transform</font><font face='Lucida Console'>(</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width,
+	  srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height,
+	  srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>max_h_samp_factor <font color='#5555FF'>*</font> srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>min_DCT_h_scaled_size,
+	  srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>max_v_samp_factor <font color='#5555FF'>*</font> srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>min_DCT_v_scaled_size,
+	  info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>transform<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>
+	<font color='#0000FF'>return</font> FALSE;
+    <b>}</b>
+  <b>}</b>
+
+  <font color='#009900'>/* If there is only one output component, force the iMCU size to be 1;
+   * else use the source iMCU size.  (This allows us to do the right thing
+   * when reducing color to grayscale, and also provides a handy way of
+   * cleaning up "funny" grayscale images whose sampling factors are not 1x1.)
+   */</font>
+  <font color='#0000FF'>switch</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>transform<font face='Lucida Console'>)</font> <b>{</b>
+  <font color='#0000FF'>case</font> JXFORM_TRANSPOSE:
+  <font color='#0000FF'>case</font> JXFORM_TRANSVERSE:
+  <font color='#0000FF'>case</font> JXFORM_ROT_90:
+  <font color='#0000FF'>case</font> JXFORM_ROT_270:
+    info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width <font color='#5555FF'>=</font> srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height;
+    info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height <font color='#5555FF'>=</font> srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width;
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>num_components <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>1</font><font face='Lucida Console'>)</font> <b>{</b>
+      info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>iMCU_sample_width <font color='#5555FF'>=</font> srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>min_DCT_v_scaled_size;
+      info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>iMCU_sample_height <font color='#5555FF'>=</font> srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>min_DCT_h_scaled_size;
+    <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+      info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>iMCU_sample_width <font color='#5555FF'>=</font>
+	srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>max_v_samp_factor <font color='#5555FF'>*</font> srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>min_DCT_v_scaled_size;
+      info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>iMCU_sample_height <font color='#5555FF'>=</font>
+	srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>max_h_samp_factor <font color='#5555FF'>*</font> srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>min_DCT_h_scaled_size;
+    <b>}</b>
+    <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>default</font>:
+    info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width <font color='#5555FF'>=</font> srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width;
+    info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height <font color='#5555FF'>=</font> srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height;
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>num_components <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>1</font><font face='Lucida Console'>)</font> <b>{</b>
+      info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>iMCU_sample_width <font color='#5555FF'>=</font> srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>min_DCT_h_scaled_size;
+      info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>iMCU_sample_height <font color='#5555FF'>=</font> srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>min_DCT_v_scaled_size;
+    <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+      info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>iMCU_sample_width <font color='#5555FF'>=</font>
+	srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>max_h_samp_factor <font color='#5555FF'>*</font> srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>min_DCT_h_scaled_size;
+      info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>iMCU_sample_height <font color='#5555FF'>=</font>
+	srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>max_v_samp_factor <font color='#5555FF'>*</font> srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>min_DCT_v_scaled_size;
+    <b>}</b>
+    <font color='#0000FF'>break</font>;
+  <b>}</b>
+
+  <font color='#009900'>/* If cropping has been requested, compute the crop area's position and
+   * dimensions, ensuring that its upper left corner falls at an iMCU boundary.
+   */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop<font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#009900'>/* Insert default values for unset crop parameters */</font>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_xoffset_set <font color='#5555FF'>=</font><font color='#5555FF'>=</font> JCROP_UNSET<font face='Lucida Console'>)</font>
+      info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_xoffset <font color='#5555FF'>=</font> <font color='#979000'>0</font>;	<font color='#009900'>/* default to +0 */</font>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_yoffset_set <font color='#5555FF'>=</font><font color='#5555FF'>=</font> JCROP_UNSET<font face='Lucida Console'>)</font>
+      info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_yoffset <font color='#5555FF'>=</font> <font color='#979000'>0</font>;	<font color='#009900'>/* default to +0 */</font>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_xoffset <font color='#5555FF'>&gt;</font><font color='#5555FF'>=</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width <font color='#5555FF'>|</font><font color='#5555FF'>|</font>
+	info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_yoffset <font color='#5555FF'>&gt;</font><font color='#5555FF'>=</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height<font face='Lucida Console'>)</font>
+      <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>srcinfo, JERR_BAD_CROP_SPEC<font face='Lucida Console'>)</font>;
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_width_set <font color='#5555FF'>=</font><font color='#5555FF'>=</font> JCROP_UNSET<font face='Lucida Console'>)</font>
+      info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_width <font color='#5555FF'>=</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width <font color='#5555FF'>-</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_xoffset;
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_height_set <font color='#5555FF'>=</font><font color='#5555FF'>=</font> JCROP_UNSET<font face='Lucida Console'>)</font>
+      info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_height <font color='#5555FF'>=</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height <font color='#5555FF'>-</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_yoffset;
+    <font color='#009900'>/* Ensure parameters are valid */</font>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_width <font color='#5555FF'>&lt;</font><font color='#5555FF'>=</font> <font color='#979000'>0</font> <font color='#5555FF'>|</font><font color='#5555FF'>|</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_width <font color='#5555FF'>&gt;</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width <font color='#5555FF'>|</font><font color='#5555FF'>|</font>
+	info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_height <font color='#5555FF'>&lt;</font><font color='#5555FF'>=</font> <font color='#979000'>0</font> <font color='#5555FF'>|</font><font color='#5555FF'>|</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_height <font color='#5555FF'>&gt;</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height <font color='#5555FF'>|</font><font color='#5555FF'>|</font>
+	info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_xoffset <font color='#5555FF'>&gt;</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width <font color='#5555FF'>-</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_width <font color='#5555FF'>|</font><font color='#5555FF'>|</font>
+	info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_yoffset <font color='#5555FF'>&gt;</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height <font color='#5555FF'>-</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_height<font face='Lucida Console'>)</font>
+      <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>srcinfo, JERR_BAD_CROP_SPEC<font face='Lucida Console'>)</font>;
+    <font color='#009900'>/* Convert negative crop offsets into regular offsets */</font>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_xoffset_set <font color='#5555FF'>=</font><font color='#5555FF'>=</font> JCROP_NEG<font face='Lucida Console'>)</font>
+      xoffset <font color='#5555FF'>=</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width <font color='#5555FF'>-</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_width <font color='#5555FF'>-</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_xoffset;
+    <font color='#0000FF'>else</font>
+      xoffset <font color='#5555FF'>=</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_xoffset;
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_yoffset_set <font color='#5555FF'>=</font><font color='#5555FF'>=</font> JCROP_NEG<font face='Lucida Console'>)</font>
+      yoffset <font color='#5555FF'>=</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height <font color='#5555FF'>-</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_height <font color='#5555FF'>-</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_yoffset;
+    <font color='#0000FF'>else</font>
+      yoffset <font color='#5555FF'>=</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_yoffset;
+    <font color='#009900'>/* Now adjust so that upper left corner falls at an iMCU boundary */</font>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_width_set <font color='#5555FF'>=</font><font color='#5555FF'>=</font> JCROP_FORCE<font face='Lucida Console'>)</font>
+      info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width <font color='#5555FF'>=</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_width;
+    <font color='#0000FF'>else</font>
+      info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width <font color='#5555FF'>=</font>
+        info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_width <font color='#5555FF'>+</font> <font face='Lucida Console'>(</font>xoffset <font color='#5555FF'>%</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>iMCU_sample_width<font face='Lucida Console'>)</font>;
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_height_set <font color='#5555FF'>=</font><font color='#5555FF'>=</font> JCROP_FORCE<font face='Lucida Console'>)</font>
+      info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height <font color='#5555FF'>=</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_height;
+    <font color='#0000FF'>else</font>
+      info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height <font color='#5555FF'>=</font>
+        info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>crop_height <font color='#5555FF'>+</font> <font face='Lucida Console'>(</font>yoffset <font color='#5555FF'>%</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>iMCU_sample_height<font face='Lucida Console'>)</font>;
+    <font color='#009900'>/* Save x/y offsets measured in iMCUs */</font>
+    info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>x_crop_offset <font color='#5555FF'>=</font> xoffset <font color='#5555FF'>/</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>iMCU_sample_width;
+    info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>y_crop_offset <font color='#5555FF'>=</font> yoffset <font color='#5555FF'>/</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>iMCU_sample_height;
+  <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+    info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>x_crop_offset <font color='#5555FF'>=</font> <font color='#979000'>0</font>;
+    info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>y_crop_offset <font color='#5555FF'>=</font> <font color='#979000'>0</font>;
+  <b>}</b>
+
+  <font color='#009900'>/* Figure out whether we need workspace arrays,
+   * and if so whether they are transposed relative to the source.
+   */</font>
+  need_workspace <font color='#5555FF'>=</font> FALSE;
+  transpose_it <font color='#5555FF'>=</font> FALSE;
+  <font color='#0000FF'>switch</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>transform<font face='Lucida Console'>)</font> <b>{</b>
+  <font color='#0000FF'>case</font> JXFORM_NONE:
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>x_crop_offset <font color='#5555FF'>!</font><font color='#5555FF'>=</font> <font color='#979000'>0</font> <font color='#5555FF'>|</font><font color='#5555FF'>|</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>y_crop_offset <font color='#5555FF'>!</font><font color='#5555FF'>=</font> <font color='#979000'>0</font><font face='Lucida Console'>)</font>
+      need_workspace <font color='#5555FF'>=</font> TRUE;
+    <font color='#009900'>/* No workspace needed if neither cropping nor transforming */</font>
+    <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>case</font> JXFORM_FLIP_H:
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>trim<font face='Lucida Console'>)</font>
+      <font color='#BB00BB'>trim_right_edge</font><font face='Lucida Console'>(</font>info, srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width<font face='Lucida Console'>)</font>;
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>y_crop_offset <font color='#5555FF'>!</font><font color='#5555FF'>=</font> <font color='#979000'>0</font><font face='Lucida Console'>)</font>
+      need_workspace <font color='#5555FF'>=</font> TRUE;
+    <font color='#009900'>/* do_flip_h_no_crop doesn't need a workspace array */</font>
+    <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>case</font> JXFORM_FLIP_V:
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>trim<font face='Lucida Console'>)</font>
+      <font color='#BB00BB'>trim_bottom_edge</font><font face='Lucida Console'>(</font>info, srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height<font face='Lucida Console'>)</font>;
+    <font color='#009900'>/* Need workspace arrays having same dimensions as source image. */</font>
+    need_workspace <font color='#5555FF'>=</font> TRUE;
+    <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>case</font> JXFORM_TRANSPOSE:
+    <font color='#009900'>/* transpose does NOT have to trim anything */</font>
+    <font color='#009900'>/* Need workspace arrays having transposed dimensions. */</font>
+    need_workspace <font color='#5555FF'>=</font> TRUE;
+    transpose_it <font color='#5555FF'>=</font> TRUE;
+    <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>case</font> JXFORM_TRANSVERSE:
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>trim<font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#BB00BB'>trim_right_edge</font><font face='Lucida Console'>(</font>info, srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height<font face='Lucida Console'>)</font>;
+      <font color='#BB00BB'>trim_bottom_edge</font><font face='Lucida Console'>(</font>info, srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width<font face='Lucida Console'>)</font>;
+    <b>}</b>
+    <font color='#009900'>/* Need workspace arrays having transposed dimensions. */</font>
+    need_workspace <font color='#5555FF'>=</font> TRUE;
+    transpose_it <font color='#5555FF'>=</font> TRUE;
+    <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>case</font> JXFORM_ROT_90:
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>trim<font face='Lucida Console'>)</font>
+      <font color='#BB00BB'>trim_right_edge</font><font face='Lucida Console'>(</font>info, srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height<font face='Lucida Console'>)</font>;
+    <font color='#009900'>/* Need workspace arrays having transposed dimensions. */</font>
+    need_workspace <font color='#5555FF'>=</font> TRUE;
+    transpose_it <font color='#5555FF'>=</font> TRUE;
+    <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>case</font> JXFORM_ROT_180:
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>trim<font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#BB00BB'>trim_right_edge</font><font face='Lucida Console'>(</font>info, srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width<font face='Lucida Console'>)</font>;
+      <font color='#BB00BB'>trim_bottom_edge</font><font face='Lucida Console'>(</font>info, srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height<font face='Lucida Console'>)</font>;
+    <b>}</b>
+    <font color='#009900'>/* Need workspace arrays having same dimensions as source image. */</font>
+    need_workspace <font color='#5555FF'>=</font> TRUE;
+    <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>case</font> JXFORM_ROT_270:
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>trim<font face='Lucida Console'>)</font>
+      <font color='#BB00BB'>trim_bottom_edge</font><font face='Lucida Console'>(</font>info, srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width<font face='Lucida Console'>)</font>;
+    <font color='#009900'>/* Need workspace arrays having transposed dimensions. */</font>
+    need_workspace <font color='#5555FF'>=</font> TRUE;
+    transpose_it <font color='#5555FF'>=</font> TRUE;
+    <font color='#0000FF'>break</font>;
+  <b>}</b>
+
+  <font color='#009900'>/* Allocate workspace if needed.
+   * Note that we allocate arrays padded out to the next iMCU boundary,
+   * so that transform routines need not worry about missing edge blocks.
+   */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>need_workspace<font face='Lucida Console'>)</font> <b>{</b>
+    coef_arrays <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>jvirt_barray_ptr <font color='#5555FF'>*</font><font face='Lucida Console'>)</font>
+      <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>alloc_small<font face='Lucida Console'>)</font> <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> srcinfo, JPOOL_IMAGE,
+		<font color='#BB00BB'>SIZEOF</font><font face='Lucida Console'>(</font>jvirt_barray_ptr<font face='Lucida Console'>)</font> <font color='#5555FF'>*</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>num_components<font face='Lucida Console'>)</font>;
+    width_in_iMCUs <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font>
+      <font color='#BB00BB'>jdiv_round_up</font><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font><font color='#0000FF'><u>long</u></font><font face='Lucida Console'>)</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width,
+		    <font face='Lucida Console'>(</font><font color='#0000FF'><u>long</u></font><font face='Lucida Console'>)</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>iMCU_sample_width<font face='Lucida Console'>)</font>;
+    height_in_iMCUs <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font>
+      <font color='#BB00BB'>jdiv_round_up</font><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font><font color='#0000FF'><u>long</u></font><font face='Lucida Console'>)</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height,
+		    <font face='Lucida Console'>(</font><font color='#0000FF'><u>long</u></font><font face='Lucida Console'>)</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>iMCU_sample_height<font face='Lucida Console'>)</font>;
+    <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>ci <font color='#5555FF'>=</font> <font color='#979000'>0</font>; ci <font color='#5555FF'>&lt;</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>num_components; ci<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+      compptr <font color='#5555FF'>=</font> srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>comp_info <font color='#5555FF'>+</font> ci;
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>num_components <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>1</font><font face='Lucida Console'>)</font> <b>{</b>
+	<font color='#009900'>/* we're going to force samp factors to 1x1 in this case */</font>
+	h_samp_factor <font color='#5555FF'>=</font> v_samp_factor <font color='#5555FF'>=</font> <font color='#979000'>1</font>;
+      <b>}</b> <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>transpose_it<font face='Lucida Console'>)</font> <b>{</b>
+	h_samp_factor <font color='#5555FF'>=</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor;
+	v_samp_factor <font color='#5555FF'>=</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor;
+      <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+	h_samp_factor <font color='#5555FF'>=</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor;
+	v_samp_factor <font color='#5555FF'>=</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor;
+      <b>}</b>
+      width_in_blocks <font color='#5555FF'>=</font> width_in_iMCUs <font color='#5555FF'>*</font> h_samp_factor;
+      height_in_blocks <font color='#5555FF'>=</font> height_in_iMCUs <font color='#5555FF'>*</font> v_samp_factor;
+      coef_arrays[ci] <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>request_virt_barray<font face='Lucida Console'>)</font>
+	<font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> srcinfo, JPOOL_IMAGE, FALSE,
+	 width_in_blocks, height_in_blocks, <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> v_samp_factor<font face='Lucida Console'>)</font>;
+    <b>}</b>
+    info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>workspace_coef_arrays <font color='#5555FF'>=</font> coef_arrays;
+  <b>}</b> <font color='#0000FF'>else</font>
+    info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>workspace_coef_arrays <font color='#5555FF'>=</font> NULL;
+
+  <font color='#0000FF'>return</font> TRUE;
+<b>}</b>
+
+
+<font color='#009900'>/* Transpose destination image parameters */</font>
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='transpose_critical_parameters'></a>transpose_critical_parameters</b> <font face='Lucida Console'>(</font>j_compress_ptr dstinfo<font face='Lucida Console'>)</font>
+<b>{</b>
+  <font color='#0000FF'><u>int</u></font> tblno, i, j, ci, itemp;
+  jpeg_component_info <font color='#5555FF'>*</font>compptr;
+  JQUANT_TBL <font color='#5555FF'>*</font>qtblptr;
+  JDIMENSION jtemp;
+  UINT16 qtemp;
+
+  <font color='#009900'>/* Transpose image dimensions */</font>
+  jtemp <font color='#5555FF'>=</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>image_width;
+  dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>image_width <font color='#5555FF'>=</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>image_height;
+  dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>image_height <font color='#5555FF'>=</font> jtemp;
+  itemp <font color='#5555FF'>=</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>min_DCT_h_scaled_size;
+  dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>min_DCT_h_scaled_size <font color='#5555FF'>=</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>min_DCT_v_scaled_size;
+  dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>min_DCT_v_scaled_size <font color='#5555FF'>=</font> itemp;
+
+  <font color='#009900'>/* Transpose sampling factors */</font>
+  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>ci <font color='#5555FF'>=</font> <font color='#979000'>0</font>; ci <font color='#5555FF'>&lt;</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>num_components; ci<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+    compptr <font color='#5555FF'>=</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>comp_info <font color='#5555FF'>+</font> ci;
+    itemp <font color='#5555FF'>=</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor;
+    compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>h_samp_factor <font color='#5555FF'>=</font> compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor;
+    compptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>v_samp_factor <font color='#5555FF'>=</font> itemp;
+  <b>}</b>
+
+  <font color='#009900'>/* Transpose quantization tables */</font>
+  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>tblno <font color='#5555FF'>=</font> <font color='#979000'>0</font>; tblno <font color='#5555FF'>&lt;</font> NUM_QUANT_TBLS; tblno<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+    qtblptr <font color='#5555FF'>=</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>quant_tbl_ptrs[tblno];
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>qtblptr <font color='#5555FF'>!</font><font color='#5555FF'>=</font> NULL<font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>i <font color='#5555FF'>=</font> <font color='#979000'>0</font>; i <font color='#5555FF'>&lt;</font> DCTSIZE; i<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+	<font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>j <font color='#5555FF'>=</font> <font color='#979000'>0</font>; j <font color='#5555FF'>&lt;</font> i; j<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+	  qtemp <font color='#5555FF'>=</font> qtblptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>quantval[i<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>j];
+	  qtblptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>quantval[i<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>j] <font color='#5555FF'>=</font> qtblptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>quantval[j<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>i];
+	  qtblptr<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>quantval[j<font color='#5555FF'>*</font>DCTSIZE<font color='#5555FF'>+</font>i] <font color='#5555FF'>=</font> qtemp;
+	<b>}</b>
+      <b>}</b>
+    <b>}</b>
+  <b>}</b>
+<b>}</b>
+
+
+<font color='#009900'>/* Adjust Exif image parameters.
+ *
+ * We try to adjust the Tags ExifImageWidth and ExifImageHeight if possible.
+ */</font>
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='adjust_exif_parameters'></a>adjust_exif_parameters</b> <font face='Lucida Console'>(</font>JOCTET FAR <font color='#5555FF'>*</font> data, <font color='#0000FF'><u>unsigned</u></font> <font color='#0000FF'><u>int</u></font> length,
+			JDIMENSION new_width, JDIMENSION new_height<font face='Lucida Console'>)</font>
+<b>{</b>
+  boolean is_motorola; <font color='#009900'>/* Flag for byte order */</font>
+  <font color='#0000FF'><u>unsigned</u></font> <font color='#0000FF'><u>int</u></font> number_of_tags, tagnum;
+  <font color='#0000FF'><u>unsigned</u></font> <font color='#0000FF'><u>int</u></font> firstoffset, offset;
+  JDIMENSION new_value;
+
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>length <font color='#5555FF'>&lt;</font> <font color='#979000'>12</font><font face='Lucida Console'>)</font> <font color='#0000FF'>return</font>; <font color='#009900'>/* Length of an IFD entry */</font>
+
+  <font color='#009900'>/* Discover byte order */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[<font color='#979000'>0</font>]<font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>0x49</font> <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font> <font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[<font color='#979000'>1</font>]<font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>0x49</font><font face='Lucida Console'>)</font>
+    is_motorola <font color='#5555FF'>=</font> FALSE;
+  <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[<font color='#979000'>0</font>]<font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>0x4D</font> <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font> <font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[<font color='#979000'>1</font>]<font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>0x4D</font><font face='Lucida Console'>)</font>
+    is_motorola <font color='#5555FF'>=</font> TRUE;
+  <font color='#0000FF'>else</font>
+    <font color='#0000FF'>return</font>;
+
+  <font color='#009900'>/* Check Tag Mark */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>is_motorola<font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[<font color='#979000'>2</font>]<font face='Lucida Console'>)</font> <font color='#5555FF'>!</font><font color='#5555FF'>=</font> <font color='#979000'>0</font><font face='Lucida Console'>)</font> <font color='#0000FF'>return</font>;
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[<font color='#979000'>3</font>]<font face='Lucida Console'>)</font> <font color='#5555FF'>!</font><font color='#5555FF'>=</font> <font color='#979000'>0x2A</font><font face='Lucida Console'>)</font> <font color='#0000FF'>return</font>;
+  <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[<font color='#979000'>3</font>]<font face='Lucida Console'>)</font> <font color='#5555FF'>!</font><font color='#5555FF'>=</font> <font color='#979000'>0</font><font face='Lucida Console'>)</font> <font color='#0000FF'>return</font>;
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[<font color='#979000'>2</font>]<font face='Lucida Console'>)</font> <font color='#5555FF'>!</font><font color='#5555FF'>=</font> <font color='#979000'>0x2A</font><font face='Lucida Console'>)</font> <font color='#0000FF'>return</font>;
+  <b>}</b>
+
+  <font color='#009900'>/* Get first IFD offset (offset to IFD0) */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>is_motorola<font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[<font color='#979000'>4</font>]<font face='Lucida Console'>)</font> <font color='#5555FF'>!</font><font color='#5555FF'>=</font> <font color='#979000'>0</font><font face='Lucida Console'>)</font> <font color='#0000FF'>return</font>;
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[<font color='#979000'>5</font>]<font face='Lucida Console'>)</font> <font color='#5555FF'>!</font><font color='#5555FF'>=</font> <font color='#979000'>0</font><font face='Lucida Console'>)</font> <font color='#0000FF'>return</font>;
+    firstoffset <font color='#5555FF'>=</font> <font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[<font color='#979000'>6</font>]<font face='Lucida Console'>)</font>;
+    firstoffset <font color='#5555FF'>&lt;</font><font color='#5555FF'>&lt;</font><font color='#5555FF'>=</font> <font color='#979000'>8</font>;
+    firstoffset <font color='#5555FF'>+</font><font color='#5555FF'>=</font> <font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[<font color='#979000'>7</font>]<font face='Lucida Console'>)</font>;
+  <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[<font color='#979000'>7</font>]<font face='Lucida Console'>)</font> <font color='#5555FF'>!</font><font color='#5555FF'>=</font> <font color='#979000'>0</font><font face='Lucida Console'>)</font> <font color='#0000FF'>return</font>;
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[<font color='#979000'>6</font>]<font face='Lucida Console'>)</font> <font color='#5555FF'>!</font><font color='#5555FF'>=</font> <font color='#979000'>0</font><font face='Lucida Console'>)</font> <font color='#0000FF'>return</font>;
+    firstoffset <font color='#5555FF'>=</font> <font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[<font color='#979000'>5</font>]<font face='Lucida Console'>)</font>;
+    firstoffset <font color='#5555FF'>&lt;</font><font color='#5555FF'>&lt;</font><font color='#5555FF'>=</font> <font color='#979000'>8</font>;
+    firstoffset <font color='#5555FF'>+</font><font color='#5555FF'>=</font> <font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[<font color='#979000'>4</font>]<font face='Lucida Console'>)</font>;
+  <b>}</b>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>firstoffset <font color='#5555FF'>&gt;</font> length <font color='#5555FF'>-</font> <font color='#979000'>2</font><font face='Lucida Console'>)</font> <font color='#0000FF'>return</font>; <font color='#009900'>/* check end of data segment */</font>
+
+  <font color='#009900'>/* Get the number of directory entries contained in this IFD */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>is_motorola<font face='Lucida Console'>)</font> <b>{</b>
+    number_of_tags <font color='#5555FF'>=</font> <font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[firstoffset]<font face='Lucida Console'>)</font>;
+    number_of_tags <font color='#5555FF'>&lt;</font><font color='#5555FF'>&lt;</font><font color='#5555FF'>=</font> <font color='#979000'>8</font>;
+    number_of_tags <font color='#5555FF'>+</font><font color='#5555FF'>=</font> <font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[firstoffset<font color='#5555FF'>+</font><font color='#979000'>1</font>]<font face='Lucida Console'>)</font>;
+  <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+    number_of_tags <font color='#5555FF'>=</font> <font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[firstoffset<font color='#5555FF'>+</font><font color='#979000'>1</font>]<font face='Lucida Console'>)</font>;
+    number_of_tags <font color='#5555FF'>&lt;</font><font color='#5555FF'>&lt;</font><font color='#5555FF'>=</font> <font color='#979000'>8</font>;
+    number_of_tags <font color='#5555FF'>+</font><font color='#5555FF'>=</font> <font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[firstoffset]<font face='Lucida Console'>)</font>;
+  <b>}</b>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>number_of_tags <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>0</font><font face='Lucida Console'>)</font> <font color='#0000FF'>return</font>;
+  firstoffset <font color='#5555FF'>+</font><font color='#5555FF'>=</font> <font color='#979000'>2</font>;
+
+  <font color='#009900'>/* Search for ExifSubIFD offset Tag in IFD0 */</font>
+  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>;;<font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>firstoffset <font color='#5555FF'>&gt;</font> length <font color='#5555FF'>-</font> <font color='#979000'>12</font><font face='Lucida Console'>)</font> <font color='#0000FF'>return</font>; <font color='#009900'>/* check end of data segment */</font>
+    <font color='#009900'>/* Get Tag number */</font>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>is_motorola<font face='Lucida Console'>)</font> <b>{</b>
+      tagnum <font color='#5555FF'>=</font> <font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[firstoffset]<font face='Lucida Console'>)</font>;
+      tagnum <font color='#5555FF'>&lt;</font><font color='#5555FF'>&lt;</font><font color='#5555FF'>=</font> <font color='#979000'>8</font>;
+      tagnum <font color='#5555FF'>+</font><font color='#5555FF'>=</font> <font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[firstoffset<font color='#5555FF'>+</font><font color='#979000'>1</font>]<font face='Lucida Console'>)</font>;
+    <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+      tagnum <font color='#5555FF'>=</font> <font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[firstoffset<font color='#5555FF'>+</font><font color='#979000'>1</font>]<font face='Lucida Console'>)</font>;
+      tagnum <font color='#5555FF'>&lt;</font><font color='#5555FF'>&lt;</font><font color='#5555FF'>=</font> <font color='#979000'>8</font>;
+      tagnum <font color='#5555FF'>+</font><font color='#5555FF'>=</font> <font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[firstoffset]<font face='Lucida Console'>)</font>;
+    <b>}</b>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>tagnum <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>0x8769</font><font face='Lucida Console'>)</font> <font color='#0000FF'>break</font>; <font color='#009900'>/* found ExifSubIFD offset Tag */</font>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>-</font><font color='#5555FF'>-</font>number_of_tags <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>0</font><font face='Lucida Console'>)</font> <font color='#0000FF'>return</font>;
+    firstoffset <font color='#5555FF'>+</font><font color='#5555FF'>=</font> <font color='#979000'>12</font>;
+  <b>}</b>
+
+  <font color='#009900'>/* Get the ExifSubIFD offset */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>is_motorola<font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[firstoffset<font color='#5555FF'>+</font><font color='#979000'>8</font>]<font face='Lucida Console'>)</font> <font color='#5555FF'>!</font><font color='#5555FF'>=</font> <font color='#979000'>0</font><font face='Lucida Console'>)</font> <font color='#0000FF'>return</font>;
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[firstoffset<font color='#5555FF'>+</font><font color='#979000'>9</font>]<font face='Lucida Console'>)</font> <font color='#5555FF'>!</font><font color='#5555FF'>=</font> <font color='#979000'>0</font><font face='Lucida Console'>)</font> <font color='#0000FF'>return</font>;
+    offset <font color='#5555FF'>=</font> <font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[firstoffset<font color='#5555FF'>+</font><font color='#979000'>10</font>]<font face='Lucida Console'>)</font>;
+    offset <font color='#5555FF'>&lt;</font><font color='#5555FF'>&lt;</font><font color='#5555FF'>=</font> <font color='#979000'>8</font>;
+    offset <font color='#5555FF'>+</font><font color='#5555FF'>=</font> <font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[firstoffset<font color='#5555FF'>+</font><font color='#979000'>11</font>]<font face='Lucida Console'>)</font>;
+  <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[firstoffset<font color='#5555FF'>+</font><font color='#979000'>11</font>]<font face='Lucida Console'>)</font> <font color='#5555FF'>!</font><font color='#5555FF'>=</font> <font color='#979000'>0</font><font face='Lucida Console'>)</font> <font color='#0000FF'>return</font>;
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[firstoffset<font color='#5555FF'>+</font><font color='#979000'>10</font>]<font face='Lucida Console'>)</font> <font color='#5555FF'>!</font><font color='#5555FF'>=</font> <font color='#979000'>0</font><font face='Lucida Console'>)</font> <font color='#0000FF'>return</font>;
+    offset <font color='#5555FF'>=</font> <font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[firstoffset<font color='#5555FF'>+</font><font color='#979000'>9</font>]<font face='Lucida Console'>)</font>;
+    offset <font color='#5555FF'>&lt;</font><font color='#5555FF'>&lt;</font><font color='#5555FF'>=</font> <font color='#979000'>8</font>;
+    offset <font color='#5555FF'>+</font><font color='#5555FF'>=</font> <font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[firstoffset<font color='#5555FF'>+</font><font color='#979000'>8</font>]<font face='Lucida Console'>)</font>;
+  <b>}</b>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>offset <font color='#5555FF'>&gt;</font> length <font color='#5555FF'>-</font> <font color='#979000'>2</font><font face='Lucida Console'>)</font> <font color='#0000FF'>return</font>; <font color='#009900'>/* check end of data segment */</font>
+
+  <font color='#009900'>/* Get the number of directory entries contained in this SubIFD */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>is_motorola<font face='Lucida Console'>)</font> <b>{</b>
+    number_of_tags <font color='#5555FF'>=</font> <font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[offset]<font face='Lucida Console'>)</font>;
+    number_of_tags <font color='#5555FF'>&lt;</font><font color='#5555FF'>&lt;</font><font color='#5555FF'>=</font> <font color='#979000'>8</font>;
+    number_of_tags <font color='#5555FF'>+</font><font color='#5555FF'>=</font> <font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[offset<font color='#5555FF'>+</font><font color='#979000'>1</font>]<font face='Lucida Console'>)</font>;
+  <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+    number_of_tags <font color='#5555FF'>=</font> <font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[offset<font color='#5555FF'>+</font><font color='#979000'>1</font>]<font face='Lucida Console'>)</font>;
+    number_of_tags <font color='#5555FF'>&lt;</font><font color='#5555FF'>&lt;</font><font color='#5555FF'>=</font> <font color='#979000'>8</font>;
+    number_of_tags <font color='#5555FF'>+</font><font color='#5555FF'>=</font> <font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[offset]<font face='Lucida Console'>)</font>;
+  <b>}</b>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>number_of_tags <font color='#5555FF'>&lt;</font> <font color='#979000'>2</font><font face='Lucida Console'>)</font> <font color='#0000FF'>return</font>;
+  offset <font color='#5555FF'>+</font><font color='#5555FF'>=</font> <font color='#979000'>2</font>;
+
+  <font color='#009900'>/* Search for ExifImageWidth and ExifImageHeight Tags in this SubIFD */</font>
+  <font color='#0000FF'>do</font> <b>{</b>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>offset <font color='#5555FF'>&gt;</font> length <font color='#5555FF'>-</font> <font color='#979000'>12</font><font face='Lucida Console'>)</font> <font color='#0000FF'>return</font>; <font color='#009900'>/* check end of data segment */</font>
+    <font color='#009900'>/* Get Tag number */</font>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>is_motorola<font face='Lucida Console'>)</font> <b>{</b>
+      tagnum <font color='#5555FF'>=</font> <font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[offset]<font face='Lucida Console'>)</font>;
+      tagnum <font color='#5555FF'>&lt;</font><font color='#5555FF'>&lt;</font><font color='#5555FF'>=</font> <font color='#979000'>8</font>;
+      tagnum <font color='#5555FF'>+</font><font color='#5555FF'>=</font> <font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[offset<font color='#5555FF'>+</font><font color='#979000'>1</font>]<font face='Lucida Console'>)</font>;
+    <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+      tagnum <font color='#5555FF'>=</font> <font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[offset<font color='#5555FF'>+</font><font color='#979000'>1</font>]<font face='Lucida Console'>)</font>;
+      tagnum <font color='#5555FF'>&lt;</font><font color='#5555FF'>&lt;</font><font color='#5555FF'>=</font> <font color='#979000'>8</font>;
+      tagnum <font color='#5555FF'>+</font><font color='#5555FF'>=</font> <font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>data[offset]<font face='Lucida Console'>)</font>;
+    <b>}</b>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>tagnum <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>0xA002</font> <font color='#5555FF'>|</font><font color='#5555FF'>|</font> tagnum <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>0xA003</font><font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>tagnum <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>0xA002</font><font face='Lucida Console'>)</font>
+	new_value <font color='#5555FF'>=</font> new_width; <font color='#009900'>/* ExifImageWidth Tag */</font>
+      <font color='#0000FF'>else</font>
+	new_value <font color='#5555FF'>=</font> new_height; <font color='#009900'>/* ExifImageHeight Tag */</font>
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>is_motorola<font face='Lucida Console'>)</font> <b>{</b>
+	data[offset<font color='#5555FF'>+</font><font color='#979000'>2</font>] <font color='#5555FF'>=</font> <font color='#979000'>0</font>; <font color='#009900'>/* Format = unsigned long (4 octets) */</font>
+	data[offset<font color='#5555FF'>+</font><font color='#979000'>3</font>] <font color='#5555FF'>=</font> <font color='#979000'>4</font>;
+	data[offset<font color='#5555FF'>+</font><font color='#979000'>4</font>] <font color='#5555FF'>=</font> <font color='#979000'>0</font>; <font color='#009900'>/* Number Of Components = 1 */</font>
+	data[offset<font color='#5555FF'>+</font><font color='#979000'>5</font>] <font color='#5555FF'>=</font> <font color='#979000'>0</font>;
+	data[offset<font color='#5555FF'>+</font><font color='#979000'>6</font>] <font color='#5555FF'>=</font> <font color='#979000'>0</font>;
+	data[offset<font color='#5555FF'>+</font><font color='#979000'>7</font>] <font color='#5555FF'>=</font> <font color='#979000'>1</font>;
+	data[offset<font color='#5555FF'>+</font><font color='#979000'>8</font>] <font color='#5555FF'>=</font> <font color='#979000'>0</font>;
+	data[offset<font color='#5555FF'>+</font><font color='#979000'>9</font>] <font color='#5555FF'>=</font> <font color='#979000'>0</font>;
+	data[offset<font color='#5555FF'>+</font><font color='#979000'>10</font>] <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>JOCTET<font face='Lucida Console'>)</font><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>new_value <font color='#5555FF'>&gt;</font><font color='#5555FF'>&gt;</font> <font color='#979000'>8</font><font face='Lucida Console'>)</font> <font color='#5555FF'>&amp;</font> <font color='#979000'>0xFF</font><font face='Lucida Console'>)</font>;
+	data[offset<font color='#5555FF'>+</font><font color='#979000'>11</font>] <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>JOCTET<font face='Lucida Console'>)</font><font face='Lucida Console'>(</font>new_value <font color='#5555FF'>&amp;</font> <font color='#979000'>0xFF</font><font face='Lucida Console'>)</font>;
+      <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+	data[offset<font color='#5555FF'>+</font><font color='#979000'>2</font>] <font color='#5555FF'>=</font> <font color='#979000'>4</font>; <font color='#009900'>/* Format = unsigned long (4 octets) */</font>
+	data[offset<font color='#5555FF'>+</font><font color='#979000'>3</font>] <font color='#5555FF'>=</font> <font color='#979000'>0</font>;
+	data[offset<font color='#5555FF'>+</font><font color='#979000'>4</font>] <font color='#5555FF'>=</font> <font color='#979000'>1</font>; <font color='#009900'>/* Number Of Components = 1 */</font>
+	data[offset<font color='#5555FF'>+</font><font color='#979000'>5</font>] <font color='#5555FF'>=</font> <font color='#979000'>0</font>;
+	data[offset<font color='#5555FF'>+</font><font color='#979000'>6</font>] <font color='#5555FF'>=</font> <font color='#979000'>0</font>;
+	data[offset<font color='#5555FF'>+</font><font color='#979000'>7</font>] <font color='#5555FF'>=</font> <font color='#979000'>0</font>;
+	data[offset<font color='#5555FF'>+</font><font color='#979000'>8</font>] <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>JOCTET<font face='Lucida Console'>)</font><font face='Lucida Console'>(</font>new_value <font color='#5555FF'>&amp;</font> <font color='#979000'>0xFF</font><font face='Lucida Console'>)</font>;
+	data[offset<font color='#5555FF'>+</font><font color='#979000'>9</font>] <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>JOCTET<font face='Lucida Console'>)</font><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>new_value <font color='#5555FF'>&gt;</font><font color='#5555FF'>&gt;</font> <font color='#979000'>8</font><font face='Lucida Console'>)</font> <font color='#5555FF'>&amp;</font> <font color='#979000'>0xFF</font><font face='Lucida Console'>)</font>;
+	data[offset<font color='#5555FF'>+</font><font color='#979000'>10</font>] <font color='#5555FF'>=</font> <font color='#979000'>0</font>;
+	data[offset<font color='#5555FF'>+</font><font color='#979000'>11</font>] <font color='#5555FF'>=</font> <font color='#979000'>0</font>;
+      <b>}</b>
+    <b>}</b>
+    offset <font color='#5555FF'>+</font><font color='#5555FF'>=</font> <font color='#979000'>12</font>;
+  <b>}</b> <font color='#0000FF'>while</font> <font face='Lucida Console'>(</font><font color='#5555FF'>-</font><font color='#5555FF'>-</font>number_of_tags<font face='Lucida Console'>)</font>;
+<b>}</b>
+
+
+<font color='#009900'>/* Adjust output image parameters as needed.
+ *
+ * This must be called after jpeg_copy_critical_parameters()
+ * and before jpeg_write_coefficients().
+ *
+ * The return value is the set of virtual coefficient arrays to be written
+ * (either the ones allocated by jtransform_request_workspace, or the
+ * original source data arrays).  The caller will need to pass this value
+ * to jpeg_write_coefficients().
+ */</font>
+
+<b><a name='GLOBAL'></a>GLOBAL</b><font face='Lucida Console'>(</font>jvirt_barray_ptr <font color='#5555FF'>*</font><font face='Lucida Console'>)</font>
+<b><a name='jtransform_adjust_parameters'></a>jtransform_adjust_parameters</b> <font face='Lucida Console'>(</font>j_decompress_ptr srcinfo,
+			      j_compress_ptr dstinfo,
+			      jvirt_barray_ptr <font color='#5555FF'>*</font>src_coef_arrays,
+			      jpeg_transform_info <font color='#5555FF'>*</font>info<font face='Lucida Console'>)</font>
+<b>{</b>
+  <font color='#009900'>/* If force-to-grayscale is requested, adjust destination parameters */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>force_grayscale<font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#009900'>/* First, ensure we have YCbCr or grayscale data, and that the source's
+     * Y channel is full resolution.  (No reasonable person would make Y
+     * be less than full resolution, so actually coping with that case
+     * isn't worth extra code space.  But we check it to avoid crashing.)
+     */</font>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>jpeg_color_space <font color='#5555FF'>=</font><font color='#5555FF'>=</font> JCS_YCbCr <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+	  dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>num_components <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>3</font><font face='Lucida Console'>)</font> <font color='#5555FF'>|</font><font color='#5555FF'>|</font>
+	 <font face='Lucida Console'>(</font>dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>jpeg_color_space <font color='#5555FF'>=</font><font color='#5555FF'>=</font> JCS_GRAYSCALE <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+	  dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>num_components <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>1</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+	srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>comp_info[<font color='#979000'>0</font>].h_samp_factor <font color='#5555FF'>=</font><font color='#5555FF'>=</font> srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>max_h_samp_factor <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+	srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>comp_info[<font color='#979000'>0</font>].v_samp_factor <font color='#5555FF'>=</font><font color='#5555FF'>=</font> srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>max_v_samp_factor<font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#009900'>/* We use jpeg_set_colorspace to make sure subsidiary settings get fixed
+       * properly.  Among other things, it sets the target h_samp_factor &amp;
+       * v_samp_factor to 1, which typically won't match the source.
+       * We have to preserve the source's quantization table number, however.
+       */</font>
+      <font color='#0000FF'><u>int</u></font> sv_quant_tbl_no <font color='#5555FF'>=</font> dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>comp_info[<font color='#979000'>0</font>].quant_tbl_no;
+      <font color='#BB00BB'>jpeg_set_colorspace</font><font face='Lucida Console'>(</font>dstinfo, JCS_GRAYSCALE<font face='Lucida Console'>)</font>;
+      dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>comp_info[<font color='#979000'>0</font>].quant_tbl_no <font color='#5555FF'>=</font> sv_quant_tbl_no;
+    <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+      <font color='#009900'>/* Sorry, can't do it */</font>
+      <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>dstinfo, JERR_CONVERSION_NOTIMPL<font face='Lucida Console'>)</font>;
+    <b>}</b>
+  <b>}</b> <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>num_components <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>1</font><font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#009900'>/* For a single-component source, we force the destination sampling factors
+     * to 1x1, with or without force_grayscale.  This is useful because some
+     * decoders choke on grayscale images with other sampling factors.
+     */</font>
+    dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>comp_info[<font color='#979000'>0</font>].h_samp_factor <font color='#5555FF'>=</font> <font color='#979000'>1</font>;
+    dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>comp_info[<font color='#979000'>0</font>].v_samp_factor <font color='#5555FF'>=</font> <font color='#979000'>1</font>;
+  <b>}</b>
+
+  <font color='#009900'>/* Correct the destination's image dimensions as necessary
+   * for rotate/flip, resize, and crop operations.
+   */</font>
+  dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>jpeg_width <font color='#5555FF'>=</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width;
+  dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>jpeg_height <font color='#5555FF'>=</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height;
+
+  <font color='#009900'>/* Transpose destination image parameters */</font>
+  <font color='#0000FF'>switch</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>transform<font face='Lucida Console'>)</font> <b>{</b>
+  <font color='#0000FF'>case</font> JXFORM_TRANSPOSE:
+  <font color='#0000FF'>case</font> JXFORM_TRANSVERSE:
+  <font color='#0000FF'>case</font> JXFORM_ROT_90:
+  <font color='#0000FF'>case</font> JXFORM_ROT_270:
+    <font color='#BB00BB'>transpose_critical_parameters</font><font face='Lucida Console'>(</font>dstinfo<font face='Lucida Console'>)</font>;
+    <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>default</font>:
+    <font color='#0000FF'>break</font>;
+  <b>}</b>
+
+  <font color='#009900'>/* Adjust Exif properties */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>marker_list <font color='#5555FF'>!</font><font color='#5555FF'>=</font> NULL <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+      srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>marker_list<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>marker <font color='#5555FF'>=</font><font color='#5555FF'>=</font> JPEG_APP0<font color='#5555FF'>+</font><font color='#979000'>1</font> <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+      srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>marker_list<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>data_length <font color='#5555FF'>&gt;</font><font color='#5555FF'>=</font> <font color='#979000'>6</font> <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+      <font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>marker_list<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>data[<font color='#979000'>0</font>]<font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>0x45</font> <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+      <font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>marker_list<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>data[<font color='#979000'>1</font>]<font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>0x78</font> <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+      <font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>marker_list<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>data[<font color='#979000'>2</font>]<font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>0x69</font> <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+      <font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>marker_list<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>data[<font color='#979000'>3</font>]<font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>0x66</font> <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+      <font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>marker_list<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>data[<font color='#979000'>4</font>]<font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>0</font> <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+      <font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>marker_list<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>data[<font color='#979000'>5</font>]<font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>0</font><font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#009900'>/* Suppress output of JFIF marker */</font>
+    dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>write_JFIF_header <font color='#5555FF'>=</font> FALSE;
+    <font color='#009900'>/* Adjust Exif image parameters */</font>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>jpeg_width <font color='#5555FF'>!</font><font color='#5555FF'>=</font> srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>image_width <font color='#5555FF'>|</font><font color='#5555FF'>|</font>
+	dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>jpeg_height <font color='#5555FF'>!</font><font color='#5555FF'>=</font> srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>image_height<font face='Lucida Console'>)</font>
+      <font color='#009900'>/* Align data segment to start of TIFF structure for parsing */</font>
+      <font color='#BB00BB'>adjust_exif_parameters</font><font face='Lucida Console'>(</font>srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>marker_list<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>data <font color='#5555FF'>+</font> <font color='#979000'>6</font>,
+	srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>marker_list<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>data_length <font color='#5555FF'>-</font> <font color='#979000'>6</font>,
+	dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>jpeg_width, dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>jpeg_height<font face='Lucida Console'>)</font>;
+  <b>}</b>
+
+  <font color='#009900'>/* Return the appropriate output data set */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>workspace_coef_arrays <font color='#5555FF'>!</font><font color='#5555FF'>=</font> NULL<font face='Lucida Console'>)</font>
+    <font color='#0000FF'>return</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>workspace_coef_arrays;
+  <font color='#0000FF'>return</font> src_coef_arrays;
+<b>}</b>
+
+
+<font color='#009900'>/* Execute the actual transformation, if any.
+ *
+ * This must be called *after* jpeg_write_coefficients, because it depends
+ * on jpeg_write_coefficients to have computed subsidiary values such as
+ * the per-component width and height fields in the destination object.
+ *
+ * Note that some transformations will modify the source data arrays!
+ */</font>
+
+<b><a name='GLOBAL'></a>GLOBAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='jtransform_execute_transform'></a>jtransform_execute_transform</b> <font face='Lucida Console'>(</font>j_decompress_ptr srcinfo,
+			      j_compress_ptr dstinfo,
+			      jvirt_barray_ptr <font color='#5555FF'>*</font>src_coef_arrays,
+			      jpeg_transform_info <font color='#5555FF'>*</font>info<font face='Lucida Console'>)</font>
+<b>{</b>
+  jvirt_barray_ptr <font color='#5555FF'>*</font>dst_coef_arrays <font color='#5555FF'>=</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>workspace_coef_arrays;
+
+  <font color='#009900'>/* Note: conditions tested here should match those in switch statement
+   * in jtransform_request_workspace()
+   */</font>
+  <font color='#0000FF'>switch</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>transform<font face='Lucida Console'>)</font> <b>{</b>
+  <font color='#0000FF'>case</font> JXFORM_NONE:
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>x_crop_offset <font color='#5555FF'>!</font><font color='#5555FF'>=</font> <font color='#979000'>0</font> <font color='#5555FF'>|</font><font color='#5555FF'>|</font> info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>y_crop_offset <font color='#5555FF'>!</font><font color='#5555FF'>=</font> <font color='#979000'>0</font><font face='Lucida Console'>)</font>
+      <font color='#BB00BB'>do_crop</font><font face='Lucida Console'>(</font>srcinfo, dstinfo, info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>x_crop_offset, info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>y_crop_offset,
+	      src_coef_arrays, dst_coef_arrays<font face='Lucida Console'>)</font>;
+    <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>case</font> JXFORM_FLIP_H:
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>y_crop_offset <font color='#5555FF'>!</font><font color='#5555FF'>=</font> <font color='#979000'>0</font><font face='Lucida Console'>)</font>
+      <font color='#BB00BB'>do_flip_h</font><font face='Lucida Console'>(</font>srcinfo, dstinfo, info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>x_crop_offset, info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>y_crop_offset,
+		src_coef_arrays, dst_coef_arrays<font face='Lucida Console'>)</font>;
+    <font color='#0000FF'>else</font>
+      <font color='#BB00BB'>do_flip_h_no_crop</font><font face='Lucida Console'>(</font>srcinfo, dstinfo, info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>x_crop_offset,
+			src_coef_arrays<font face='Lucida Console'>)</font>;
+    <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>case</font> JXFORM_FLIP_V:
+    <font color='#BB00BB'>do_flip_v</font><font face='Lucida Console'>(</font>srcinfo, dstinfo, info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>x_crop_offset, info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>y_crop_offset,
+	      src_coef_arrays, dst_coef_arrays<font face='Lucida Console'>)</font>;
+    <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>case</font> JXFORM_TRANSPOSE:
+    <font color='#BB00BB'>do_transpose</font><font face='Lucida Console'>(</font>srcinfo, dstinfo, info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>x_crop_offset, info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>y_crop_offset,
+		 src_coef_arrays, dst_coef_arrays<font face='Lucida Console'>)</font>;
+    <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>case</font> JXFORM_TRANSVERSE:
+    <font color='#BB00BB'>do_transverse</font><font face='Lucida Console'>(</font>srcinfo, dstinfo, info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>x_crop_offset, info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>y_crop_offset,
+		  src_coef_arrays, dst_coef_arrays<font face='Lucida Console'>)</font>;
+    <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>case</font> JXFORM_ROT_90:
+    <font color='#BB00BB'>do_rot_90</font><font face='Lucida Console'>(</font>srcinfo, dstinfo, info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>x_crop_offset, info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>y_crop_offset,
+	      src_coef_arrays, dst_coef_arrays<font face='Lucida Console'>)</font>;
+    <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>case</font> JXFORM_ROT_180:
+    <font color='#BB00BB'>do_rot_180</font><font face='Lucida Console'>(</font>srcinfo, dstinfo, info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>x_crop_offset, info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>y_crop_offset,
+	       src_coef_arrays, dst_coef_arrays<font face='Lucida Console'>)</font>;
+    <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>case</font> JXFORM_ROT_270:
+    <font color='#BB00BB'>do_rot_270</font><font face='Lucida Console'>(</font>srcinfo, dstinfo, info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>x_crop_offset, info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>y_crop_offset,
+	       src_coef_arrays, dst_coef_arrays<font face='Lucida Console'>)</font>;
+    <font color='#0000FF'>break</font>;
+  <b>}</b>
+<b>}</b>
+
+<font color='#009900'>/* jtransform_perfect_transform
+ *
+ * Determine whether lossless transformation is perfectly
+ * possible for a specified image and transformation.
+ *
+ * Inputs:
+ *   image_width, image_height: source image dimensions.
+ *   MCU_width, MCU_height: pixel dimensions of MCU.
+ *   transform: transformation identifier.
+ * Parameter sources from initialized jpeg_struct
+ * (after reading source header):
+ *   image_width = cinfo.image_width
+ *   image_height = cinfo.image_height
+ *   MCU_width = cinfo.max_h_samp_factor * cinfo.block_size
+ *   MCU_height = cinfo.max_v_samp_factor * cinfo.block_size
+ * Result:
+ *   TRUE = perfect transformation possible
+ *   FALSE = perfect transformation not possible
+ *           (may use custom action then)
+ */</font>
+
+<b><a name='GLOBAL'></a>GLOBAL</b><font face='Lucida Console'>(</font>boolean<font face='Lucida Console'>)</font>
+<b><a name='jtransform_perfect_transform'></a>jtransform_perfect_transform</b><font face='Lucida Console'>(</font>JDIMENSION image_width, JDIMENSION image_height,
+			     <font color='#0000FF'><u>int</u></font> MCU_width, <font color='#0000FF'><u>int</u></font> MCU_height,
+			     JXFORM_CODE transform<font face='Lucida Console'>)</font>
+<b>{</b>
+  boolean result <font color='#5555FF'>=</font> TRUE; <font color='#009900'>/* initialize TRUE */</font>
+
+  <font color='#0000FF'>switch</font> <font face='Lucida Console'>(</font>transform<font face='Lucida Console'>)</font> <b>{</b>
+  <font color='#0000FF'>case</font> JXFORM_FLIP_H:
+  <font color='#0000FF'>case</font> JXFORM_ROT_270:
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>image_width <font color='#5555FF'>%</font> <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> MCU_width<font face='Lucida Console'>)</font>
+      result <font color='#5555FF'>=</font> FALSE;
+    <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>case</font> JXFORM_FLIP_V:
+  <font color='#0000FF'>case</font> JXFORM_ROT_90:
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>image_height <font color='#5555FF'>%</font> <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> MCU_height<font face='Lucida Console'>)</font>
+      result <font color='#5555FF'>=</font> FALSE;
+    <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>case</font> JXFORM_TRANSVERSE:
+  <font color='#0000FF'>case</font> JXFORM_ROT_180:
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>image_width <font color='#5555FF'>%</font> <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> MCU_width<font face='Lucida Console'>)</font>
+      result <font color='#5555FF'>=</font> FALSE;
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>image_height <font color='#5555FF'>%</font> <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> MCU_height<font face='Lucida Console'>)</font>
+      result <font color='#5555FF'>=</font> FALSE;
+    <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>default</font>:
+    <font color='#0000FF'>break</font>;
+  <b>}</b>
+
+  <font color='#0000FF'>return</font> result;
+<b>}</b>
+
+<font color='#0000FF'>#endif</font> <font color='#009900'>/* TRANSFORMS_SUPPORTED */</font>
+
+
+<font color='#009900'>/* Setup decompression object to save desired markers in memory.
+ * This must be called before jpeg_read_header() to have the desired effect.
+ */</font>
+
+<b><a name='GLOBAL'></a>GLOBAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='jcopy_markers_setup'></a>jcopy_markers_setup</b> <font face='Lucida Console'>(</font>j_decompress_ptr srcinfo, JCOPY_OPTION option<font face='Lucida Console'>)</font>
+<b>{</b>
+<font color='#0000FF'>#ifdef</font> SAVE_MARKERS_SUPPORTED
+  <font color='#0000FF'><u>int</u></font> m;
+
+  <font color='#009900'>/* Save comments except under NONE option */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>option <font color='#5555FF'>!</font><font color='#5555FF'>=</font> JCOPYOPT_NONE<font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#BB00BB'>jpeg_save_markers</font><font face='Lucida Console'>(</font>srcinfo, JPEG_COM, <font color='#979000'>0xFFFF</font><font face='Lucida Console'>)</font>;
+  <b>}</b>
+  <font color='#009900'>/* Save all types of APPn markers iff ALL option */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>option <font color='#5555FF'>=</font><font color='#5555FF'>=</font> JCOPYOPT_ALL<font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>m <font color='#5555FF'>=</font> <font color='#979000'>0</font>; m <font color='#5555FF'>&lt;</font> <font color='#979000'>16</font>; m<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font>
+      <font color='#BB00BB'>jpeg_save_markers</font><font face='Lucida Console'>(</font>srcinfo, JPEG_APP0 <font color='#5555FF'>+</font> m, <font color='#979000'>0xFFFF</font><font face='Lucida Console'>)</font>;
+  <b>}</b>
+<font color='#0000FF'>#endif</font> <font color='#009900'>/* SAVE_MARKERS_SUPPORTED */</font>
+<b>}</b>
+
+<font color='#009900'>/* Copy markers saved in the given source object to the destination object.
+ * This should be called just after jpeg_start_compress() or
+ * jpeg_write_coefficients().
+ * Note that those routines will have written the SOI, and also the
+ * JFIF APP0 or Adobe APP14 markers if selected.
+ */</font>
+
+<b><a name='GLOBAL'></a>GLOBAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='jcopy_markers_execute'></a>jcopy_markers_execute</b> <font face='Lucida Console'>(</font>j_decompress_ptr srcinfo, j_compress_ptr dstinfo,
+		       JCOPY_OPTION option<font face='Lucida Console'>)</font>
+<b>{</b>
+  jpeg_saved_marker_ptr marker;
+
+  <font color='#009900'>/* In the current implementation, we don't actually need to examine the
+   * option flag here; we just copy everything that got saved.
+   * But to avoid confusion, we do not output JFIF and Adobe APP14 markers
+   * if the encoder library already wrote one.
+   */</font>
+  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>marker <font color='#5555FF'>=</font> srcinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>marker_list; marker <font color='#5555FF'>!</font><font color='#5555FF'>=</font> NULL; marker <font color='#5555FF'>=</font> marker<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>next<font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>write_JFIF_header <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+	marker<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>marker <font color='#5555FF'>=</font><font color='#5555FF'>=</font> JPEG_APP0 <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+	marker<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>data_length <font color='#5555FF'>&gt;</font><font color='#5555FF'>=</font> <font color='#979000'>5</font> <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+	<font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>marker<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>data[<font color='#979000'>0</font>]<font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>0x4A</font> <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+	<font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>marker<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>data[<font color='#979000'>1</font>]<font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>0x46</font> <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+	<font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>marker<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>data[<font color='#979000'>2</font>]<font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>0x49</font> <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+	<font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>marker<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>data[<font color='#979000'>3</font>]<font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>0x46</font> <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+	<font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>marker<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>data[<font color='#979000'>4</font>]<font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>0</font><font face='Lucida Console'>)</font>
+      <font color='#0000FF'>continue</font>;			<font color='#009900'>/* reject duplicate JFIF */</font>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>dstinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>write_Adobe_marker <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+	marker<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>marker <font color='#5555FF'>=</font><font color='#5555FF'>=</font> JPEG_APP0<font color='#5555FF'>+</font><font color='#979000'>14</font> <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+	marker<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>data_length <font color='#5555FF'>&gt;</font><font color='#5555FF'>=</font> <font color='#979000'>5</font> <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+	<font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>marker<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>data[<font color='#979000'>0</font>]<font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>0x41</font> <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+	<font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>marker<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>data[<font color='#979000'>1</font>]<font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>0x64</font> <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+	<font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>marker<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>data[<font color='#979000'>2</font>]<font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>0x6F</font> <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+	<font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>marker<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>data[<font color='#979000'>3</font>]<font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>0x62</font> <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+	<font color='#BB00BB'>GETJOCTET</font><font face='Lucida Console'>(</font>marker<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>data[<font color='#979000'>4</font>]<font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>0x65</font><font face='Lucida Console'>)</font>
+      <font color='#0000FF'>continue</font>;			<font color='#009900'>/* reject duplicate Adobe */</font>
+<font color='#0000FF'>#ifdef</font> NEED_FAR_POINTERS
+    <font color='#009900'>/* We could use jpeg_write_marker if the data weren't FAR... */</font>
+    <b>{</b>
+      <font color='#0000FF'><u>unsigned</u></font> <font color='#0000FF'><u>int</u></font> i;
+      <font color='#BB00BB'>jpeg_write_m_header</font><font face='Lucida Console'>(</font>dstinfo, marker<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>marker, marker<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>data_length<font face='Lucida Console'>)</font>;
+      <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>i <font color='#5555FF'>=</font> <font color='#979000'>0</font>; i <font color='#5555FF'>&lt;</font> marker<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>data_length; i<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font>
+	<font color='#BB00BB'>jpeg_write_m_byte</font><font face='Lucida Console'>(</font>dstinfo, marker<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>data[i]<font face='Lucida Console'>)</font>;
+    <b>}</b>
+<font color='#0000FF'>#else</font>
+    <font color='#BB00BB'>jpeg_write_marker</font><font face='Lucida Console'>(</font>dstinfo, marker<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>marker,
+		      marker<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>data, marker<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>data_length<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#endif</font>
+  <b>}</b>
+<b>}</b>
+
+</pre></body></html>

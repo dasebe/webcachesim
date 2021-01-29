@@ -1,0 +1,36 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/Library/Frameworks/Mono.framework/Headers/jconfig.h
+
+/Library/Frameworks/Mono.framework/Headers/jerror.h
+
+/Library/Frameworks/Mono.framework/Headers/jmorecfg.h
+
+/Library/Frameworks/Mono.framework/Headers/jpeglib.h
+jconfig.h
+/Library/Frameworks/Mono.framework/Headers/jconfig.h
+jmorecfg.h
+/Library/Frameworks/Mono.framework/Headers/jmorecfg.h
+jpegint.h
+/Library/Frameworks/Mono.framework/Headers/jpegint.h
+jerror.h
+/Library/Frameworks/Mono.framework/Headers/jerror.h
+
+/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/cmake_utils/test_for_libjpeg/libjpeg_test.cpp
+setjmp.h
+-
+stdio.h
+-
+stdlib.h
+-
+jpeglib.h
+-
+iostream
+-
+

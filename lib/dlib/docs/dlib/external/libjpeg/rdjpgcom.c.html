@@ -1,0 +1,518 @@
+<html><!-- Created using the cpp_pretty_printer from the dlib C++ library.  See http://dlib.net for updates. --><head><title>dlib C++ Library - rdjpgcom.c</title></head><body bgcolor='white'><pre>
+<font color='#009900'>/*
+ * rdjpgcom.c
+ *
+ * Copyright (C) 1994-1997, Thomas G. Lane.
+ * Modified 2009 by Bill Allombert, Guido Vollbeding.
+ * This file is part of the Independent JPEG Group's software.
+ * For conditions of distribution and use, see the accompanying README file.
+ *
+ * This file contains a very simple stand-alone application that displays
+ * the text in COM (comment) markers in a JFIF file.
+ * This may be useful as an example of the minimum logic needed to parse
+ * JPEG markers.
+ */</font>
+
+<font color='#0000FF'>#define</font> JPEG_CJPEG_DJPEG	<font color='#009900'>/* to get the command-line config symbols */</font>
+<font color='#0000FF'>#include</font> "<a style='text-decoration:none' href='jinclude.h.html'>jinclude.h</a>"		<font color='#009900'>/* get auto-config symbols, &lt;stdio.h&gt; */</font>
+
+<font color='#0000FF'>#ifdef</font> HAVE_LOCALE_H
+<font color='#0000FF'>#include</font> <font color='#5555FF'>&lt;</font>locale.h<font color='#5555FF'>&gt;</font>		<font color='#009900'>/* Bill Allombert: use locale for isprint */</font>
+<font color='#0000FF'>#endif</font>
+<font color='#0000FF'>#include</font> <font color='#5555FF'>&lt;</font>ctype.h<font color='#5555FF'>&gt;</font>		<font color='#009900'>/* to declare isupper(), tolower() */</font>
+<font color='#0000FF'>#ifdef</font> USE_SETMODE
+<font color='#0000FF'>#include</font> <font color='#5555FF'>&lt;</font>fcntl.h<font color='#5555FF'>&gt;</font>		<font color='#009900'>/* to declare setmode()'s parameter macros */</font>
+<font color='#009900'>/* If you have setmode() but not &lt;io.h&gt;, just delete this line: */</font>
+<font color='#0000FF'>#include</font> <font color='#5555FF'>&lt;</font>io.h<font color='#5555FF'>&gt;</font>			<font color='#009900'>/* to declare setmode() */</font>
+<font color='#0000FF'>#endif</font>
+
+<font color='#0000FF'>#ifdef</font> USE_CCOMMAND		<font color='#009900'>/* command-line reader for Macintosh */</font>
+<font color='#0000FF'>#ifdef</font> __MWERKS__
+<font color='#0000FF'>#include</font> <font color='#5555FF'>&lt;</font>SIOUX.h<font color='#5555FF'>&gt;</font>              <font color='#009900'>/* Metrowerks needs this */</font>
+<font color='#0000FF'>#include</font> <font color='#5555FF'>&lt;</font>console.h<font color='#5555FF'>&gt;</font>		<font color='#009900'>/* ... and this */</font>
+<font color='#0000FF'>#endif</font>
+<font color='#0000FF'>#ifdef</font> THINK_C
+<font color='#0000FF'>#include</font> <font color='#5555FF'>&lt;</font>console.h<font color='#5555FF'>&gt;</font>		<font color='#009900'>/* Think declares it here */</font>
+<font color='#0000FF'>#endif</font>
+<font color='#0000FF'>#endif</font>
+
+<font color='#0000FF'>#ifdef</font> DONT_USE_B_MODE		<font color='#009900'>/* define mode parameters for fopen() */</font>
+<font color='#0000FF'>#define</font> READ_BINARY	"<font color='#CC0000'>r</font>"
+<font color='#0000FF'>#else</font>
+<font color='#0000FF'>#ifdef</font> VMS			<font color='#009900'>/* VMS is very nonstandard */</font>
+<font color='#0000FF'>#define</font> READ_BINARY	"<font color='#CC0000'>rb</font>", "<font color='#CC0000'>ctx=stm</font>"
+<font color='#0000FF'>#else</font>				<font color='#009900'>/* standard ANSI-compliant case */</font>
+<font color='#0000FF'>#define</font> READ_BINARY	"<font color='#CC0000'>rb</font>"
+<font color='#0000FF'>#endif</font>
+<font color='#0000FF'>#endif</font>
+
+<font color='#0000FF'>#ifndef</font> EXIT_FAILURE		<font color='#009900'>/* define exit() codes if not provided */</font>
+<font color='#0000FF'>#define</font> EXIT_FAILURE  <font color='#979000'>1</font>
+<font color='#0000FF'>#endif</font>
+<font color='#0000FF'>#ifndef</font> EXIT_SUCCESS
+<font color='#0000FF'>#ifdef</font> VMS
+<font color='#0000FF'>#define</font> EXIT_SUCCESS  <font color='#979000'>1</font>		<font color='#009900'>/* VMS is very nonstandard */</font>
+<font color='#0000FF'>#else</font>
+<font color='#0000FF'>#define</font> EXIT_SUCCESS  <font color='#979000'>0</font>
+<font color='#0000FF'>#endif</font>
+<font color='#0000FF'>#endif</font>
+
+
+<font color='#009900'>/*
+ * These macros are used to read the input file.
+ * To reuse this code in another application, you might need to change these.
+ */</font>
+
+<font color='#0000FF'>static</font> FILE <font color='#5555FF'>*</font> infile;		<font color='#009900'>/* input JPEG file */</font>
+
+<font color='#009900'>/* Return next input byte, or EOF if no more */</font>
+<font color='#0000FF'>#define</font> NEXTBYTE<font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>  getc<font face='Lucida Console'>(</font>infile<font face='Lucida Console'>)</font>
+
+
+<font color='#009900'>/* Error exit handler */</font>
+<font color='#0000FF'>#define</font> ERREXIT<font face='Lucida Console'>(</font>msg<font face='Lucida Console'>)</font>  <font face='Lucida Console'>(</font>fprintf<font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>%s\n</font>", msg<font face='Lucida Console'>)</font>, exit<font face='Lucida Console'>(</font>EXIT_FAILURE<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>
+
+
+<font color='#009900'>/* Read one byte, testing for EOF */</font>
+<font color='#0000FF'>static</font> <font color='#0000FF'><u>int</u></font>
+<b><a name='read_1_byte'></a>read_1_byte</b> <font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b>{</b>
+  <font color='#0000FF'><u>int</u></font> c;
+
+  c <font color='#5555FF'>=</font> <font color='#BB00BB'>NEXTBYTE</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>c <font color='#5555FF'>=</font><font color='#5555FF'>=</font> EOF<font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>"<font color='#CC0000'>Premature EOF in JPEG file</font>"<font face='Lucida Console'>)</font>;
+  <font color='#0000FF'>return</font> c;
+<b>}</b>
+
+<font color='#009900'>/* Read 2 bytes, convert to unsigned int */</font>
+<font color='#009900'>/* All 2-byte quantities in JPEG markers are MSB first */</font>
+<font color='#0000FF'>static</font> <font color='#0000FF'><u>unsigned</u></font> <font color='#0000FF'><u>int</u></font>
+<b><a name='read_2_bytes'></a>read_2_bytes</b> <font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b>{</b>
+  <font color='#0000FF'><u>int</u></font> c1, c2;
+
+  c1 <font color='#5555FF'>=</font> <font color='#BB00BB'>NEXTBYTE</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>c1 <font color='#5555FF'>=</font><font color='#5555FF'>=</font> EOF<font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>"<font color='#CC0000'>Premature EOF in JPEG file</font>"<font face='Lucida Console'>)</font>;
+  c2 <font color='#5555FF'>=</font> <font color='#BB00BB'>NEXTBYTE</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>c2 <font color='#5555FF'>=</font><font color='#5555FF'>=</font> EOF<font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>"<font color='#CC0000'>Premature EOF in JPEG file</font>"<font face='Lucida Console'>)</font>;
+  <font color='#0000FF'>return</font> <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font><font color='#0000FF'><u>unsigned</u></font> <font color='#0000FF'><u>int</u></font><font face='Lucida Console'>)</font> c1<font face='Lucida Console'>)</font> <font color='#5555FF'>&lt;</font><font color='#5555FF'>&lt;</font> <font color='#979000'>8</font><font face='Lucida Console'>)</font> <font color='#5555FF'>+</font> <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font><font color='#0000FF'><u>unsigned</u></font> <font color='#0000FF'><u>int</u></font><font face='Lucida Console'>)</font> c2<font face='Lucida Console'>)</font>;
+<b>}</b>
+
+
+<font color='#009900'>/*
+ * JPEG markers consist of one or more 0xFF bytes, followed by a marker
+ * code byte (which is not an FF).  Here are the marker codes of interest
+ * in this program.  (See jdmarker.c for a more complete list.)
+ */</font>
+
+<font color='#0000FF'>#define</font> M_SOF0  <font color='#979000'>0xC0</font>		<font color='#009900'>/* Start Of Frame N */</font>
+<font color='#0000FF'>#define</font> M_SOF1  <font color='#979000'>0xC1</font>		<font color='#009900'>/* N indicates which compression process */</font>
+<font color='#0000FF'>#define</font> M_SOF2  <font color='#979000'>0xC2</font>		<font color='#009900'>/* Only SOF0-SOF2 are now in common use */</font>
+<font color='#0000FF'>#define</font> M_SOF3  <font color='#979000'>0xC3</font>
+<font color='#0000FF'>#define</font> M_SOF5  <font color='#979000'>0xC5</font>		<font color='#009900'>/* NB: codes C4 and CC are NOT SOF markers */</font>
+<font color='#0000FF'>#define</font> M_SOF6  <font color='#979000'>0xC6</font>
+<font color='#0000FF'>#define</font> M_SOF7  <font color='#979000'>0xC7</font>
+<font color='#0000FF'>#define</font> M_SOF9  <font color='#979000'>0xC9</font>
+<font color='#0000FF'>#define</font> M_SOF10 <font color='#979000'>0xCA</font>
+<font color='#0000FF'>#define</font> M_SOF11 <font color='#979000'>0xCB</font>
+<font color='#0000FF'>#define</font> M_SOF13 <font color='#979000'>0xCD</font>
+<font color='#0000FF'>#define</font> M_SOF14 <font color='#979000'>0xCE</font>
+<font color='#0000FF'>#define</font> M_SOF15 <font color='#979000'>0xCF</font>
+<font color='#0000FF'>#define</font> M_SOI   <font color='#979000'>0xD8</font>		<font color='#009900'>/* Start Of Image (beginning of datastream) */</font>
+<font color='#0000FF'>#define</font> M_EOI   <font color='#979000'>0xD9</font>		<font color='#009900'>/* End Of Image (end of datastream) */</font>
+<font color='#0000FF'>#define</font> M_SOS   <font color='#979000'>0xDA</font>		<font color='#009900'>/* Start Of Scan (begins compressed data) */</font>
+<font color='#0000FF'>#define</font> M_APP0	<font color='#979000'>0xE0</font>		<font color='#009900'>/* Application-specific marker, type N */</font>
+<font color='#0000FF'>#define</font> M_APP12	<font color='#979000'>0xEC</font>		<font color='#009900'>/* (we don't bother to list all 16 APPn's) */</font>
+<font color='#0000FF'>#define</font> M_COM   <font color='#979000'>0xFE</font>		<font color='#009900'>/* COMment */</font>
+
+
+<font color='#009900'>/*
+ * Find the next JPEG marker and return its marker code.
+ * We expect at least one FF byte, possibly more if the compressor used FFs
+ * to pad the file.
+ * There could also be non-FF garbage between markers.  The treatment of such
+ * garbage is unspecified; we choose to skip over it but emit a warning msg.
+ * NB: this routine must not be used after seeing SOS marker, since it will
+ * not deal correctly with FF/00 sequences in the compressed image data...
+ */</font>
+
+<font color='#0000FF'>static</font> <font color='#0000FF'><u>int</u></font>
+<b><a name='next_marker'></a>next_marker</b> <font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b>{</b>
+  <font color='#0000FF'><u>int</u></font> c;
+  <font color='#0000FF'><u>int</u></font> discarded_bytes <font color='#5555FF'>=</font> <font color='#979000'>0</font>;
+
+  <font color='#009900'>/* Find 0xFF byte; count and skip any non-FFs. */</font>
+  c <font color='#5555FF'>=</font> <font color='#BB00BB'>read_1_byte</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+  <font color='#0000FF'>while</font> <font face='Lucida Console'>(</font>c <font color='#5555FF'>!</font><font color='#5555FF'>=</font> <font color='#979000'>0xFF</font><font face='Lucida Console'>)</font> <b>{</b>
+    discarded_bytes<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;
+    c <font color='#5555FF'>=</font> <font color='#BB00BB'>read_1_byte</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+  <b>}</b>
+  <font color='#009900'>/* Get marker code byte, swallowing any duplicate FF bytes.  Extra FFs
+   * are legal as pad bytes, so don't count them in discarded_bytes.
+   */</font>
+  <font color='#0000FF'>do</font> <b>{</b>
+    c <font color='#5555FF'>=</font> <font color='#BB00BB'>read_1_byte</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+  <b>}</b> <font color='#0000FF'>while</font> <font face='Lucida Console'>(</font>c <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>0xFF</font><font face='Lucida Console'>)</font>;
+
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>discarded_bytes <font color='#5555FF'>!</font><font color='#5555FF'>=</font> <font color='#979000'>0</font><font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>Warning: garbage data found in JPEG file\n</font>"<font face='Lucida Console'>)</font>;
+  <b>}</b>
+
+  <font color='#0000FF'>return</font> c;
+<b>}</b>
+
+
+<font color='#009900'>/*
+ * Read the initial marker, which should be SOI.
+ * For a JFIF file, the first two bytes of the file should be literally
+ * 0xFF M_SOI.  To be more general, we could use next_marker, but if the
+ * input file weren't actually JPEG at all, next_marker might read the whole
+ * file and then return a misleading error message...
+ */</font>
+
+<font color='#0000FF'>static</font> <font color='#0000FF'><u>int</u></font>
+<b><a name='first_marker'></a>first_marker</b> <font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b>{</b>
+  <font color='#0000FF'><u>int</u></font> c1, c2;
+
+  c1 <font color='#5555FF'>=</font> <font color='#BB00BB'>NEXTBYTE</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+  c2 <font color='#5555FF'>=</font> <font color='#BB00BB'>NEXTBYTE</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>c1 <font color='#5555FF'>!</font><font color='#5555FF'>=</font> <font color='#979000'>0xFF</font> <font color='#5555FF'>|</font><font color='#5555FF'>|</font> c2 <font color='#5555FF'>!</font><font color='#5555FF'>=</font> M_SOI<font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>"<font color='#CC0000'>Not a JPEG file</font>"<font face='Lucida Console'>)</font>;
+  <font color='#0000FF'>return</font> c2;
+<b>}</b>
+
+
+<font color='#009900'>/*
+ * Most types of marker are followed by a variable-length parameter segment.
+ * This routine skips over the parameters for any marker we don't otherwise
+ * want to process.
+ * Note that we MUST skip the parameter segment explicitly in order not to
+ * be fooled by 0xFF bytes that might appear within the parameter segment;
+ * such bytes do NOT introduce new markers.
+ */</font>
+
+<font color='#0000FF'>static</font> <font color='#0000FF'><u>void</u></font>
+<b><a name='skip_variable'></a>skip_variable</b> <font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<font color='#009900'>/* Skip over an unknown or uninteresting variable-length marker */</font>
+<b>{</b>
+  <font color='#0000FF'><u>unsigned</u></font> <font color='#0000FF'><u>int</u></font> length;
+
+  <font color='#009900'>/* Get the marker parameter length count */</font>
+  length <font color='#5555FF'>=</font> <font color='#BB00BB'>read_2_bytes</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+  <font color='#009900'>/* Length includes itself, so must be at least 2 */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>length <font color='#5555FF'>&lt;</font> <font color='#979000'>2</font><font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>"<font color='#CC0000'>Erroneous JPEG marker length</font>"<font face='Lucida Console'>)</font>;
+  length <font color='#5555FF'>-</font><font color='#5555FF'>=</font> <font color='#979000'>2</font>;
+  <font color='#009900'>/* Skip over the remaining bytes */</font>
+  <font color='#0000FF'>while</font> <font face='Lucida Console'>(</font>length <font color='#5555FF'>&gt;</font> <font color='#979000'>0</font><font face='Lucida Console'>)</font> <b>{</b>
+    <font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font> <font color='#BB00BB'>read_1_byte</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+    length<font color='#5555FF'>-</font><font color='#5555FF'>-</font>;
+  <b>}</b>
+<b>}</b>
+
+
+<font color='#009900'>/*
+ * Process a COM marker.
+ * We want to print out the marker contents as legible text;
+ * we must guard against non-text junk and varying newline representations.
+ */</font>
+
+<font color='#0000FF'>static</font> <font color='#0000FF'><u>void</u></font>
+<b><a name='process_COM'></a>process_COM</b> <font face='Lucida Console'>(</font><font color='#0000FF'><u>int</u></font> raw<font face='Lucida Console'>)</font>
+<b>{</b>
+  <font color='#0000FF'><u>unsigned</u></font> <font color='#0000FF'><u>int</u></font> length;
+  <font color='#0000FF'><u>int</u></font> ch;
+  <font color='#0000FF'><u>int</u></font> lastch <font color='#5555FF'>=</font> <font color='#979000'>0</font>;
+
+  <font color='#009900'>/* Bill Allombert: set locale properly for isprint */</font>
+<font color='#0000FF'>#ifdef</font> HAVE_LOCALE_H
+  <font color='#BB00BB'>setlocale</font><font face='Lucida Console'>(</font>LC_CTYPE, "<font color='#CC0000'></font>"<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#endif</font>
+
+  <font color='#009900'>/* Get the marker parameter length count */</font>
+  length <font color='#5555FF'>=</font> <font color='#BB00BB'>read_2_bytes</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+  <font color='#009900'>/* Length includes itself, so must be at least 2 */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>length <font color='#5555FF'>&lt;</font> <font color='#979000'>2</font><font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>"<font color='#CC0000'>Erroneous JPEG marker length</font>"<font face='Lucida Console'>)</font>;
+  length <font color='#5555FF'>-</font><font color='#5555FF'>=</font> <font color='#979000'>2</font>;
+
+  <font color='#0000FF'>while</font> <font face='Lucida Console'>(</font>length <font color='#5555FF'>&gt;</font> <font color='#979000'>0</font><font face='Lucida Console'>)</font> <b>{</b>
+    ch <font color='#5555FF'>=</font> <font color='#BB00BB'>read_1_byte</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>raw<font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#BB00BB'>putc</font><font face='Lucida Console'>(</font>ch, stdout<font face='Lucida Console'>)</font>;
+    <font color='#009900'>/* Emit the character in a readable form.
+     * Nonprintables are converted to \nnn form,
+     * while \ is converted to \\.
+     * Newlines in CR, CR/LF, or LF form will be printed as one newline.
+     */</font>
+    <b>}</b> <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>ch <font color='#5555FF'>=</font><font color='#5555FF'>=</font> '<font color='#FF0000'>\r</font>'<font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#BB00BB'>printf</font><font face='Lucida Console'>(</font>"<font color='#CC0000'>\n</font>"<font face='Lucida Console'>)</font>;
+    <b>}</b> <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>ch <font color='#5555FF'>=</font><font color='#5555FF'>=</font> '<font color='#FF0000'>\n</font>'<font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>lastch <font color='#5555FF'>!</font><font color='#5555FF'>=</font> '<font color='#FF0000'>\r</font>'<font face='Lucida Console'>)</font>
+	<font color='#BB00BB'>printf</font><font face='Lucida Console'>(</font>"<font color='#CC0000'>\n</font>"<font face='Lucida Console'>)</font>;
+    <b>}</b> <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>ch <font color='#5555FF'>=</font><font color='#5555FF'>=</font> '<font color='#FF0000'>\\</font>'<font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#BB00BB'>printf</font><font face='Lucida Console'>(</font>"<font color='#CC0000'>\\\\</font>"<font face='Lucida Console'>)</font>;
+    <b>}</b> <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>isprint</font><font face='Lucida Console'>(</font>ch<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#BB00BB'>putc</font><font face='Lucida Console'>(</font>ch, stdout<font face='Lucida Console'>)</font>;
+    <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+      <font color='#BB00BB'>printf</font><font face='Lucida Console'>(</font>"<font color='#CC0000'>\\%03o</font>", ch<font face='Lucida Console'>)</font>;
+    <b>}</b>
+    lastch <font color='#5555FF'>=</font> ch;
+    length<font color='#5555FF'>-</font><font color='#5555FF'>-</font>;
+  <b>}</b>
+  <font color='#BB00BB'>printf</font><font face='Lucida Console'>(</font>"<font color='#CC0000'>\n</font>"<font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* Bill Allombert: revert to C locale */</font>
+<font color='#0000FF'>#ifdef</font> HAVE_LOCALE_H
+  <font color='#BB00BB'>setlocale</font><font face='Lucida Console'>(</font>LC_CTYPE, "<font color='#CC0000'>C</font>"<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#endif</font>
+<b>}</b>
+
+
+<font color='#009900'>/*
+ * Process a SOFn marker.
+ * This code is only needed if you want to know the image dimensions...
+ */</font>
+
+<font color='#0000FF'>static</font> <font color='#0000FF'><u>void</u></font>
+<b><a name='process_SOFn'></a>process_SOFn</b> <font face='Lucida Console'>(</font><font color='#0000FF'><u>int</u></font> marker<font face='Lucida Console'>)</font>
+<b>{</b>
+  <font color='#0000FF'><u>unsigned</u></font> <font color='#0000FF'><u>int</u></font> length;
+  <font color='#0000FF'><u>unsigned</u></font> <font color='#0000FF'><u>int</u></font> image_height, image_width;
+  <font color='#0000FF'><u>int</u></font> data_precision, num_components;
+  <font color='#0000FF'>const</font> <font color='#0000FF'><u>char</u></font> <font color='#5555FF'>*</font> process;
+  <font color='#0000FF'><u>int</u></font> ci;
+
+  length <font color='#5555FF'>=</font> <font color='#BB00BB'>read_2_bytes</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;	<font color='#009900'>/* usual parameter length count */</font>
+
+  data_precision <font color='#5555FF'>=</font> <font color='#BB00BB'>read_1_byte</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+  image_height <font color='#5555FF'>=</font> <font color='#BB00BB'>read_2_bytes</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+  image_width <font color='#5555FF'>=</font> <font color='#BB00BB'>read_2_bytes</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+  num_components <font color='#5555FF'>=</font> <font color='#BB00BB'>read_1_byte</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+
+  <font color='#0000FF'>switch</font> <font face='Lucida Console'>(</font>marker<font face='Lucida Console'>)</font> <b>{</b>
+  <font color='#0000FF'>case</font> M_SOF0:	process <font color='#5555FF'>=</font> "<font color='#CC0000'>Baseline</font>";  <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>case</font> M_SOF1:	process <font color='#5555FF'>=</font> "<font color='#CC0000'>Extended sequential</font>";  <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>case</font> M_SOF2:	process <font color='#5555FF'>=</font> "<font color='#CC0000'>Progressive</font>";  <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>case</font> M_SOF3:	process <font color='#5555FF'>=</font> "<font color='#CC0000'>Lossless</font>";  <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>case</font> M_SOF5:	process <font color='#5555FF'>=</font> "<font color='#CC0000'>Differential sequential</font>";  <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>case</font> M_SOF6:	process <font color='#5555FF'>=</font> "<font color='#CC0000'>Differential progressive</font>";  <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>case</font> M_SOF7:	process <font color='#5555FF'>=</font> "<font color='#CC0000'>Differential lossless</font>";  <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>case</font> M_SOF9:	process <font color='#5555FF'>=</font> "<font color='#CC0000'>Extended sequential, arithmetic coding</font>";  <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>case</font> M_SOF10:	process <font color='#5555FF'>=</font> "<font color='#CC0000'>Progressive, arithmetic coding</font>";  <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>case</font> M_SOF11:	process <font color='#5555FF'>=</font> "<font color='#CC0000'>Lossless, arithmetic coding</font>";  <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>case</font> M_SOF13:	process <font color='#5555FF'>=</font> "<font color='#CC0000'>Differential sequential, arithmetic coding</font>";  <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>case</font> M_SOF14:	process <font color='#5555FF'>=</font> "<font color='#CC0000'>Differential progressive, arithmetic coding</font>"; <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>case</font> M_SOF15:	process <font color='#5555FF'>=</font> "<font color='#CC0000'>Differential lossless, arithmetic coding</font>";  <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>default</font>:	process <font color='#5555FF'>=</font> "<font color='#CC0000'>Unknown</font>";  <font color='#0000FF'>break</font>;
+  <b>}</b>
+
+  <font color='#BB00BB'>printf</font><font face='Lucida Console'>(</font>"<font color='#CC0000'>JPEG image is %uw * %uh, %d color components, %d bits per sample\n</font>",
+	 image_width, image_height, num_components, data_precision<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>printf</font><font face='Lucida Console'>(</font>"<font color='#CC0000'>JPEG process: %s\n</font>", process<font face='Lucida Console'>)</font>;
+
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>length <font color='#5555FF'>!</font><font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#0000FF'><u>unsigned</u></font> <font color='#0000FF'><u>int</u></font><font face='Lucida Console'>)</font> <font face='Lucida Console'>(</font><font color='#979000'>8</font> <font color='#5555FF'>+</font> num_components <font color='#5555FF'>*</font> <font color='#979000'>3</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>"<font color='#CC0000'>Bogus SOF marker length</font>"<font face='Lucida Console'>)</font>;
+
+  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>ci <font color='#5555FF'>=</font> <font color='#979000'>0</font>; ci <font color='#5555FF'>&lt;</font> num_components; ci<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+    <font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font> <font color='#BB00BB'>read_1_byte</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;	<font color='#009900'>/* Component ID code */</font>
+    <font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font> <font color='#BB00BB'>read_1_byte</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;	<font color='#009900'>/* H, V sampling factors */</font>
+    <font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font> <font color='#BB00BB'>read_1_byte</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;	<font color='#009900'>/* Quantization table number */</font>
+  <b>}</b>
+<b>}</b>
+
+
+<font color='#009900'>/*
+ * Parse the marker stream until SOS or EOI is seen;
+ * display any COM markers.
+ * While the companion program wrjpgcom will always insert COM markers before
+ * SOFn, other implementations might not, so we scan to SOS before stopping.
+ * If we were only interested in the image dimensions, we would stop at SOFn.
+ * (Conversely, if we only cared about COM markers, there would be no need
+ * for special code to handle SOFn; we could treat it like other markers.)
+ */</font>
+
+<font color='#0000FF'>static</font> <font color='#0000FF'><u>int</u></font>
+<b><a name='scan_JPEG_header'></a>scan_JPEG_header</b> <font face='Lucida Console'>(</font><font color='#0000FF'><u>int</u></font> verbose, <font color='#0000FF'><u>int</u></font> raw<font face='Lucida Console'>)</font>
+<b>{</b>
+  <font color='#0000FF'><u>int</u></font> marker;
+
+  <font color='#009900'>/* Expect SOI at start of file */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>first_marker</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font> <font color='#5555FF'>!</font><font color='#5555FF'>=</font> M_SOI<font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>"<font color='#CC0000'>Expected SOI marker first</font>"<font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* Scan miscellaneous markers until we reach SOS. */</font>
+  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>;;<font face='Lucida Console'>)</font> <b>{</b>
+    marker <font color='#5555FF'>=</font> <font color='#BB00BB'>next_marker</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+    <font color='#0000FF'>switch</font> <font face='Lucida Console'>(</font>marker<font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#009900'>/* Note that marker codes 0xC4, 0xC8, 0xCC are not, and must not be,
+       * treated as SOFn.  C4 in particular is actually DHT.
+       */</font>
+    <font color='#0000FF'>case</font> M_SOF0:		<font color='#009900'>/* Baseline */</font>
+    <font color='#0000FF'>case</font> M_SOF1:		<font color='#009900'>/* Extended sequential, Huffman */</font>
+    <font color='#0000FF'>case</font> M_SOF2:		<font color='#009900'>/* Progressive, Huffman */</font>
+    <font color='#0000FF'>case</font> M_SOF3:		<font color='#009900'>/* Lossless, Huffman */</font>
+    <font color='#0000FF'>case</font> M_SOF5:		<font color='#009900'>/* Differential sequential, Huffman */</font>
+    <font color='#0000FF'>case</font> M_SOF6:		<font color='#009900'>/* Differential progressive, Huffman */</font>
+    <font color='#0000FF'>case</font> M_SOF7:		<font color='#009900'>/* Differential lossless, Huffman */</font>
+    <font color='#0000FF'>case</font> M_SOF9:		<font color='#009900'>/* Extended sequential, arithmetic */</font>
+    <font color='#0000FF'>case</font> M_SOF10:		<font color='#009900'>/* Progressive, arithmetic */</font>
+    <font color='#0000FF'>case</font> M_SOF11:		<font color='#009900'>/* Lossless, arithmetic */</font>
+    <font color='#0000FF'>case</font> M_SOF13:		<font color='#009900'>/* Differential sequential, arithmetic */</font>
+    <font color='#0000FF'>case</font> M_SOF14:		<font color='#009900'>/* Differential progressive, arithmetic */</font>
+    <font color='#0000FF'>case</font> M_SOF15:		<font color='#009900'>/* Differential lossless, arithmetic */</font>
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>verbose<font face='Lucida Console'>)</font>
+	<font color='#BB00BB'>process_SOFn</font><font face='Lucida Console'>(</font>marker<font face='Lucida Console'>)</font>;
+      <font color='#0000FF'>else</font>
+	<font color='#BB00BB'>skip_variable</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+      <font color='#0000FF'>break</font>;
+
+    <font color='#0000FF'>case</font> M_SOS:			<font color='#009900'>/* stop before hitting compressed data */</font>
+      <font color='#0000FF'>return</font> marker;
+
+    <font color='#0000FF'>case</font> M_EOI:			<font color='#009900'>/* in case it's a tables-only JPEG stream */</font>
+      <font color='#0000FF'>return</font> marker;
+
+    <font color='#0000FF'>case</font> M_COM:
+      <font color='#BB00BB'>process_COM</font><font face='Lucida Console'>(</font>raw<font face='Lucida Console'>)</font>;
+      <font color='#0000FF'>break</font>;
+
+    <font color='#0000FF'>case</font> M_APP12:
+      <font color='#009900'>/* Some digital camera makers put useful textual information into
+       * APP12 markers, so we print those out too when in -verbose mode.
+       */</font>
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>verbose<font face='Lucida Console'>)</font> <b>{</b>
+	<font color='#BB00BB'>printf</font><font face='Lucida Console'>(</font>"<font color='#CC0000'>APP12 contains:\n</font>"<font face='Lucida Console'>)</font>;
+	<font color='#BB00BB'>process_COM</font><font face='Lucida Console'>(</font>raw<font face='Lucida Console'>)</font>;
+      <b>}</b> <font color='#0000FF'>else</font>
+	<font color='#BB00BB'>skip_variable</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+      <font color='#0000FF'>break</font>;
+
+    <font color='#0000FF'>default</font>:			<font color='#009900'>/* Anything else just gets skipped */</font>
+      <font color='#BB00BB'>skip_variable</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;		<font color='#009900'>/* we assume it has a parameter count... */</font>
+      <font color='#0000FF'>break</font>;
+    <b>}</b>
+  <b>}</b> <font color='#009900'>/* end loop */</font>
+<b>}</b>
+
+
+<font color='#009900'>/* Command line parsing code */</font>
+
+<font color='#0000FF'>static</font> <font color='#0000FF'>const</font> <font color='#0000FF'><u>char</u></font> <font color='#5555FF'>*</font> progname;	<font color='#009900'>/* program name for error messages */</font>
+
+
+<font color='#0000FF'>static</font> <font color='#0000FF'><u>void</u></font>
+<b><a name='usage'></a>usage</b> <font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<font color='#009900'>/* complain about bad command line */</font>
+<b>{</b>
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>rdjpgcom displays any textual comments in a JPEG file.\n</font>"<font face='Lucida Console'>)</font>;
+
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>Usage: %s [switches] [inputfile]\n</font>", progname<font face='Lucida Console'>)</font>;
+
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>Switches (names may be abbreviated):\n</font>"<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>  -raw        Display non-printable characters in comments (unsafe)\n</font>"<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>  -verbose    Also display dimensions of JPEG image\n</font>"<font face='Lucida Console'>)</font>;
+
+  <font color='#BB00BB'>exit</font><font face='Lucida Console'>(</font>EXIT_FAILURE<font face='Lucida Console'>)</font>;
+<b>}</b>
+
+
+<font color='#0000FF'>static</font> <font color='#0000FF'><u>int</u></font>
+<b><a name='keymatch'></a>keymatch</b> <font face='Lucida Console'>(</font><font color='#0000FF'><u>char</u></font> <font color='#5555FF'>*</font> arg, <font color='#0000FF'>const</font> <font color='#0000FF'><u>char</u></font> <font color='#5555FF'>*</font> keyword, <font color='#0000FF'><u>int</u></font> minchars<font face='Lucida Console'>)</font>
+<font color='#009900'>/* Case-insensitive matching of (possibly abbreviated) keyword switches. */</font>
+<font color='#009900'>/* keyword is the constant keyword (must be lower case already), */</font>
+<font color='#009900'>/* minchars is length of minimum legal abbreviation. */</font>
+<b>{</b>
+  <font color='#0000FF'>register</font> <font color='#0000FF'><u>int</u></font> ca, ck;
+  <font color='#0000FF'>register</font> <font color='#0000FF'><u>int</u></font> nmatched <font color='#5555FF'>=</font> <font color='#979000'>0</font>;
+
+  <font color='#0000FF'>while</font> <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>ca <font color='#5555FF'>=</font> <font color='#5555FF'>*</font>arg<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <font color='#5555FF'>!</font><font color='#5555FF'>=</font> '<font color='#FF0000'>\0</font>'<font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>ck <font color='#5555FF'>=</font> <font color='#5555FF'>*</font>keyword<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> '<font color='#FF0000'>\0</font>'<font face='Lucida Console'>)</font>
+      <font color='#0000FF'>return</font> <font color='#979000'>0</font>;			<font color='#009900'>/* arg longer than keyword, no good */</font>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>isupper</font><font face='Lucida Console'>(</font>ca<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>		<font color='#009900'>/* force arg to lcase (assume ck is already) */</font>
+      ca <font color='#5555FF'>=</font> <font color='#BB00BB'>tolower</font><font face='Lucida Console'>(</font>ca<font face='Lucida Console'>)</font>;
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>ca <font color='#5555FF'>!</font><font color='#5555FF'>=</font> ck<font face='Lucida Console'>)</font>
+      <font color='#0000FF'>return</font> <font color='#979000'>0</font>;			<font color='#009900'>/* no good */</font>
+    nmatched<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;			<font color='#009900'>/* count matched characters */</font>
+  <b>}</b>
+  <font color='#009900'>/* reached end of argument; fail if it's too short for unique abbrev */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>nmatched <font color='#5555FF'>&lt;</font> minchars<font face='Lucida Console'>)</font>
+    <font color='#0000FF'>return</font> <font color='#979000'>0</font>;
+  <font color='#0000FF'>return</font> <font color='#979000'>1</font>;			<font color='#009900'>/* A-OK */</font>
+<b>}</b>
+
+
+<font color='#009900'>/*
+ * The main program.
+ */</font>
+
+<font color='#0000FF'><u>int</u></font>
+<b><a name='main'></a>main</b> <font face='Lucida Console'>(</font><font color='#0000FF'><u>int</u></font> argc, <font color='#0000FF'><u>char</u></font> <font color='#5555FF'>*</font><font color='#5555FF'>*</font>argv<font face='Lucida Console'>)</font>
+<b>{</b>
+  <font color='#0000FF'><u>int</u></font> argn;
+  <font color='#0000FF'><u>char</u></font> <font color='#5555FF'>*</font> arg;
+  <font color='#0000FF'><u>int</u></font> verbose <font color='#5555FF'>=</font> <font color='#979000'>0</font>, raw <font color='#5555FF'>=</font> <font color='#979000'>0</font>;
+
+  <font color='#009900'>/* On Mac, fetch a command line. */</font>
+<font color='#0000FF'>#ifdef</font> USE_CCOMMAND
+  argc <font color='#5555FF'>=</font> <font color='#BB00BB'>ccommand</font><font face='Lucida Console'>(</font><font color='#5555FF'>&amp;</font>argv<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#endif</font>
+
+  progname <font color='#5555FF'>=</font> argv[<font color='#979000'>0</font>];
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>progname <font color='#5555FF'>=</font><font color='#5555FF'>=</font> NULL <font color='#5555FF'>|</font><font color='#5555FF'>|</font> progname[<font color='#979000'>0</font>] <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>0</font><font face='Lucida Console'>)</font>
+    progname <font color='#5555FF'>=</font> "<font color='#CC0000'>rdjpgcom</font>";	<font color='#009900'>/* in case C library doesn't provide it */</font>
+
+  <font color='#009900'>/* Parse switches, if any */</font>
+  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>argn <font color='#5555FF'>=</font> <font color='#979000'>1</font>; argn <font color='#5555FF'>&lt;</font> argc; argn<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+    arg <font color='#5555FF'>=</font> argv[argn];
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>arg[<font color='#979000'>0</font>] <font color='#5555FF'>!</font><font color='#5555FF'>=</font> '<font color='#FF0000'>-</font>'<font face='Lucida Console'>)</font>
+      <font color='#0000FF'>break</font>;			<font color='#009900'>/* not switch, must be file name */</font>
+    arg<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;			<font color='#009900'>/* advance over '-' */</font>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>keymatch</font><font face='Lucida Console'>(</font>arg, "<font color='#CC0000'>verbose</font>", <font color='#979000'>1</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <b>{</b>
+      verbose<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;
+    <b>}</b> <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>keymatch</font><font face='Lucida Console'>(</font>arg, "<font color='#CC0000'>raw</font>", <font color='#979000'>1</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <b>{</b>
+      raw <font color='#5555FF'>=</font> <font color='#979000'>1</font>;
+    <b>}</b> <font color='#0000FF'>else</font>
+      <font color='#BB00BB'>usage</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+  <b>}</b>
+
+  <font color='#009900'>/* Open the input file. */</font>
+  <font color='#009900'>/* Unix style: expect zero or one file name */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>argn <font color='#5555FF'>&lt;</font> argc<font color='#5555FF'>-</font><font color='#979000'>1</font><font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>%s: only one input file\n</font>", progname<font face='Lucida Console'>)</font>;
+    <font color='#BB00BB'>usage</font><font face='Lucida Console'>(</font><font face='Lucida Console'>)</font>;
+  <b>}</b>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>argn <font color='#5555FF'>&lt;</font> argc<font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>infile <font color='#5555FF'>=</font> <font color='#BB00BB'>fopen</font><font face='Lucida Console'>(</font>argv[argn], READ_BINARY<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> NULL<font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>%s: can't open %s\n</font>", progname, argv[argn]<font face='Lucida Console'>)</font>;
+      <font color='#BB00BB'>exit</font><font face='Lucida Console'>(</font>EXIT_FAILURE<font face='Lucida Console'>)</font>;
+    <b>}</b>
+  <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+    <font color='#009900'>/* default input file is stdin */</font>
+<font color='#0000FF'>#ifdef</font> USE_SETMODE		<font color='#009900'>/* need to hack file mode? */</font>
+    <font color='#BB00BB'>setmode</font><font face='Lucida Console'>(</font><font color='#BB00BB'>fileno</font><font face='Lucida Console'>(</font>stdin<font face='Lucida Console'>)</font>, O_BINARY<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#endif</font>
+<font color='#0000FF'>#ifdef</font> USE_FDOPEN		<font color='#009900'>/* need to re-open in binary mode? */</font>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>infile <font color='#5555FF'>=</font> <font color='#BB00BB'>fdopen</font><font face='Lucida Console'>(</font><font color='#BB00BB'>fileno</font><font face='Lucida Console'>(</font>stdin<font face='Lucida Console'>)</font>, READ_BINARY<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> NULL<font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>%s: can't open stdin\n</font>", progname<font face='Lucida Console'>)</font>;
+      <font color='#BB00BB'>exit</font><font face='Lucida Console'>(</font>EXIT_FAILURE<font face='Lucida Console'>)</font>;
+    <b>}</b>
+<font color='#0000FF'>#else</font>
+    infile <font color='#5555FF'>=</font> stdin;
+<font color='#0000FF'>#endif</font>
+  <b>}</b>
+
+  <font color='#009900'>/* Scan the JPEG headers. */</font>
+  <font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font> <font color='#BB00BB'>scan_JPEG_header</font><font face='Lucida Console'>(</font>verbose, raw<font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* All done. */</font>
+  <font color='#BB00BB'>exit</font><font face='Lucida Console'>(</font>EXIT_SUCCESS<font face='Lucida Console'>)</font>;
+  <font color='#0000FF'>return</font> <font color='#979000'>0</font>;			<font color='#009900'>/* suppress no-return-value warnings */</font>
+<b>}</b>
+
+</pre></body></html>

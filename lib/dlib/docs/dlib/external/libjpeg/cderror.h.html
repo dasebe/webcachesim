@@ -1,0 +1,137 @@
+<html><!-- Created using the cpp_pretty_printer from the dlib C++ library.  See http://dlib.net for updates. --><head><title>dlib C++ Library - cderror.h</title></head><body bgcolor='white'><pre>
+<font color='#009900'>/*
+ * cderror.h
+ *
+ * Copyright (C) 1994-1997, Thomas G. Lane.
+ * Modified 2009 by Guido Vollbeding.
+ * This file is part of the Independent JPEG Group's software.
+ * For conditions of distribution and use, see the accompanying README file.
+ *
+ * This file defines the error and message codes for the cjpeg/djpeg
+ * applications.  These strings are not needed as part of the JPEG library
+ * proper.
+ * Edit this file to add new codes, or to translate the message strings to
+ * some other language.
+ */</font>
+
+<font color='#009900'>/*
+ * To define the enum list of message codes, include this file without
+ * defining macro JMESSAGE.  To create a message string table, include it
+ * again with a suitable JMESSAGE definition (see jerror.c for an example).
+ */</font>
+<font color='#0000FF'>#ifndef</font> JMESSAGE
+<font color='#0000FF'>#ifndef</font> CDERROR_H
+<font color='#0000FF'>#define</font> CDERROR_H
+<font color='#009900'>/* First time through, define the enum list */</font>
+<font color='#0000FF'>#define</font> JMAKE_ENUM_LIST
+<font color='#0000FF'>#else</font>
+<font color='#009900'>/* Repeated inclusions of this file are no-ops unless JMESSAGE is defined */</font>
+<font color='#0000FF'>#define</font> JMESSAGE<font face='Lucida Console'>(</font>code,string<font face='Lucida Console'>)</font>
+<font color='#0000FF'>#endif</font> <font color='#009900'>/* CDERROR_H */</font>
+<font color='#0000FF'>#endif</font> <font color='#009900'>/* JMESSAGE */</font>
+
+<font color='#0000FF'>#ifdef</font> JMAKE_ENUM_LIST
+
+<font color='#0000FF'>typedef</font> <font color='#0000FF'>enum</font> <b>{</b>
+
+<font color='#0000FF'>#define</font> JMESSAGE<font face='Lucida Console'>(</font>code,string<font face='Lucida Console'>)</font>	code ,
+
+<font color='#0000FF'>#endif</font> <font color='#009900'>/* JMAKE_ENUM_LIST */</font>
+
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JMSG_FIRSTADDONCODE<font color='#5555FF'>=</font><font color='#979000'>1000</font>, NULL<font face='Lucida Console'>)</font> <font color='#009900'>/* Must be first entry! */</font>
+
+<font color='#0000FF'>#ifdef</font> BMP_SUPPORTED
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_BMP_BADCMAP, "<font color='#CC0000'>Unsupported BMP colormap format</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_BMP_BADDEPTH, "<font color='#CC0000'>Only 8- and 24-bit BMP files are supported</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_BMP_BADHEADER, "<font color='#CC0000'>Invalid BMP file: bad header length</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_BMP_BADPLANES, "<font color='#CC0000'>Invalid BMP file: biPlanes not equal to 1</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_BMP_COLORSPACE, "<font color='#CC0000'>BMP output must be grayscale or RGB</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_BMP_COMPRESSED, "<font color='#CC0000'>Sorry, compressed BMPs not yet supported</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_BMP_EMPTY, "<font color='#CC0000'>Empty BMP image</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_BMP_NOT, "<font color='#CC0000'>Not a BMP file - does not start with BM</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JTRC_BMP, "<font color='#CC0000'>%ux%u 24-bit BMP image</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JTRC_BMP_MAPPED, "<font color='#CC0000'>%ux%u 8-bit colormapped BMP image</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JTRC_BMP_OS2, "<font color='#CC0000'>%ux%u 24-bit OS2 BMP image</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JTRC_BMP_OS2_MAPPED, "<font color='#CC0000'>%ux%u 8-bit colormapped OS2 BMP image</font>"<font face='Lucida Console'>)</font>
+<font color='#0000FF'>#endif</font> <font color='#009900'>/* BMP_SUPPORTED */</font>
+
+<font color='#0000FF'>#ifdef</font> GIF_SUPPORTED
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_GIF_BUG, "<font color='#CC0000'>GIF output got confused</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_GIF_CODESIZE, "<font color='#CC0000'>Bogus GIF codesize %d</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_GIF_COLORSPACE, "<font color='#CC0000'>GIF output must be grayscale or RGB</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_GIF_IMAGENOTFOUND, "<font color='#CC0000'>Too few images in GIF file</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_GIF_NOT, "<font color='#CC0000'>Not a GIF file</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JTRC_GIF, "<font color='#CC0000'>%ux%ux%d GIF image</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JTRC_GIF_BADVERSION,
+	 "<font color='#CC0000'>Warning: unexpected GIF version number '%c%c%c'</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JTRC_GIF_EXTENSION, "<font color='#CC0000'>Ignoring GIF extension block of type 0x%02x</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JTRC_GIF_NONSQUARE, "<font color='#CC0000'>Caution: nonsquare pixels in input</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JWRN_GIF_BADDATA, "<font color='#CC0000'>Corrupt data in GIF file</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JWRN_GIF_CHAR, "<font color='#CC0000'>Bogus char 0x%02x in GIF file, ignoring</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JWRN_GIF_ENDCODE, "<font color='#CC0000'>Premature end of GIF image</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JWRN_GIF_NOMOREDATA, "<font color='#CC0000'>Ran out of GIF bits</font>"<font face='Lucida Console'>)</font>
+<font color='#0000FF'>#endif</font> <font color='#009900'>/* GIF_SUPPORTED */</font>
+
+<font color='#0000FF'>#ifdef</font> PPM_SUPPORTED
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_PPM_COLORSPACE, "<font color='#CC0000'>PPM output must be grayscale or RGB</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_PPM_NONNUMERIC, "<font color='#CC0000'>Nonnumeric data in PPM file</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_PPM_NOT, "<font color='#CC0000'>Not a PPM/PGM file</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JTRC_PGM, "<font color='#CC0000'>%ux%u PGM image</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JTRC_PGM_TEXT, "<font color='#CC0000'>%ux%u text PGM image</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JTRC_PPM, "<font color='#CC0000'>%ux%u PPM image</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JTRC_PPM_TEXT, "<font color='#CC0000'>%ux%u text PPM image</font>"<font face='Lucida Console'>)</font>
+<font color='#0000FF'>#endif</font> <font color='#009900'>/* PPM_SUPPORTED */</font>
+
+<font color='#0000FF'>#ifdef</font> RLE_SUPPORTED
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_RLE_BADERROR, "<font color='#CC0000'>Bogus error code from RLE library</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_RLE_COLORSPACE, "<font color='#CC0000'>RLE output must be grayscale or RGB</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_RLE_DIMENSIONS, "<font color='#CC0000'>Image dimensions (%ux%u) too large for RLE</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_RLE_EMPTY, "<font color='#CC0000'>Empty RLE file</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_RLE_EOF, "<font color='#CC0000'>Premature EOF in RLE header</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_RLE_MEM, "<font color='#CC0000'>Insufficient memory for RLE header</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_RLE_NOT, "<font color='#CC0000'>Not an RLE file</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_RLE_TOOMANYCHANNELS, "<font color='#CC0000'>Cannot handle %d output channels for RLE</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_RLE_UNSUPPORTED, "<font color='#CC0000'>Cannot handle this RLE setup</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JTRC_RLE, "<font color='#CC0000'>%ux%u full-color RLE file</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JTRC_RLE_FULLMAP, "<font color='#CC0000'>%ux%u full-color RLE file with map of length %d</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JTRC_RLE_GRAY, "<font color='#CC0000'>%ux%u grayscale RLE file</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JTRC_RLE_MAPGRAY, "<font color='#CC0000'>%ux%u grayscale RLE file with map of length %d</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JTRC_RLE_MAPPED, "<font color='#CC0000'>%ux%u colormapped RLE file with map of length %d</font>"<font face='Lucida Console'>)</font>
+<font color='#0000FF'>#endif</font> <font color='#009900'>/* RLE_SUPPORTED */</font>
+
+<font color='#0000FF'>#ifdef</font> TARGA_SUPPORTED
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_TGA_BADCMAP, "<font color='#CC0000'>Unsupported Targa colormap format</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_TGA_BADPARMS, "<font color='#CC0000'>Invalid or unsupported Targa file</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_TGA_COLORSPACE, "<font color='#CC0000'>Targa output must be grayscale or RGB</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JTRC_TGA, "<font color='#CC0000'>%ux%u RGB Targa image</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JTRC_TGA_GRAY, "<font color='#CC0000'>%ux%u grayscale Targa image</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JTRC_TGA_MAPPED, "<font color='#CC0000'>%ux%u colormapped Targa image</font>"<font face='Lucida Console'>)</font>
+<font color='#0000FF'>#else</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_TGA_NOTCOMP, "<font color='#CC0000'>Targa support was not compiled</font>"<font face='Lucida Console'>)</font>
+<font color='#0000FF'>#endif</font> <font color='#009900'>/* TARGA_SUPPORTED */</font>
+
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_BAD_CMAP_FILE,
+	 "<font color='#CC0000'>Color map file is invalid or of unsupported format</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_TOO_MANY_COLORS,
+	 "<font color='#CC0000'>Output file format cannot handle %d colormap entries</font>"<font face='Lucida Console'>)</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_UNGETC_FAILED, "<font color='#CC0000'>ungetc failed</font>"<font face='Lucida Console'>)</font>
+<font color='#0000FF'>#ifdef</font> TARGA_SUPPORTED
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_UNKNOWN_FORMAT,
+	 "<font color='#CC0000'>Unrecognized input file format --- perhaps you need -targa</font>"<font face='Lucida Console'>)</font>
+<font color='#0000FF'>#else</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_UNKNOWN_FORMAT, "<font color='#CC0000'>Unrecognized input file format</font>"<font face='Lucida Console'>)</font>
+<font color='#0000FF'>#endif</font>
+<font color='#BB00BB'>JMESSAGE</font><font face='Lucida Console'>(</font>JERR_UNSUPPORTED_FORMAT, "<font color='#CC0000'>Unsupported output file format</font>"<font face='Lucida Console'>)</font>
+
+<font color='#0000FF'>#ifdef</font> JMAKE_ENUM_LIST
+
+  JMSG_LASTADDONCODE
+<b>}</b> ADDON_MESSAGE_CODE;
+
+<font color='#0000FF'>#undef</font> JMAKE_ENUM_LIST
+<font color='#0000FF'>#endif</font> <font color='#009900'>/* JMAKE_ENUM_LIST */</font>
+
+<font color='#009900'>/* Zap JMESSAGE macro so that future re-inclusions do nothing by default */</font>
+<font color='#0000FF'>#undef</font> JMESSAGE
+
+</pre></body></html>

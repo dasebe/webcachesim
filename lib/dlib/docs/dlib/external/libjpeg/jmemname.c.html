@@ -1,0 +1,279 @@
+<html><!-- Created using the cpp_pretty_printer from the dlib C++ library.  See http://dlib.net for updates. --><head><title>dlib C++ Library - jmemname.c</title></head><body bgcolor='white'><pre>
+<font color='#009900'>/*
+ * jmemname.c
+ *
+ * Copyright (C) 1992-1997, Thomas G. Lane.
+ * This file is part of the Independent JPEG Group's software.
+ * For conditions of distribution and use, see the accompanying README file.
+ *
+ * This file provides a generic implementation of the system-dependent
+ * portion of the JPEG memory manager.  This implementation assumes that
+ * you must explicitly construct a name for each temp file.
+ * Also, the problem of determining the amount of memory available
+ * is shoved onto the user.
+ */</font>
+
+<font color='#0000FF'>#define</font> JPEG_INTERNALS
+<font color='#0000FF'>#include</font> "<a style='text-decoration:none' href='jinclude.h.html'>jinclude.h</a>"
+<font color='#0000FF'>#include</font> "<a style='text-decoration:none' href='jpeglib.h.html'>jpeglib.h</a>"
+<font color='#0000FF'>#include</font> "<a style='text-decoration:none' href='jmemsys.h.html'>jmemsys.h</a>"		<font color='#009900'>/* import the system-dependent declarations */</font>
+
+<font color='#0000FF'>#ifndef</font> HAVE_STDLIB_H		<font color='#009900'>/* &lt;stdlib.h&gt; should declare malloc(),free() */</font>
+<font color='#0000FF'>extern</font> <font color='#0000FF'><u>void</u></font> <font color='#5555FF'>*</font> malloc <b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font><font color='#0000FF'><u>size_t</u></font> size<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+<font color='#0000FF'>extern</font> <font color='#0000FF'><u>void</u></font> free <b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font> <font color='#5555FF'>*</font>ptr<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#endif</font>
+
+<font color='#0000FF'>#ifndef</font> SEEK_SET		<font color='#009900'>/* pre-ANSI systems may not define this; */</font>
+<font color='#0000FF'>#define</font> SEEK_SET  <font color='#979000'>0</font>		<font color='#009900'>/* if not, assume 0 is correct */</font>
+<font color='#0000FF'>#endif</font>
+
+<font color='#0000FF'>#ifdef</font> DONT_USE_B_MODE		<font color='#009900'>/* define mode parameters for fopen() */</font>
+<font color='#0000FF'>#define</font> READ_BINARY	"<font color='#CC0000'>r</font>"
+<font color='#0000FF'>#define</font> RW_BINARY	"<font color='#CC0000'>w+</font>"
+<font color='#0000FF'>#else</font>
+<font color='#0000FF'>#ifdef</font> VMS			<font color='#009900'>/* VMS is very nonstandard */</font>
+<font color='#0000FF'>#define</font> READ_BINARY	"<font color='#CC0000'>rb</font>", "<font color='#CC0000'>ctx=stm</font>"
+<font color='#0000FF'>#define</font> RW_BINARY	"<font color='#CC0000'>w+b</font>", "<font color='#CC0000'>ctx=stm</font>"
+<font color='#0000FF'>#else</font>				<font color='#009900'>/* standard ANSI-compliant case */</font>
+<font color='#0000FF'>#define</font> READ_BINARY	"<font color='#CC0000'>rb</font>"
+<font color='#0000FF'>#define</font> RW_BINARY	"<font color='#CC0000'>w+b</font>"
+<font color='#0000FF'>#endif</font>
+<font color='#0000FF'>#endif</font>
+
+
+<font color='#009900'>/*
+ * Selection of a file name for a temporary file.
+ * This is system-dependent!
+ *
+ * The code as given is suitable for most Unix systems, and it is easily
+ * modified for most non-Unix systems.  Some notes:
+ *  1.  The temp file is created in the directory named by TEMP_DIRECTORY.
+ *      The default value is /usr/tmp, which is the conventional place for
+ *      creating large temp files on Unix.  On other systems you'll probably
+ *      want to change the file location.  You can do this by editing the
+ *      #define, or (preferred) by defining TEMP_DIRECTORY in jconfig.h.
+ *
+ *  2.  If you need to change the file name as well as its location,
+ *      you can override the TEMP_FILE_NAME macro.  (Note that this is
+ *      actually a printf format string; it must contain %s and %d.)
+ *      Few people should need to do this.
+ *
+ *  3.  mktemp() is used to ensure that multiple processes running
+ *      simultaneously won't select the same file names.  If your system
+ *      doesn't have mktemp(), define NO_MKTEMP to do it the hard way.
+ *      (If you don't have &lt;errno.h&gt;, also define NO_ERRNO_H.)
+ *
+ *  4.  You probably want to define NEED_SIGNAL_CATCHER so that cjpeg.c/djpeg.c
+ *      will cause the temp files to be removed if you stop the program early.
+ */</font>
+
+<font color='#0000FF'>#ifndef</font> TEMP_DIRECTORY		<font color='#009900'>/* can override from jconfig.h or Makefile */</font>
+<font color='#0000FF'>#define</font> TEMP_DIRECTORY  "<font color='#CC0000'>/usr/tmp/</font>" <font color='#009900'>/* recommended setting for Unix */</font>
+<font color='#0000FF'>#endif</font>
+
+<font color='#0000FF'>static</font> <font color='#0000FF'><u>int</u></font> next_file_num;	<font color='#009900'>/* to distinguish among several temp files */</font>
+
+<font color='#0000FF'>#ifdef</font> NO_MKTEMP
+
+<font color='#0000FF'>#ifndef</font> TEMP_FILE_NAME		<font color='#009900'>/* can override from jconfig.h or Makefile */</font>
+<font color='#0000FF'>#define</font> TEMP_FILE_NAME  "<font color='#CC0000'>%sJPG%03d.TMP</font>"
+<font color='#0000FF'>#endif</font>
+
+<font color='#0000FF'>#ifndef</font> NO_ERRNO_H
+<font color='#0000FF'>#include</font> <font color='#5555FF'>&lt;</font>errno.h<font color='#5555FF'>&gt;</font>		<font color='#009900'>/* to define ENOENT */</font>
+<font color='#0000FF'>#endif</font>
+
+<font color='#009900'>/* ANSI C specifies that errno is a macro, but on older systems it's more
+ * likely to be a plain int variable.  And not all versions of errno.h
+ * bother to declare it, so we have to in order to be most portable.  Thus:
+ */</font>
+<font color='#0000FF'>#ifndef</font> errno
+<font color='#0000FF'>extern</font> <font color='#0000FF'><u>int</u></font> errno;
+<font color='#0000FF'>#endif</font>
+
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='select_file_name'></a>select_file_name</b> <font face='Lucida Console'>(</font><font color='#0000FF'><u>char</u></font> <font color='#5555FF'>*</font> fname<font face='Lucida Console'>)</font>
+<b>{</b>
+  FILE <font color='#5555FF'>*</font> tfile;
+
+  <font color='#009900'>/* Keep generating file names till we find one that's not in use */</font>
+  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>;;<font face='Lucida Console'>)</font> <b>{</b>
+    next_file_num<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;		<font color='#009900'>/* advance counter */</font>
+    <font color='#BB00BB'>sprintf</font><font face='Lucida Console'>(</font>fname, TEMP_FILE_NAME, TEMP_DIRECTORY, next_file_num<font face='Lucida Console'>)</font>;
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>tfile <font color='#5555FF'>=</font> <font color='#BB00BB'>fopen</font><font face='Lucida Console'>(</font>fname, READ_BINARY<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> NULL<font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#009900'>/* fopen could have failed for a reason other than the file not
+       * being there; for example, file there but unreadable.
+       * If &lt;errno.h&gt; isn't available, then we cannot test the cause.
+       */</font>
+<font color='#0000FF'>#ifdef</font> ENOENT
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>errno <font color='#5555FF'>!</font><font color='#5555FF'>=</font> ENOENT<font face='Lucida Console'>)</font>
+	<font color='#0000FF'>continue</font>;
+<font color='#0000FF'>#endif</font>
+      <font color='#0000FF'>break</font>;
+    <b>}</b>
+    <font color='#BB00BB'>fclose</font><font face='Lucida Console'>(</font>tfile<font face='Lucida Console'>)</font>;		<font color='#009900'>/* oops, it's there; close tfile &amp; try again */</font>
+  <b>}</b>
+<b>}</b>
+
+<font color='#0000FF'>#else</font> <font color='#009900'>/* ! NO_MKTEMP */</font>
+
+<font color='#009900'>/* Note that mktemp() requires the initial filename to end in six X's */</font>
+<font color='#0000FF'>#ifndef</font> TEMP_FILE_NAME		<font color='#009900'>/* can override from jconfig.h or Makefile */</font>
+<font color='#0000FF'>#define</font> TEMP_FILE_NAME  "<font color='#CC0000'>%sJPG%dXXXXXX</font>"
+<font color='#0000FF'>#endif</font>
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='select_file_name'></a>select_file_name</b> <font face='Lucida Console'>(</font><font color='#0000FF'><u>char</u></font> <font color='#5555FF'>*</font> fname<font face='Lucida Console'>)</font>
+<b>{</b>
+  next_file_num<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;		<font color='#009900'>/* advance counter */</font>
+  <font color='#BB00BB'>sprintf</font><font face='Lucida Console'>(</font>fname, TEMP_FILE_NAME, TEMP_DIRECTORY, next_file_num<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>mktemp</font><font face='Lucida Console'>(</font>fname<font face='Lucida Console'>)</font>;		<font color='#009900'>/* make sure file name is unique */</font>
+  <font color='#009900'>/* mktemp replaces the trailing XXXXXX with a unique string of characters */</font>
+<b>}</b>
+
+<font color='#0000FF'>#endif</font> <font color='#009900'>/* NO_MKTEMP */</font>
+
+
+<font color='#009900'>/*
+ * Memory allocation and freeing are controlled by the regular library
+ * routines malloc() and free().
+ */</font>
+
+<b><a name='GLOBAL'></a>GLOBAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font> <font color='#5555FF'>*</font><font face='Lucida Console'>)</font>
+<b><a name='jpeg_get_small'></a>jpeg_get_small</b> <font face='Lucida Console'>(</font>j_common_ptr cinfo, <font color='#0000FF'><u>size_t</u></font> sizeofobject<font face='Lucida Console'>)</font>
+<b>{</b>
+  <font color='#0000FF'>return</font> <font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font> <font color='#5555FF'>*</font><font face='Lucida Console'>)</font> <font color='#BB00BB'>malloc</font><font face='Lucida Console'>(</font>sizeofobject<font face='Lucida Console'>)</font>;
+<b>}</b>
+
+<b><a name='GLOBAL'></a>GLOBAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='jpeg_free_small'></a>jpeg_free_small</b> <font face='Lucida Console'>(</font>j_common_ptr cinfo, <font color='#0000FF'><u>void</u></font> <font color='#5555FF'>*</font> object, <font color='#0000FF'><u>size_t</u></font> sizeofobject<font face='Lucida Console'>)</font>
+<b>{</b>
+  <font color='#BB00BB'>free</font><font face='Lucida Console'>(</font>object<font face='Lucida Console'>)</font>;
+<b>}</b>
+
+
+<font color='#009900'>/*
+ * "Large" objects are treated the same as "small" ones.
+ * NB: although we include FAR keywords in the routine declarations,
+ * this file won't actually work in 80x86 small/medium model; at least,
+ * you probably won't be able to process useful-size images in only 64KB.
+ */</font>
+
+<b><a name='GLOBAL'></a>GLOBAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font> FAR <font color='#5555FF'>*</font><font face='Lucida Console'>)</font>
+<b><a name='jpeg_get_large'></a>jpeg_get_large</b> <font face='Lucida Console'>(</font>j_common_ptr cinfo, <font color='#0000FF'><u>size_t</u></font> sizeofobject<font face='Lucida Console'>)</font>
+<b>{</b>
+  <font color='#0000FF'>return</font> <font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font> FAR <font color='#5555FF'>*</font><font face='Lucida Console'>)</font> <font color='#BB00BB'>malloc</font><font face='Lucida Console'>(</font>sizeofobject<font face='Lucida Console'>)</font>;
+<b>}</b>
+
+<b><a name='GLOBAL'></a>GLOBAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='jpeg_free_large'></a>jpeg_free_large</b> <font face='Lucida Console'>(</font>j_common_ptr cinfo, <font color='#0000FF'><u>void</u></font> FAR <font color='#5555FF'>*</font> object, <font color='#0000FF'><u>size_t</u></font> sizeofobject<font face='Lucida Console'>)</font>
+<b>{</b>
+  <font color='#BB00BB'>free</font><font face='Lucida Console'>(</font>object<font face='Lucida Console'>)</font>;
+<b>}</b>
+
+
+<font color='#009900'>/*
+ * This routine computes the total memory space available for allocation.
+ * It's impossible to do this in a portable way; our current solution is
+ * to make the user tell us (with a default value set at compile time).
+ * If you can actually get the available space, it's a good idea to subtract
+ * a slop factor of 5% or so.
+ */</font>
+
+<font color='#0000FF'>#ifndef</font> DEFAULT_MAX_MEM		<font color='#009900'>/* so can override from makefile */</font>
+<font color='#0000FF'>#define</font> DEFAULT_MAX_MEM		<font color='#979000'>1000000</font>L <font color='#009900'>/* default: one megabyte */</font>
+<font color='#0000FF'>#endif</font>
+
+<b><a name='GLOBAL'></a>GLOBAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>long</u></font><font face='Lucida Console'>)</font>
+<b><a name='jpeg_mem_available'></a>jpeg_mem_available</b> <font face='Lucida Console'>(</font>j_common_ptr cinfo, <font color='#0000FF'><u>long</u></font> min_bytes_needed,
+		    <font color='#0000FF'><u>long</u></font> max_bytes_needed, <font color='#0000FF'><u>long</u></font> already_allocated<font face='Lucida Console'>)</font>
+<b>{</b>
+  <font color='#0000FF'>return</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>max_memory_to_use <font color='#5555FF'>-</font> already_allocated;
+<b>}</b>
+
+
+<font color='#009900'>/*
+ * Backing store (temporary file) management.
+ * Backing store objects are only used when the value returned by
+ * jpeg_mem_available is less than the total space needed.  You can dispense
+ * with these routines if you have plenty of virtual memory; see jmemnobs.c.
+ */</font>
+
+
+<b><a name='METHODDEF'></a>METHODDEF</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='read_backing_store'></a>read_backing_store</b> <font face='Lucida Console'>(</font>j_common_ptr cinfo, backing_store_ptr info,
+		    <font color='#0000FF'><u>void</u></font> FAR <font color='#5555FF'>*</font> buffer_address,
+		    <font color='#0000FF'><u>long</u></font> file_offset, <font color='#0000FF'><u>long</u></font> byte_count<font face='Lucida Console'>)</font>
+<b>{</b>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>fseek</font><font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>temp_file, file_offset, SEEK_SET<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>cinfo, JERR_TFILE_SEEK<font face='Lucida Console'>)</font>;
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>JFREAD</font><font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>temp_file, buffer_address, byte_count<font face='Lucida Console'>)</font>
+      <font color='#5555FF'>!</font><font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#0000FF'><u>size_t</u></font><font face='Lucida Console'>)</font> byte_count<font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>cinfo, JERR_TFILE_READ<font face='Lucida Console'>)</font>;
+<b>}</b>
+
+
+<b><a name='METHODDEF'></a>METHODDEF</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='write_backing_store'></a>write_backing_store</b> <font face='Lucida Console'>(</font>j_common_ptr cinfo, backing_store_ptr info,
+		     <font color='#0000FF'><u>void</u></font> FAR <font color='#5555FF'>*</font> buffer_address,
+		     <font color='#0000FF'><u>long</u></font> file_offset, <font color='#0000FF'><u>long</u></font> byte_count<font face='Lucida Console'>)</font>
+<b>{</b>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>fseek</font><font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>temp_file, file_offset, SEEK_SET<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>cinfo, JERR_TFILE_SEEK<font face='Lucida Console'>)</font>;
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>JFWRITE</font><font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>temp_file, buffer_address, byte_count<font face='Lucida Console'>)</font>
+      <font color='#5555FF'>!</font><font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#0000FF'><u>size_t</u></font><font face='Lucida Console'>)</font> byte_count<font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>cinfo, JERR_TFILE_WRITE<font face='Lucida Console'>)</font>;
+<b>}</b>
+
+
+<b><a name='METHODDEF'></a>METHODDEF</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='close_backing_store'></a>close_backing_store</b> <font face='Lucida Console'>(</font>j_common_ptr cinfo, backing_store_ptr info<font face='Lucida Console'>)</font>
+<b>{</b>
+  <font color='#BB00BB'>fclose</font><font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>temp_file<font face='Lucida Console'>)</font>;	<font color='#009900'>/* close the file */</font>
+  <font color='#BB00BB'>unlink</font><font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>temp_name<font face='Lucida Console'>)</font>;	<font color='#009900'>/* delete the file */</font>
+<font color='#009900'>/* If your system doesn't have unlink(), use remove() instead.
+ * remove() is the ANSI-standard name for this function, but if
+ * your system was ANSI you'd be using jmemansi.c, right?
+ */</font>
+  <font color='#BB00BB'>TRACEMSS</font><font face='Lucida Console'>(</font>cinfo, <font color='#979000'>1</font>, JTRC_TFILE_CLOSE, info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>temp_name<font face='Lucida Console'>)</font>;
+<b>}</b>
+
+
+<font color='#009900'>/*
+ * Initial opening of a backing-store object.
+ */</font>
+
+<b><a name='GLOBAL'></a>GLOBAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='jpeg_open_backing_store'></a>jpeg_open_backing_store</b> <font face='Lucida Console'>(</font>j_common_ptr cinfo, backing_store_ptr info,
+			 <font color='#0000FF'><u>long</u></font> total_bytes_needed<font face='Lucida Console'>)</font>
+<b>{</b>
+  <font color='#BB00BB'>select_file_name</font><font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>temp_name<font face='Lucida Console'>)</font>;
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>temp_file <font color='#5555FF'>=</font> <font color='#BB00BB'>fopen</font><font face='Lucida Console'>(</font>info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>temp_name, RW_BINARY<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> NULL<font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>ERREXITS</font><font face='Lucida Console'>(</font>cinfo, JERR_TFILE_CREATE, info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>temp_name<font face='Lucida Console'>)</font>;
+  info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>read_backing_store <font color='#5555FF'>=</font> read_backing_store;
+  info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>write_backing_store <font color='#5555FF'>=</font> write_backing_store;
+  info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>close_backing_store <font color='#5555FF'>=</font> close_backing_store;
+  <font color='#BB00BB'>TRACEMSS</font><font face='Lucida Console'>(</font>cinfo, <font color='#979000'>1</font>, JTRC_TFILE_OPEN, info<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>temp_name<font face='Lucida Console'>)</font>;
+<b>}</b>
+
+
+<font color='#009900'>/*
+ * These routines take care of any system-dependent initialization and
+ * cleanup required.
+ */</font>
+
+<b><a name='GLOBAL'></a>GLOBAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>long</u></font><font face='Lucida Console'>)</font>
+<b><a name='jpeg_mem_init'></a>jpeg_mem_init</b> <font face='Lucida Console'>(</font>j_common_ptr cinfo<font face='Lucida Console'>)</font>
+<b>{</b>
+  next_file_num <font color='#5555FF'>=</font> <font color='#979000'>0</font>;		<font color='#009900'>/* initialize temp file name generator */</font>
+  <font color='#0000FF'>return</font> DEFAULT_MAX_MEM;	<font color='#009900'>/* default for max_memory_to_use */</font>
+<b>}</b>
+
+<b><a name='GLOBAL'></a>GLOBAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='jpeg_mem_term'></a>jpeg_mem_term</b> <font face='Lucida Console'>(</font>j_common_ptr cinfo<font face='Lucida Console'>)</font>
+<b>{</b>
+  <font color='#009900'>/* no work */</font>
+<b>}</b>
+
+</pre></body></html>

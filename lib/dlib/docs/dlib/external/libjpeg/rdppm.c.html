@@ -1,0 +1,462 @@
+<html><!-- Created using the cpp_pretty_printer from the dlib C++ library.  See http://dlib.net for updates. --><head><title>dlib C++ Library - rdppm.c</title></head><body bgcolor='white'><pre>
+<font color='#009900'>/*
+ * rdppm.c
+ *
+ * Copyright (C) 1991-1997, Thomas G. Lane.
+ * Modified 2009 by Bill Allombert, Guido Vollbeding.
+ * This file is part of the Independent JPEG Group's software.
+ * For conditions of distribution and use, see the accompanying README file.
+ *
+ * This file contains routines to read input images in PPM/PGM format.
+ * The extended 2-byte-per-sample raw PPM/PGM formats are supported.
+ * The PBMPLUS library is NOT required to compile this software
+ * (but it is highly useful as a set of PPM image manipulation programs).
+ *
+ * These routines may need modification for non-Unix environments or
+ * specialized applications.  As they stand, they assume input from
+ * an ordinary stdio stream.  They further assume that reading begins
+ * at the start of the file; start_input may need work if the
+ * user interface has already read some data (e.g., to determine that
+ * the file is indeed PPM format).
+ */</font>
+
+<font color='#0000FF'>#include</font> "<a style='text-decoration:none' href='cdjpeg.h.html'>cdjpeg.h</a>"		<font color='#009900'>/* Common decls for cjpeg/djpeg applications */</font>
+
+<font color='#0000FF'>#ifdef</font> PPM_SUPPORTED
+
+
+<font color='#009900'>/* Portions of this code are based on the PBMPLUS library, which is:
+**
+** Copyright (C) 1988 by Jef Poskanzer.
+**
+** Permission to use, copy, modify, and distribute this software and its
+** documentation for any purpose and without fee is hereby granted, provided
+** that the above copyright notice appear in all copies and that both that
+** copyright notice and this permission notice appear in supporting
+** documentation.  This software is provided "as is" without express or
+** implied warranty.
+*/</font>
+
+
+<font color='#009900'>/* Macros to deal with unsigned chars as efficiently as compiler allows */</font>
+
+<font color='#0000FF'>#ifdef</font> HAVE_UNSIGNED_CHAR
+<font color='#0000FF'>typedef</font> <font color='#0000FF'><u>unsigned</u></font> <font color='#0000FF'><u>char</u></font> U_CHAR;
+<font color='#0000FF'>#define</font> UCH<font face='Lucida Console'>(</font>x<font face='Lucida Console'>)</font>	<font face='Lucida Console'>(</font><font face='Lucida Console'>(</font><font color='#0000FF'><u>int</u></font><font face='Lucida Console'>)</font> <font face='Lucida Console'>(</font>x<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>
+<font color='#0000FF'>#else</font> <font color='#009900'>/* !HAVE_UNSIGNED_CHAR */</font>
+<font color='#0000FF'>#ifdef</font> CHAR_IS_UNSIGNED
+<font color='#0000FF'>typedef</font> <font color='#0000FF'><u>char</u></font> U_CHAR;
+<font color='#0000FF'>#define</font> UCH<font face='Lucida Console'>(</font>x<font face='Lucida Console'>)</font>	<font face='Lucida Console'>(</font><font face='Lucida Console'>(</font><font color='#0000FF'><u>int</u></font><font face='Lucida Console'>)</font> <font face='Lucida Console'>(</font>x<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>
+<font color='#0000FF'>#else</font>
+<font color='#0000FF'>typedef</font> <font color='#0000FF'><u>char</u></font> U_CHAR;
+<font color='#0000FF'>#define</font> UCH<font face='Lucida Console'>(</font>x<font face='Lucida Console'>)</font>	<font face='Lucida Console'>(</font><font face='Lucida Console'>(</font><font color='#0000FF'><u>int</u></font><font face='Lucida Console'>)</font> <font face='Lucida Console'>(</font>x<font face='Lucida Console'>)</font> <font color='#5555FF'>&amp;</font> <font color='#979000'>0xFF</font><font face='Lucida Console'>)</font>
+<font color='#0000FF'>#endif</font>
+<font color='#0000FF'>#endif</font> <font color='#009900'>/* HAVE_UNSIGNED_CHAR */</font>
+
+
+<font color='#0000FF'>#define</font>	ReadOK<font face='Lucida Console'>(</font>file,buffer,len<font face='Lucida Console'>)</font>	<font face='Lucida Console'>(</font>JFREAD<font face='Lucida Console'>(</font>file,buffer,len<font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font><font color='#0000FF'><u>size_t</u></font><font face='Lucida Console'>)</font> <font face='Lucida Console'>(</font>len<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>
+
+
+<font color='#009900'>/*
+ * On most systems, reading individual bytes with getc() is drastically less
+ * efficient than buffering a row at a time with fread().  On PCs, we must
+ * allocate the buffer in near data space, because we are assuming small-data
+ * memory model, wherein fread() can't reach far memory.  If you need to
+ * process very wide images on a PC, you might have to compile in large-memory
+ * model, or else replace fread() with a getc() loop --- which will be much
+ * slower.
+ */</font>
+
+
+<font color='#009900'>/* Private version of data source object */</font>
+
+<font color='#0000FF'>typedef</font> <font color='#0000FF'>struct</font> <b>{</b>
+  <font color='#0000FF'>struct</font> cjpeg_source_struct pub; <font color='#009900'>/* public fields */</font>
+
+  U_CHAR <font color='#5555FF'>*</font>iobuffer;		<font color='#009900'>/* non-FAR pointer to I/O buffer */</font>
+  JSAMPROW pixrow;		<font color='#009900'>/* FAR pointer to same */</font>
+  <font color='#0000FF'><u>size_t</u></font> buffer_width;		<font color='#009900'>/* width of I/O buffer */</font>
+  JSAMPLE <font color='#5555FF'>*</font>rescale;		<font color='#009900'>/* =&gt; maxval-remapping array, or NULL */</font>
+<b>}</b> ppm_source_struct;
+
+<font color='#0000FF'>typedef</font> ppm_source_struct <font color='#5555FF'>*</font> ppm_source_ptr;
+
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>int</u></font><font face='Lucida Console'>)</font>
+<b><a name='pbm_getc'></a>pbm_getc</b> <font face='Lucida Console'>(</font>FILE <font color='#5555FF'>*</font> infile<font face='Lucida Console'>)</font>
+<font color='#009900'>/* Read next char, skipping over any comments */</font>
+<font color='#009900'>/* A comment/newline sequence is returned as a newline */</font>
+<b>{</b>
+  <font color='#0000FF'>register</font> <font color='#0000FF'><u>int</u></font> ch;
+
+  ch <font color='#5555FF'>=</font> <font color='#BB00BB'>getc</font><font face='Lucida Console'>(</font>infile<font face='Lucida Console'>)</font>;
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>ch <font color='#5555FF'>=</font><font color='#5555FF'>=</font> '<font color='#FF0000'>#</font>'<font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#0000FF'>do</font> <b>{</b>
+      ch <font color='#5555FF'>=</font> <font color='#BB00BB'>getc</font><font face='Lucida Console'>(</font>infile<font face='Lucida Console'>)</font>;
+    <b>}</b> <font color='#0000FF'>while</font> <font face='Lucida Console'>(</font>ch <font color='#5555FF'>!</font><font color='#5555FF'>=</font> '<font color='#FF0000'>\n</font>' <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font> ch <font color='#5555FF'>!</font><font color='#5555FF'>=</font> EOF<font face='Lucida Console'>)</font>;
+  <b>}</b>
+  <font color='#0000FF'>return</font> ch;
+<b>}</b>
+
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>unsigned</u></font> <font color='#0000FF'><u>int</u></font><font face='Lucida Console'>)</font>
+<b><a name='read_pbm_integer'></a>read_pbm_integer</b> <font face='Lucida Console'>(</font>j_compress_ptr cinfo, FILE <font color='#5555FF'>*</font> infile<font face='Lucida Console'>)</font>
+<font color='#009900'>/* Read an unsigned decimal integer from the PPM file */</font>
+<font color='#009900'>/* Swallows one trailing character after the integer */</font>
+<font color='#009900'>/* Note that on a 16-bit-int machine, only values up to 64k can be read. */</font>
+<font color='#009900'>/* This should not be a problem in practice. */</font>
+<b>{</b>
+  <font color='#0000FF'>register</font> <font color='#0000FF'><u>int</u></font> ch;
+  <font color='#0000FF'>register</font> <font color='#0000FF'><u>unsigned</u></font> <font color='#0000FF'><u>int</u></font> val;
+
+  <font color='#009900'>/* Skip any leading whitespace */</font>
+  <font color='#0000FF'>do</font> <b>{</b>
+    ch <font color='#5555FF'>=</font> <font color='#BB00BB'>pbm_getc</font><font face='Lucida Console'>(</font>infile<font face='Lucida Console'>)</font>;
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>ch <font color='#5555FF'>=</font><font color='#5555FF'>=</font> EOF<font face='Lucida Console'>)</font>
+      <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>cinfo, JERR_INPUT_EOF<font face='Lucida Console'>)</font>;
+  <b>}</b> <font color='#0000FF'>while</font> <font face='Lucida Console'>(</font>ch <font color='#5555FF'>=</font><font color='#5555FF'>=</font> '<font color='#FF0000'> </font>' <font color='#5555FF'>|</font><font color='#5555FF'>|</font> ch <font color='#5555FF'>=</font><font color='#5555FF'>=</font> '<font color='#FF0000'>\t</font>' <font color='#5555FF'>|</font><font color='#5555FF'>|</font> ch <font color='#5555FF'>=</font><font color='#5555FF'>=</font> '<font color='#FF0000'>\n</font>' <font color='#5555FF'>|</font><font color='#5555FF'>|</font> ch <font color='#5555FF'>=</font><font color='#5555FF'>=</font> '<font color='#FF0000'>\r</font>'<font face='Lucida Console'>)</font>;
+
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>ch <font color='#5555FF'>&lt;</font> '<font color='#FF0000'>0</font>' <font color='#5555FF'>|</font><font color='#5555FF'>|</font> ch <font color='#5555FF'>&gt;</font> '<font color='#FF0000'>9</font>'<font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>cinfo, JERR_PPM_NONNUMERIC<font face='Lucida Console'>)</font>;
+
+  val <font color='#5555FF'>=</font> ch <font color='#5555FF'>-</font> '<font color='#FF0000'>0</font>';
+  <font color='#0000FF'>while</font> <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>ch <font color='#5555FF'>=</font> <font color='#BB00BB'>pbm_getc</font><font face='Lucida Console'>(</font>infile<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <font color='#5555FF'>&gt;</font><font color='#5555FF'>=</font> '<font color='#FF0000'>0</font>' <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font> ch <font color='#5555FF'>&lt;</font><font color='#5555FF'>=</font> '<font color='#FF0000'>9</font>'<font face='Lucida Console'>)</font> <b>{</b>
+    val <font color='#5555FF'>*</font><font color='#5555FF'>=</font> <font color='#979000'>10</font>;
+    val <font color='#5555FF'>+</font><font color='#5555FF'>=</font> ch <font color='#5555FF'>-</font> '<font color='#FF0000'>0</font>';
+  <b>}</b>
+  <font color='#0000FF'>return</font> val;
+<b>}</b>
+
+
+<font color='#009900'>/*
+ * Read one row of pixels.
+ *
+ * We provide several different versions depending on input file format.
+ * In all cases, input is scaled to the size of JSAMPLE.
+ *
+ * A really fast path is provided for reading byte/sample raw files with
+ * maxval = MAXJSAMPLE, which is the normal case for 8-bit data.
+ */</font>
+
+
+<b><a name='METHODDEF'></a>METHODDEF</b><font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font>
+<b><a name='get_text_gray_row'></a>get_text_gray_row</b> <font face='Lucida Console'>(</font>j_compress_ptr cinfo, cjpeg_source_ptr sinfo<font face='Lucida Console'>)</font>
+<font color='#009900'>/* This version is for reading text-format PGM files with any maxval */</font>
+<b>{</b>
+  ppm_source_ptr source <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>ppm_source_ptr<font face='Lucida Console'>)</font> sinfo;
+  FILE <font color='#5555FF'>*</font> infile <font color='#5555FF'>=</font> source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.input_file;
+  <font color='#0000FF'>register</font> JSAMPROW ptr;
+  <font color='#0000FF'>register</font> JSAMPLE <font color='#5555FF'>*</font>rescale <font color='#5555FF'>=</font> source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>rescale;
+  JDIMENSION col;
+
+  ptr <font color='#5555FF'>=</font> source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.buffer[<font color='#979000'>0</font>];
+  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>col <font color='#5555FF'>=</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>image_width; col <font color='#5555FF'>&gt;</font> <font color='#979000'>0</font>; col<font color='#5555FF'>-</font><font color='#5555FF'>-</font><font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#5555FF'>*</font>ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font> <font color='#5555FF'>=</font> rescale[<font color='#BB00BB'>read_pbm_integer</font><font face='Lucida Console'>(</font>cinfo, infile<font face='Lucida Console'>)</font>];
+  <b>}</b>
+  <font color='#0000FF'>return</font> <font color='#979000'>1</font>;
+<b>}</b>
+
+
+<b><a name='METHODDEF'></a>METHODDEF</b><font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font>
+<b><a name='get_text_rgb_row'></a>get_text_rgb_row</b> <font face='Lucida Console'>(</font>j_compress_ptr cinfo, cjpeg_source_ptr sinfo<font face='Lucida Console'>)</font>
+<font color='#009900'>/* This version is for reading text-format PPM files with any maxval */</font>
+<b>{</b>
+  ppm_source_ptr source <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>ppm_source_ptr<font face='Lucida Console'>)</font> sinfo;
+  FILE <font color='#5555FF'>*</font> infile <font color='#5555FF'>=</font> source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.input_file;
+  <font color='#0000FF'>register</font> JSAMPROW ptr;
+  <font color='#0000FF'>register</font> JSAMPLE <font color='#5555FF'>*</font>rescale <font color='#5555FF'>=</font> source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>rescale;
+  JDIMENSION col;
+
+  ptr <font color='#5555FF'>=</font> source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.buffer[<font color='#979000'>0</font>];
+  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>col <font color='#5555FF'>=</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>image_width; col <font color='#5555FF'>&gt;</font> <font color='#979000'>0</font>; col<font color='#5555FF'>-</font><font color='#5555FF'>-</font><font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#5555FF'>*</font>ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font> <font color='#5555FF'>=</font> rescale[<font color='#BB00BB'>read_pbm_integer</font><font face='Lucida Console'>(</font>cinfo, infile<font face='Lucida Console'>)</font>];
+    <font color='#5555FF'>*</font>ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font> <font color='#5555FF'>=</font> rescale[<font color='#BB00BB'>read_pbm_integer</font><font face='Lucida Console'>(</font>cinfo, infile<font face='Lucida Console'>)</font>];
+    <font color='#5555FF'>*</font>ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font> <font color='#5555FF'>=</font> rescale[<font color='#BB00BB'>read_pbm_integer</font><font face='Lucida Console'>(</font>cinfo, infile<font face='Lucida Console'>)</font>];
+  <b>}</b>
+  <font color='#0000FF'>return</font> <font color='#979000'>1</font>;
+<b>}</b>
+
+
+<b><a name='METHODDEF'></a>METHODDEF</b><font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font>
+<b><a name='get_scaled_gray_row'></a>get_scaled_gray_row</b> <font face='Lucida Console'>(</font>j_compress_ptr cinfo, cjpeg_source_ptr sinfo<font face='Lucida Console'>)</font>
+<font color='#009900'>/* This version is for reading raw-byte-format PGM files with any maxval */</font>
+<b>{</b>
+  ppm_source_ptr source <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>ppm_source_ptr<font face='Lucida Console'>)</font> sinfo;
+  <font color='#0000FF'>register</font> JSAMPROW ptr;
+  <font color='#0000FF'>register</font> U_CHAR <font color='#5555FF'>*</font> bufferptr;
+  <font color='#0000FF'>register</font> JSAMPLE <font color='#5555FF'>*</font>rescale <font color='#5555FF'>=</font> source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>rescale;
+  JDIMENSION col;
+
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>!</font> <font color='#BB00BB'>ReadOK</font><font face='Lucida Console'>(</font>source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.input_file, source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>iobuffer, source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>buffer_width<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>cinfo, JERR_INPUT_EOF<font face='Lucida Console'>)</font>;
+  ptr <font color='#5555FF'>=</font> source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.buffer[<font color='#979000'>0</font>];
+  bufferptr <font color='#5555FF'>=</font> source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>iobuffer;
+  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>col <font color='#5555FF'>=</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>image_width; col <font color='#5555FF'>&gt;</font> <font color='#979000'>0</font>; col<font color='#5555FF'>-</font><font color='#5555FF'>-</font><font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#5555FF'>*</font>ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font> <font color='#5555FF'>=</font> rescale[<font color='#BB00BB'>UCH</font><font face='Lucida Console'>(</font><font color='#5555FF'>*</font>bufferptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font>];
+  <b>}</b>
+  <font color='#0000FF'>return</font> <font color='#979000'>1</font>;
+<b>}</b>
+
+
+<b><a name='METHODDEF'></a>METHODDEF</b><font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font>
+<b><a name='get_scaled_rgb_row'></a>get_scaled_rgb_row</b> <font face='Lucida Console'>(</font>j_compress_ptr cinfo, cjpeg_source_ptr sinfo<font face='Lucida Console'>)</font>
+<font color='#009900'>/* This version is for reading raw-byte-format PPM files with any maxval */</font>
+<b>{</b>
+  ppm_source_ptr source <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>ppm_source_ptr<font face='Lucida Console'>)</font> sinfo;
+  <font color='#0000FF'>register</font> JSAMPROW ptr;
+  <font color='#0000FF'>register</font> U_CHAR <font color='#5555FF'>*</font> bufferptr;
+  <font color='#0000FF'>register</font> JSAMPLE <font color='#5555FF'>*</font>rescale <font color='#5555FF'>=</font> source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>rescale;
+  JDIMENSION col;
+
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>!</font> <font color='#BB00BB'>ReadOK</font><font face='Lucida Console'>(</font>source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.input_file, source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>iobuffer, source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>buffer_width<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>cinfo, JERR_INPUT_EOF<font face='Lucida Console'>)</font>;
+  ptr <font color='#5555FF'>=</font> source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.buffer[<font color='#979000'>0</font>];
+  bufferptr <font color='#5555FF'>=</font> source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>iobuffer;
+  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>col <font color='#5555FF'>=</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>image_width; col <font color='#5555FF'>&gt;</font> <font color='#979000'>0</font>; col<font color='#5555FF'>-</font><font color='#5555FF'>-</font><font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#5555FF'>*</font>ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font> <font color='#5555FF'>=</font> rescale[<font color='#BB00BB'>UCH</font><font face='Lucida Console'>(</font><font color='#5555FF'>*</font>bufferptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font>];
+    <font color='#5555FF'>*</font>ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font> <font color='#5555FF'>=</font> rescale[<font color='#BB00BB'>UCH</font><font face='Lucida Console'>(</font><font color='#5555FF'>*</font>bufferptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font>];
+    <font color='#5555FF'>*</font>ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font> <font color='#5555FF'>=</font> rescale[<font color='#BB00BB'>UCH</font><font face='Lucida Console'>(</font><font color='#5555FF'>*</font>bufferptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font>];
+  <b>}</b>
+  <font color='#0000FF'>return</font> <font color='#979000'>1</font>;
+<b>}</b>
+
+
+<b><a name='METHODDEF'></a>METHODDEF</b><font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font>
+<b><a name='get_raw_row'></a>get_raw_row</b> <font face='Lucida Console'>(</font>j_compress_ptr cinfo, cjpeg_source_ptr sinfo<font face='Lucida Console'>)</font>
+<font color='#009900'>/* This version is for reading raw-byte-format files with maxval = MAXJSAMPLE.
+ * In this case we just read right into the JSAMPLE buffer!
+ * Note that same code works for PPM and PGM files.
+ */</font>
+<b>{</b>
+  ppm_source_ptr source <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>ppm_source_ptr<font face='Lucida Console'>)</font> sinfo;
+
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>!</font> <font color='#BB00BB'>ReadOK</font><font face='Lucida Console'>(</font>source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.input_file, source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>iobuffer, source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>buffer_width<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>cinfo, JERR_INPUT_EOF<font face='Lucida Console'>)</font>;
+  <font color='#0000FF'>return</font> <font color='#979000'>1</font>;
+<b>}</b>
+
+
+<b><a name='METHODDEF'></a>METHODDEF</b><font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font>
+<b><a name='get_word_gray_row'></a>get_word_gray_row</b> <font face='Lucida Console'>(</font>j_compress_ptr cinfo, cjpeg_source_ptr sinfo<font face='Lucida Console'>)</font>
+<font color='#009900'>/* This version is for reading raw-word-format PGM files with any maxval */</font>
+<b>{</b>
+  ppm_source_ptr source <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>ppm_source_ptr<font face='Lucida Console'>)</font> sinfo;
+  <font color='#0000FF'>register</font> JSAMPROW ptr;
+  <font color='#0000FF'>register</font> U_CHAR <font color='#5555FF'>*</font> bufferptr;
+  <font color='#0000FF'>register</font> JSAMPLE <font color='#5555FF'>*</font>rescale <font color='#5555FF'>=</font> source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>rescale;
+  JDIMENSION col;
+
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>!</font> <font color='#BB00BB'>ReadOK</font><font face='Lucida Console'>(</font>source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.input_file, source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>iobuffer, source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>buffer_width<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>cinfo, JERR_INPUT_EOF<font face='Lucida Console'>)</font>;
+  ptr <font color='#5555FF'>=</font> source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.buffer[<font color='#979000'>0</font>];
+  bufferptr <font color='#5555FF'>=</font> source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>iobuffer;
+  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>col <font color='#5555FF'>=</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>image_width; col <font color='#5555FF'>&gt;</font> <font color='#979000'>0</font>; col<font color='#5555FF'>-</font><font color='#5555FF'>-</font><font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#0000FF'>register</font> <font color='#0000FF'><u>int</u></font> temp;
+    temp  <font color='#5555FF'>=</font> <font color='#BB00BB'>UCH</font><font face='Lucida Console'>(</font><font color='#5555FF'>*</font>bufferptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <font color='#5555FF'>&lt;</font><font color='#5555FF'>&lt;</font> <font color='#979000'>8</font>;
+    temp <font color='#5555FF'>|</font><font color='#5555FF'>=</font> <font color='#BB00BB'>UCH</font><font face='Lucida Console'>(</font><font color='#5555FF'>*</font>bufferptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font>;
+    <font color='#5555FF'>*</font>ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font> <font color='#5555FF'>=</font> rescale[temp];
+  <b>}</b>
+  <font color='#0000FF'>return</font> <font color='#979000'>1</font>;
+<b>}</b>
+
+
+<b><a name='METHODDEF'></a>METHODDEF</b><font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font>
+<b><a name='get_word_rgb_row'></a>get_word_rgb_row</b> <font face='Lucida Console'>(</font>j_compress_ptr cinfo, cjpeg_source_ptr sinfo<font face='Lucida Console'>)</font>
+<font color='#009900'>/* This version is for reading raw-word-format PPM files with any maxval */</font>
+<b>{</b>
+  ppm_source_ptr source <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>ppm_source_ptr<font face='Lucida Console'>)</font> sinfo;
+  <font color='#0000FF'>register</font> JSAMPROW ptr;
+  <font color='#0000FF'>register</font> U_CHAR <font color='#5555FF'>*</font> bufferptr;
+  <font color='#0000FF'>register</font> JSAMPLE <font color='#5555FF'>*</font>rescale <font color='#5555FF'>=</font> source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>rescale;
+  JDIMENSION col;
+
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>!</font> <font color='#BB00BB'>ReadOK</font><font face='Lucida Console'>(</font>source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.input_file, source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>iobuffer, source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>buffer_width<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>cinfo, JERR_INPUT_EOF<font face='Lucida Console'>)</font>;
+  ptr <font color='#5555FF'>=</font> source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.buffer[<font color='#979000'>0</font>];
+  bufferptr <font color='#5555FF'>=</font> source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>iobuffer;
+  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>col <font color='#5555FF'>=</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>image_width; col <font color='#5555FF'>&gt;</font> <font color='#979000'>0</font>; col<font color='#5555FF'>-</font><font color='#5555FF'>-</font><font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#0000FF'>register</font> <font color='#0000FF'><u>int</u></font> temp;
+    temp  <font color='#5555FF'>=</font> <font color='#BB00BB'>UCH</font><font face='Lucida Console'>(</font><font color='#5555FF'>*</font>bufferptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <font color='#5555FF'>&lt;</font><font color='#5555FF'>&lt;</font> <font color='#979000'>8</font>;
+    temp <font color='#5555FF'>|</font><font color='#5555FF'>=</font> <font color='#BB00BB'>UCH</font><font face='Lucida Console'>(</font><font color='#5555FF'>*</font>bufferptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font>;
+    <font color='#5555FF'>*</font>ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font> <font color='#5555FF'>=</font> rescale[temp];
+    temp  <font color='#5555FF'>=</font> <font color='#BB00BB'>UCH</font><font face='Lucida Console'>(</font><font color='#5555FF'>*</font>bufferptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <font color='#5555FF'>&lt;</font><font color='#5555FF'>&lt;</font> <font color='#979000'>8</font>;
+    temp <font color='#5555FF'>|</font><font color='#5555FF'>=</font> <font color='#BB00BB'>UCH</font><font face='Lucida Console'>(</font><font color='#5555FF'>*</font>bufferptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font>;
+    <font color='#5555FF'>*</font>ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font> <font color='#5555FF'>=</font> rescale[temp];
+    temp  <font color='#5555FF'>=</font> <font color='#BB00BB'>UCH</font><font face='Lucida Console'>(</font><font color='#5555FF'>*</font>bufferptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <font color='#5555FF'>&lt;</font><font color='#5555FF'>&lt;</font> <font color='#979000'>8</font>;
+    temp <font color='#5555FF'>|</font><font color='#5555FF'>=</font> <font color='#BB00BB'>UCH</font><font face='Lucida Console'>(</font><font color='#5555FF'>*</font>bufferptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font>;
+    <font color='#5555FF'>*</font>ptr<font color='#5555FF'>+</font><font color='#5555FF'>+</font> <font color='#5555FF'>=</font> rescale[temp];
+  <b>}</b>
+  <font color='#0000FF'>return</font> <font color='#979000'>1</font>;
+<b>}</b>
+
+
+<font color='#009900'>/*
+ * Read the file header; return image size and component count.
+ */</font>
+
+<b><a name='METHODDEF'></a>METHODDEF</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='start_input_ppm'></a>start_input_ppm</b> <font face='Lucida Console'>(</font>j_compress_ptr cinfo, cjpeg_source_ptr sinfo<font face='Lucida Console'>)</font>
+<b>{</b>
+  ppm_source_ptr source <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>ppm_source_ptr<font face='Lucida Console'>)</font> sinfo;
+  <font color='#0000FF'><u>int</u></font> c;
+  <font color='#0000FF'><u>unsigned</u></font> <font color='#0000FF'><u>int</u></font> w, h, maxval;
+  boolean need_iobuffer, use_raw_buffer, need_rescale;
+
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>getc</font><font face='Lucida Console'>(</font>source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.input_file<font face='Lucida Console'>)</font> <font color='#5555FF'>!</font><font color='#5555FF'>=</font> '<font color='#FF0000'>P</font>'<font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>cinfo, JERR_PPM_NOT<font face='Lucida Console'>)</font>;
+
+  c <font color='#5555FF'>=</font> <font color='#BB00BB'>getc</font><font face='Lucida Console'>(</font>source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.input_file<font face='Lucida Console'>)</font>; <font color='#009900'>/* subformat discriminator character */</font>
+
+  <font color='#009900'>/* detect unsupported variants (ie, PBM) before trying to read header */</font>
+  <font color='#0000FF'>switch</font> <font face='Lucida Console'>(</font>c<font face='Lucida Console'>)</font> <b>{</b>
+  <font color='#0000FF'>case</font> '<font color='#FF0000'>2</font>':			<font color='#009900'>/* it's a text-format PGM file */</font>
+  <font color='#0000FF'>case</font> '<font color='#FF0000'>3</font>':			<font color='#009900'>/* it's a text-format PPM file */</font>
+  <font color='#0000FF'>case</font> '<font color='#FF0000'>5</font>':			<font color='#009900'>/* it's a raw-format PGM file */</font>
+  <font color='#0000FF'>case</font> '<font color='#FF0000'>6</font>':			<font color='#009900'>/* it's a raw-format PPM file */</font>
+    <font color='#0000FF'>break</font>;
+  <font color='#0000FF'>default</font>:
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>cinfo, JERR_PPM_NOT<font face='Lucida Console'>)</font>;
+    <font color='#0000FF'>break</font>;
+  <b>}</b>
+
+  <font color='#009900'>/* fetch the remaining header info */</font>
+  w <font color='#5555FF'>=</font> <font color='#BB00BB'>read_pbm_integer</font><font face='Lucida Console'>(</font>cinfo, source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.input_file<font face='Lucida Console'>)</font>;
+  h <font color='#5555FF'>=</font> <font color='#BB00BB'>read_pbm_integer</font><font face='Lucida Console'>(</font>cinfo, source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.input_file<font face='Lucida Console'>)</font>;
+  maxval <font color='#5555FF'>=</font> <font color='#BB00BB'>read_pbm_integer</font><font face='Lucida Console'>(</font>cinfo, source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.input_file<font face='Lucida Console'>)</font>;
+
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>w <font color='#5555FF'>&lt;</font><font color='#5555FF'>=</font> <font color='#979000'>0</font> <font color='#5555FF'>|</font><font color='#5555FF'>|</font> h <font color='#5555FF'>&lt;</font><font color='#5555FF'>=</font> <font color='#979000'>0</font> <font color='#5555FF'>|</font><font color='#5555FF'>|</font> maxval <font color='#5555FF'>&lt;</font><font color='#5555FF'>=</font> <font color='#979000'>0</font><font face='Lucida Console'>)</font> <font color='#009900'>/* error check */</font>
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>cinfo, JERR_PPM_NOT<font face='Lucida Console'>)</font>;
+
+  cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>data_precision <font color='#5555FF'>=</font> BITS_IN_JSAMPLE; <font color='#009900'>/* we always rescale data to this */</font>
+  cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>image_width <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> w;
+  cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>image_height <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> h;
+
+  <font color='#009900'>/* initialize flags to most common settings */</font>
+  need_iobuffer <font color='#5555FF'>=</font> TRUE;		<font color='#009900'>/* do we need an I/O buffer? */</font>
+  use_raw_buffer <font color='#5555FF'>=</font> FALSE;	<font color='#009900'>/* do we map input buffer onto I/O buffer? */</font>
+  need_rescale <font color='#5555FF'>=</font> TRUE;		<font color='#009900'>/* do we need a rescale array? */</font>
+
+  <font color='#0000FF'>switch</font> <font face='Lucida Console'>(</font>c<font face='Lucida Console'>)</font> <b>{</b>
+  <font color='#0000FF'>case</font> '<font color='#FF0000'>2</font>':			<font color='#009900'>/* it's a text-format PGM file */</font>
+    cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>input_components <font color='#5555FF'>=</font> <font color='#979000'>1</font>;
+    cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>in_color_space <font color='#5555FF'>=</font> JCS_GRAYSCALE;
+    <font color='#BB00BB'>TRACEMS2</font><font face='Lucida Console'>(</font>cinfo, <font color='#979000'>1</font>, JTRC_PGM_TEXT, w, h<font face='Lucida Console'>)</font>;
+    source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.get_pixel_rows <font color='#5555FF'>=</font> get_text_gray_row;
+    need_iobuffer <font color='#5555FF'>=</font> FALSE;
+    <font color='#0000FF'>break</font>;
+
+  <font color='#0000FF'>case</font> '<font color='#FF0000'>3</font>':			<font color='#009900'>/* it's a text-format PPM file */</font>
+    cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>input_components <font color='#5555FF'>=</font> <font color='#979000'>3</font>;
+    cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>in_color_space <font color='#5555FF'>=</font> JCS_RGB;
+    <font color='#BB00BB'>TRACEMS2</font><font face='Lucida Console'>(</font>cinfo, <font color='#979000'>1</font>, JTRC_PPM_TEXT, w, h<font face='Lucida Console'>)</font>;
+    source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.get_pixel_rows <font color='#5555FF'>=</font> get_text_rgb_row;
+    need_iobuffer <font color='#5555FF'>=</font> FALSE;
+    <font color='#0000FF'>break</font>;
+
+  <font color='#0000FF'>case</font> '<font color='#FF0000'>5</font>':			<font color='#009900'>/* it's a raw-format PGM file */</font>
+    cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>input_components <font color='#5555FF'>=</font> <font color='#979000'>1</font>;
+    cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>in_color_space <font color='#5555FF'>=</font> JCS_GRAYSCALE;
+    <font color='#BB00BB'>TRACEMS2</font><font face='Lucida Console'>(</font>cinfo, <font color='#979000'>1</font>, JTRC_PGM, w, h<font face='Lucida Console'>)</font>;
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>maxval <font color='#5555FF'>&gt;</font> <font color='#979000'>255</font><font face='Lucida Console'>)</font> <b>{</b>
+      source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.get_pixel_rows <font color='#5555FF'>=</font> get_word_gray_row;
+    <b>}</b> <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>maxval <font color='#5555FF'>=</font><font color='#5555FF'>=</font> MAXJSAMPLE <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font> <font color='#BB00BB'>SIZEOF</font><font face='Lucida Console'>(</font>JSAMPLE<font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#BB00BB'>SIZEOF</font><font face='Lucida Console'>(</font>U_CHAR<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <b>{</b>
+      source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.get_pixel_rows <font color='#5555FF'>=</font> get_raw_row;
+      use_raw_buffer <font color='#5555FF'>=</font> TRUE;
+      need_rescale <font color='#5555FF'>=</font> FALSE;
+    <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+      source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.get_pixel_rows <font color='#5555FF'>=</font> get_scaled_gray_row;
+    <b>}</b>
+    <font color='#0000FF'>break</font>;
+
+  <font color='#0000FF'>case</font> '<font color='#FF0000'>6</font>':			<font color='#009900'>/* it's a raw-format PPM file */</font>
+    cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>input_components <font color='#5555FF'>=</font> <font color='#979000'>3</font>;
+    cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>in_color_space <font color='#5555FF'>=</font> JCS_RGB;
+    <font color='#BB00BB'>TRACEMS2</font><font face='Lucida Console'>(</font>cinfo, <font color='#979000'>1</font>, JTRC_PPM, w, h<font face='Lucida Console'>)</font>;
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>maxval <font color='#5555FF'>&gt;</font> <font color='#979000'>255</font><font face='Lucida Console'>)</font> <b>{</b>
+      source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.get_pixel_rows <font color='#5555FF'>=</font> get_word_rgb_row;
+    <b>}</b> <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>maxval <font color='#5555FF'>=</font><font color='#5555FF'>=</font> MAXJSAMPLE <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font> <font color='#BB00BB'>SIZEOF</font><font face='Lucida Console'>(</font>JSAMPLE<font face='Lucida Console'>)</font> <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#BB00BB'>SIZEOF</font><font face='Lucida Console'>(</font>U_CHAR<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <b>{</b>
+      source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.get_pixel_rows <font color='#5555FF'>=</font> get_raw_row;
+      use_raw_buffer <font color='#5555FF'>=</font> TRUE;
+      need_rescale <font color='#5555FF'>=</font> FALSE;
+    <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+      source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.get_pixel_rows <font color='#5555FF'>=</font> get_scaled_rgb_row;
+    <b>}</b>
+    <font color='#0000FF'>break</font>;
+  <b>}</b>
+
+  <font color='#009900'>/* Allocate space for I/O buffer: 1 or 3 bytes or words/pixel. */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>need_iobuffer<font face='Lucida Console'>)</font> <b>{</b>
+    source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>buffer_width <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#0000FF'><u>size_t</u></font><font face='Lucida Console'>)</font> w <font color='#5555FF'>*</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>input_components <font color='#5555FF'>*</font>
+      <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>maxval<font color='#5555FF'>&lt;</font><font color='#5555FF'>=</font><font color='#979000'>255</font><font face='Lucida Console'>)</font> ? <font color='#BB00BB'>SIZEOF</font><font face='Lucida Console'>(</font>U_CHAR<font face='Lucida Console'>)</font> : <font face='Lucida Console'>(</font><font color='#979000'>2</font><font color='#5555FF'>*</font><font color='#BB00BB'>SIZEOF</font><font face='Lucida Console'>(</font>U_CHAR<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+    source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>iobuffer <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>U_CHAR <font color='#5555FF'>*</font><font face='Lucida Console'>)</font>
+      <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>alloc_small<font face='Lucida Console'>)</font> <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> cinfo, JPOOL_IMAGE,
+				  source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>buffer_width<font face='Lucida Console'>)</font>;
+  <b>}</b>
+
+  <font color='#009900'>/* Create compressor input buffer. */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>use_raw_buffer<font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#009900'>/* For unscaled raw-input case, we can just map it onto the I/O buffer. */</font>
+    <font color='#009900'>/* Synthesize a JSAMPARRAY pointer structure */</font>
+    <font color='#009900'>/* Cast here implies near-&gt;far pointer conversion on PCs */</font>
+    source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pixrow <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>JSAMPROW<font face='Lucida Console'>)</font> source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>iobuffer;
+    source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.buffer <font color='#5555FF'>=</font> <font color='#5555FF'>&amp;</font> source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pixrow;
+    source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.buffer_height <font color='#5555FF'>=</font> <font color='#979000'>1</font>;
+  <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+    <font color='#009900'>/* Need to translate anyway, so make a separate sample buffer. */</font>
+    source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.buffer <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>alloc_sarray<font face='Lucida Console'>)</font>
+      <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> cinfo, JPOOL_IMAGE,
+       <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> w <font color='#5555FF'>*</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>input_components, <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> <font color='#979000'>1</font><font face='Lucida Console'>)</font>;
+    source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.buffer_height <font color='#5555FF'>=</font> <font color='#979000'>1</font>;
+  <b>}</b>
+
+  <font color='#009900'>/* Compute the rescaling array if required. */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>need_rescale<font face='Lucida Console'>)</font> <b>{</b>
+    INT32 val, half_maxval;
+
+    <font color='#009900'>/* On 16-bit-int machines we have to be careful of maxval = 65535 */</font>
+    source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>rescale <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>JSAMPLE <font color='#5555FF'>*</font><font face='Lucida Console'>)</font>
+      <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>alloc_small<font face='Lucida Console'>)</font> <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> cinfo, JPOOL_IMAGE,
+				  <font face='Lucida Console'>(</font><font color='#0000FF'><u>size_t</u></font><font face='Lucida Console'>)</font> <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font><font color='#0000FF'><u>long</u></font><font face='Lucida Console'>)</font> maxval <font color='#5555FF'>+</font> <font color='#979000'>1</font>L<font face='Lucida Console'>)</font> <font color='#5555FF'>*</font> <font color='#BB00BB'>SIZEOF</font><font face='Lucida Console'>(</font>JSAMPLE<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+    half_maxval <font color='#5555FF'>=</font> maxval <font color='#5555FF'>/</font> <font color='#979000'>2</font>;
+    <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>val <font color='#5555FF'>=</font> <font color='#979000'>0</font>; val <font color='#5555FF'>&lt;</font><font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>INT32<font face='Lucida Console'>)</font> maxval; val<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#009900'>/* The multiplication here must be done in 32 bits to avoid overflow */</font>
+      source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>rescale[val] <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>JSAMPLE<font face='Lucida Console'>)</font> <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>val<font color='#5555FF'>*</font>MAXJSAMPLE <font color='#5555FF'>+</font> half_maxval<font face='Lucida Console'>)</font><font color='#5555FF'>/</font>maxval<font face='Lucida Console'>)</font>;
+    <b>}</b>
+  <b>}</b>
+<b>}</b>
+
+
+<font color='#009900'>/*
+ * Finish up at the end of the file.
+ */</font>
+
+<b><a name='METHODDEF'></a>METHODDEF</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='finish_input_ppm'></a>finish_input_ppm</b> <font face='Lucida Console'>(</font>j_compress_ptr cinfo, cjpeg_source_ptr sinfo<font face='Lucida Console'>)</font>
+<b>{</b>
+  <font color='#009900'>/* no work */</font>
+<b>}</b>
+
+
+<font color='#009900'>/*
+ * The module selection routine for PPM format input.
+ */</font>
+
+<b><a name='GLOBAL'></a>GLOBAL</b><font face='Lucida Console'>(</font>cjpeg_source_ptr<font face='Lucida Console'>)</font>
+<b><a name='jinit_read_ppm'></a>jinit_read_ppm</b> <font face='Lucida Console'>(</font>j_compress_ptr cinfo<font face='Lucida Console'>)</font>
+<b>{</b>
+  ppm_source_ptr source;
+
+  <font color='#009900'>/* Create module interface object */</font>
+  source <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>ppm_source_ptr<font face='Lucida Console'>)</font>
+      <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>alloc_small<font face='Lucida Console'>)</font> <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> cinfo, JPOOL_IMAGE,
+				  <font color='#BB00BB'>SIZEOF</font><font face='Lucida Console'>(</font>ppm_source_struct<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+  <font color='#009900'>/* Fill in method ptrs, except get_pixel_rows which start_input sets */</font>
+  source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.start_input <font color='#5555FF'>=</font> start_input_ppm;
+  source<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.finish_input <font color='#5555FF'>=</font> finish_input_ppm;
+
+  <font color='#0000FF'>return</font> <font face='Lucida Console'>(</font>cjpeg_source_ptr<font face='Lucida Console'>)</font> source;
+<b>}</b>
+
+<font color='#0000FF'>#endif</font> <font color='#009900'>/* PPM_SUPPORTED */</font>
+
+</pre></body></html>

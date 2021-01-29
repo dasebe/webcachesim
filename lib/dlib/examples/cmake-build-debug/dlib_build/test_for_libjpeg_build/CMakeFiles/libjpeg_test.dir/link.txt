@@ -1,0 +1,1 @@
+/Library/Developer/CommandLineTools/usr/bin/c++   -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk -Wl,-search_paths_first -Wl,-headerpad_max_install_names  CMakeFiles/libjpeg_test.dir/libjpeg_test.cpp.o  -o libjpeg_test /usr/local/lib/libjpeg.dylib 

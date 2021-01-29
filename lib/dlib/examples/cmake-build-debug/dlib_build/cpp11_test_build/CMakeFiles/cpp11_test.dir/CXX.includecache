@@ -1,0 +1,14 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/Users/rishabketandoshi/Desktop/CS219/project/fork/arnav/webcachesim/lib/dlib/dlib/cmake_utils/test_for_cpp11/cpp11_test.cpp
+memory
+-
+iostream
+-
+

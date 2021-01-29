@@ -1,0 +1,41 @@
+<html><!-- Created using the cpp_pretty_printer from the dlib C++ library.  See http://dlib.net for updates. --><head><title>dlib C++ Library - rdgif.c</title></head><body bgcolor='white'><pre>
+<font color='#009900'>/*
+ * rdgif.c
+ *
+ * Copyright (C) 1991-1997, Thomas G. Lane.
+ * This file is part of the Independent JPEG Group's software.
+ * For conditions of distribution and use, see the accompanying README file.
+ *
+ * This file contains routines to read input images in GIF format.
+ *
+ *****************************************************************************
+ * NOTE: to avoid entanglements with Unisys' patent on LZW compression,      *
+ * the ability to read GIF files has been removed from the IJG distribution. *
+ * Sorry about that.                                                         *
+ *****************************************************************************
+ *
+ * We are required to state that
+ *    "The Graphics Interchange Format(c) is the Copyright property of
+ *    CompuServe Incorporated. GIF(sm) is a Service Mark property of
+ *    CompuServe Incorporated."
+ */</font>
+
+<font color='#0000FF'>#include</font> "<a style='text-decoration:none' href='cdjpeg.h.html'>cdjpeg.h</a>"		<font color='#009900'>/* Common decls for cjpeg/djpeg applications */</font>
+
+<font color='#0000FF'>#ifdef</font> GIF_SUPPORTED
+
+<font color='#009900'>/*
+ * The module selection routine for GIF format input.
+ */</font>
+
+<b><a name='GLOBAL'></a>GLOBAL</b><font face='Lucida Console'>(</font>cjpeg_source_ptr<font face='Lucida Console'>)</font>
+<b><a name='jinit_read_gif'></a>jinit_read_gif</b> <font face='Lucida Console'>(</font>j_compress_ptr cinfo<font face='Lucida Console'>)</font>
+<b>{</b>
+  <font color='#BB00BB'>fprintf</font><font face='Lucida Console'>(</font>stderr, "<font color='#CC0000'>GIF input is unsupported for legal reasons.  Sorry.\n</font>"<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>exit</font><font face='Lucida Console'>(</font>EXIT_FAILURE<font face='Lucida Console'>)</font>;
+  <font color='#0000FF'>return</font> NULL;			<font color='#009900'>/* keep compiler happy */</font>
+<b>}</b>
+
+<font color='#0000FF'>#endif</font> <font color='#009900'>/* GIF_SUPPORTED */</font>
+
+</pre></body></html>

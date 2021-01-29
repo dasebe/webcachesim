@@ -1,0 +1,308 @@
+<html><!-- Created using the cpp_pretty_printer from the dlib C++ library.  See http://dlib.net for updates. --><head><title>dlib C++ Library - wrrle.c</title></head><body bgcolor='white'><pre>
+<font color='#009900'>/*
+ * wrrle.c
+ *
+ * Copyright (C) 1991-1996, Thomas G. Lane.
+ * This file is part of the Independent JPEG Group's software.
+ * For conditions of distribution and use, see the accompanying README file.
+ *
+ * This file contains routines to write output images in RLE format.
+ * The Utah Raster Toolkit library is required (version 3.1 or later).
+ *
+ * These routines may need modification for non-Unix environments or
+ * specialized applications.  As they stand, they assume output to
+ * an ordinary stdio stream.
+ *
+ * Based on code contributed by Mike Lijewski,
+ * with updates from Robert Hutchinson.
+ */</font>
+
+<font color='#0000FF'>#include</font> "<a style='text-decoration:none' href='cdjpeg.h.html'>cdjpeg.h</a>"		<font color='#009900'>/* Common decls for cjpeg/djpeg applications */</font>
+
+<font color='#0000FF'>#ifdef</font> RLE_SUPPORTED
+
+<font color='#009900'>/* rle.h is provided by the Utah Raster Toolkit. */</font>
+
+<font color='#0000FF'>#include</font> <font color='#5555FF'>&lt;</font>rle.h<font color='#5555FF'>&gt;</font>
+
+<font color='#009900'>/*
+ * We assume that JSAMPLE has the same representation as rle_pixel,
+ * to wit, "unsigned char".  Hence we can't cope with 12- or 16-bit samples.
+ */</font>
+
+<font color='#0000FF'>#if</font> BITS_IN_JSAMPLE <font color='#5555FF'>!</font><font color='#5555FF'>=</font> <font color='#979000'>8</font>
+  Sorry, <font color='#0000FF'>this</font> code only copes with <font color='#979000'>8</font><font color='#5555FF'>-</font>bit JSAMPLEs. <font color='#009900'>/* deliberate syntax err */</font>
+<font color='#0000FF'>#endif</font>
+
+
+<font color='#009900'>/*
+ * Since RLE stores scanlines bottom-to-top, we have to invert the image
+ * from JPEG's top-to-bottom order.  To do this, we save the outgoing data
+ * in a virtual array during put_pixel_row calls, then actually emit the
+ * RLE file during finish_output.
+ */</font>
+
+
+<font color='#009900'>/*
+ * For now, if we emit an RLE color map then it is always 256 entries long,
+ * though not all of the entries need be used.
+ */</font>
+
+<font color='#0000FF'>#define</font> CMAPBITS	<font color='#979000'>8</font>
+<font color='#0000FF'>#define</font> CMAPLENGTH	<font face='Lucida Console'>(</font><font color='#979000'>1</font><font color='#5555FF'>&lt;</font><font color='#5555FF'>&lt;</font><font face='Lucida Console'>(</font>CMAPBITS<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>
+
+<font color='#0000FF'>typedef</font> <font color='#0000FF'>struct</font> <b>{</b>
+  <font color='#0000FF'>struct</font> djpeg_dest_struct pub; <font color='#009900'>/* public fields */</font>
+
+  jvirt_sarray_ptr image;	<font color='#009900'>/* virtual array to store the output image */</font>
+  rle_map <font color='#5555FF'>*</font>colormap;	 	<font color='#009900'>/* RLE-style color map, or NULL if none */</font>
+  rle_pixel <font color='#5555FF'>*</font><font color='#5555FF'>*</font>rle_row;		<font color='#009900'>/* To pass rows to rle_putrow() */</font>
+
+<b>}</b> rle_dest_struct;
+
+<font color='#0000FF'>typedef</font> rle_dest_struct <font color='#5555FF'>*</font> rle_dest_ptr;
+
+<font color='#009900'>/* Forward declarations */</font>
+<b><a name='METHODDEF'></a>METHODDEF</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font> rle_put_pixel_rows
+    <b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_decompress_ptr cinfo, djpeg_dest_ptr dinfo,
+	 JDIMENSION rows_supplied<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+
+
+<font color='#009900'>/*
+ * Write the file header.
+ *
+ * In this module it's easier to wait till finish_output to write anything.
+ */</font>
+
+<b><a name='METHODDEF'></a>METHODDEF</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='start_output_rle'></a>start_output_rle</b> <font face='Lucida Console'>(</font>j_decompress_ptr cinfo, djpeg_dest_ptr dinfo<font face='Lucida Console'>)</font>
+<b>{</b>
+  rle_dest_ptr dest <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>rle_dest_ptr<font face='Lucida Console'>)</font> dinfo;
+  <font color='#0000FF'><u>size_t</u></font> cmapsize;
+  <font color='#0000FF'><u>int</u></font> i, ci;
+<font color='#0000FF'>#ifdef</font> PROGRESS_REPORT
+  cd_progress_ptr progress <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>cd_progress_ptr<font face='Lucida Console'>)</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>progress;
+<font color='#0000FF'>#endif</font>
+
+  <font color='#009900'>/*
+   * Make sure the image can be stored in RLE format.
+   *
+   * - RLE stores image dimensions as *signed* 16 bit integers.  JPEG
+   *   uses unsigned, so we have to check the width.
+   *
+   * - Colorspace is expected to be grayscale or RGB.
+   *
+   * - The number of channels (components) is expected to be 1 (grayscale/
+   *   pseudocolor) or 3 (truecolor/directcolor).
+   *   (could be 2 or 4 if using an alpha channel, but we aren't)
+   */</font>
+
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width <font color='#5555FF'>&gt;</font> <font color='#979000'>32767</font> <font color='#5555FF'>|</font><font color='#5555FF'>|</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height <font color='#5555FF'>&gt;</font> <font color='#979000'>32767</font><font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>ERREXIT2</font><font face='Lucida Console'>(</font>cinfo, JERR_RLE_DIMENSIONS, cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width, 
+	     cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height<font face='Lucida Console'>)</font>;
+
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>out_color_space <font color='#5555FF'>!</font><font color='#5555FF'>=</font> JCS_GRAYSCALE <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+      cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>out_color_space <font color='#5555FF'>!</font><font color='#5555FF'>=</font> JCS_RGB<font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>cinfo, JERR_RLE_COLORSPACE<font face='Lucida Console'>)</font>;
+
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_components <font color='#5555FF'>!</font><font color='#5555FF'>=</font> <font color='#979000'>1</font> <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_components <font color='#5555FF'>!</font><font color='#5555FF'>=</font> <font color='#979000'>3</font><font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>ERREXIT1</font><font face='Lucida Console'>(</font>cinfo, JERR_RLE_TOOMANYCHANNELS, cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>num_components<font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* Convert colormap, if any, to RLE format. */</font>
+
+  dest<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>colormap <font color='#5555FF'>=</font> NULL;
+
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>quantize_colors<font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#009900'>/* Allocate storage for RLE-style cmap, zero any extra entries */</font>
+    cmapsize <font color='#5555FF'>=</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>out_color_components <font color='#5555FF'>*</font> CMAPLENGTH <font color='#5555FF'>*</font> <font color='#BB00BB'>SIZEOF</font><font face='Lucida Console'>(</font>rle_map<font face='Lucida Console'>)</font>;
+    dest<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>colormap <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>rle_map <font color='#5555FF'>*</font><font face='Lucida Console'>)</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>alloc_small<font face='Lucida Console'>)</font>
+      <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> cinfo, JPOOL_IMAGE, cmapsize<font face='Lucida Console'>)</font>;
+    <font color='#BB00BB'>MEMZERO</font><font face='Lucida Console'>(</font>dest<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>colormap, cmapsize<font face='Lucida Console'>)</font>;
+
+    <font color='#009900'>/* Save away data in RLE format --- note 8-bit left shift! */</font>
+    <font color='#009900'>/* Shifting would need adjustment for JSAMPLEs wider than 8 bits. */</font>
+    <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>ci <font color='#5555FF'>=</font> <font color='#979000'>0</font>; ci <font color='#5555FF'>&lt;</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>out_color_components; ci<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>i <font color='#5555FF'>=</font> <font color='#979000'>0</font>; i <font color='#5555FF'>&lt;</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>actual_number_of_colors; i<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+        dest<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>colormap[ci <font color='#5555FF'>*</font> CMAPLENGTH <font color='#5555FF'>+</font> i] <font color='#5555FF'>=</font>
+          <font color='#BB00BB'>GETJSAMPLE</font><font face='Lucida Console'>(</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>colormap[ci][i]<font face='Lucida Console'>)</font> <font color='#5555FF'>&lt;</font><font color='#5555FF'>&lt;</font> <font color='#979000'>8</font>;
+      <b>}</b>
+    <b>}</b>
+  <b>}</b>
+
+  <font color='#009900'>/* Set the output buffer to the first row */</font>
+  dest<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.buffer <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>access_virt_sarray<font face='Lucida Console'>)</font>
+    <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> cinfo, dest<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>image, <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> <font color='#979000'>0</font>, <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> <font color='#979000'>1</font>, TRUE<font face='Lucida Console'>)</font>;
+  dest<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.buffer_height <font color='#5555FF'>=</font> <font color='#979000'>1</font>;
+
+  dest<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.put_pixel_rows <font color='#5555FF'>=</font> rle_put_pixel_rows;
+
+<font color='#0000FF'>#ifdef</font> PROGRESS_REPORT
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>progress <font color='#5555FF'>!</font><font color='#5555FF'>=</font> NULL<font face='Lucida Console'>)</font> <b>{</b>
+    progress<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>total_extra_passes<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;  <font color='#009900'>/* count file writing as separate pass */</font>
+  <b>}</b>
+<font color='#0000FF'>#endif</font>
+<b>}</b>
+
+
+<font color='#009900'>/*
+ * Write some pixel data.
+ *
+ * This routine just saves the data away in a virtual array.
+ */</font>
+
+<b><a name='METHODDEF'></a>METHODDEF</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='rle_put_pixel_rows'></a>rle_put_pixel_rows</b> <font face='Lucida Console'>(</font>j_decompress_ptr cinfo, djpeg_dest_ptr dinfo,
+		    JDIMENSION rows_supplied<font face='Lucida Console'>)</font>
+<b>{</b>
+  rle_dest_ptr dest <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>rle_dest_ptr<font face='Lucida Console'>)</font> dinfo;
+
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_scanline <font color='#5555FF'>&lt;</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height<font face='Lucida Console'>)</font> <b>{</b>
+    dest<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.buffer <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>access_virt_sarray<font face='Lucida Console'>)</font>
+      <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> cinfo, dest<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>image,
+       cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_scanline, <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> <font color='#979000'>1</font>, TRUE<font face='Lucida Console'>)</font>;
+  <b>}</b>
+<b>}</b>
+
+<font color='#009900'>/*
+ * Finish up at the end of the file.
+ *
+ * Here is where we really output the RLE file.
+ */</font>
+
+<b><a name='METHODDEF'></a>METHODDEF</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='finish_output_rle'></a>finish_output_rle</b> <font face='Lucida Console'>(</font>j_decompress_ptr cinfo, djpeg_dest_ptr dinfo<font face='Lucida Console'>)</font>
+<b>{</b>
+  rle_dest_ptr dest <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>rle_dest_ptr<font face='Lucida Console'>)</font> dinfo;
+  rle_hdr header;		<font color='#009900'>/* Output file information */</font>
+  rle_pixel <font color='#5555FF'>*</font><font color='#5555FF'>*</font>rle_row, <font color='#5555FF'>*</font>red, <font color='#5555FF'>*</font>green, <font color='#5555FF'>*</font>blue;
+  JSAMPROW output_row;
+  <font color='#0000FF'><u>char</u></font> cmapcomment[<font color='#979000'>80</font>];
+  <font color='#0000FF'><u>int</u></font> row, col;
+  <font color='#0000FF'><u>int</u></font> ci;
+<font color='#0000FF'>#ifdef</font> PROGRESS_REPORT
+  cd_progress_ptr progress <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>cd_progress_ptr<font face='Lucida Console'>)</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>progress;
+<font color='#0000FF'>#endif</font>
+
+  <font color='#009900'>/* Initialize the header info */</font>
+  header <font color='#5555FF'>=</font> <font color='#5555FF'>*</font><font color='#BB00BB'>rle_hdr_init</font><font face='Lucida Console'>(</font>NULL<font face='Lucida Console'>)</font>;
+  header.rle_file <font color='#5555FF'>=</font> dest<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.output_file;
+  header.xmin     <font color='#5555FF'>=</font> <font color='#979000'>0</font>;
+  header.xmax     <font color='#5555FF'>=</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width  <font color='#5555FF'>-</font> <font color='#979000'>1</font>;
+  header.ymin     <font color='#5555FF'>=</font> <font color='#979000'>0</font>;
+  header.ymax     <font color='#5555FF'>=</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height <font color='#5555FF'>-</font> <font color='#979000'>1</font>;
+  header.alpha    <font color='#5555FF'>=</font> <font color='#979000'>0</font>;
+  header.ncolors  <font color='#5555FF'>=</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_components;
+  <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>ci <font color='#5555FF'>=</font> <font color='#979000'>0</font>; ci <font color='#5555FF'>&lt;</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_components; ci<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#BB00BB'>RLE_SET_BIT</font><font face='Lucida Console'>(</font>header, ci<font face='Lucida Console'>)</font>;
+  <b>}</b>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>quantize_colors<font face='Lucida Console'>)</font> <b>{</b>
+    header.ncmap   <font color='#5555FF'>=</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>out_color_components;
+    header.cmaplen <font color='#5555FF'>=</font> CMAPBITS;
+    header.cmap    <font color='#5555FF'>=</font> dest<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>colormap;
+    <font color='#009900'>/* Add a comment to the output image with the true colormap length. */</font>
+    <font color='#BB00BB'>sprintf</font><font face='Lucida Console'>(</font>cmapcomment, "<font color='#CC0000'>color_map_length=%d</font>", cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>actual_number_of_colors<font face='Lucida Console'>)</font>;
+    <font color='#BB00BB'>rle_putcom</font><font face='Lucida Console'>(</font>cmapcomment, <font color='#5555FF'>&amp;</font>header<font face='Lucida Console'>)</font>;
+  <b>}</b>
+
+  <font color='#009900'>/* Emit the RLE header and color map (if any) */</font>
+  <font color='#BB00BB'>rle_put_setup</font><font face='Lucida Console'>(</font><font color='#5555FF'>&amp;</font>header<font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* Now output the RLE data from our virtual array.
+   * We assume here that (a) rle_pixel is represented the same as JSAMPLE,
+   * and (b) we are not on a machine where FAR pointers differ from regular.
+   */</font>
+
+<font color='#0000FF'>#ifdef</font> PROGRESS_REPORT
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>progress <font color='#5555FF'>!</font><font color='#5555FF'>=</font> NULL<font face='Lucida Console'>)</font> <b>{</b>
+    progress<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.pass_limit <font color='#5555FF'>=</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height;
+    progress<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.pass_counter <font color='#5555FF'>=</font> <font color='#979000'>0</font>;
+    <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>progress<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.progress_monitor<font face='Lucida Console'>)</font> <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> cinfo<font face='Lucida Console'>)</font>;
+  <b>}</b>
+<font color='#0000FF'>#endif</font>
+
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_components <font color='#5555FF'>=</font><font color='#5555FF'>=</font> <font color='#979000'>1</font><font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>row <font color='#5555FF'>=</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height<font color='#5555FF'>-</font><font color='#979000'>1</font>; row <font color='#5555FF'>&gt;</font><font color='#5555FF'>=</font> <font color='#979000'>0</font>; row<font color='#5555FF'>-</font><font color='#5555FF'>-</font><font face='Lucida Console'>)</font> <b>{</b>
+      rle_row <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>rle_pixel <font color='#5555FF'>*</font><font color='#5555FF'>*</font><font face='Lucida Console'>)</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>access_virt_sarray<font face='Lucida Console'>)</font>
+        <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> cinfo, dest<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>image,
+	 <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> row, <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> <font color='#979000'>1</font>, FALSE<font face='Lucida Console'>)</font>;
+      <font color='#BB00BB'>rle_putrow</font><font face='Lucida Console'>(</font>rle_row, <font face='Lucida Console'>(</font><font color='#0000FF'><u>int</u></font><font face='Lucida Console'>)</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width, <font color='#5555FF'>&amp;</font>header<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#ifdef</font> PROGRESS_REPORT
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>progress <font color='#5555FF'>!</font><font color='#5555FF'>=</font> NULL<font face='Lucida Console'>)</font> <b>{</b>
+        progress<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.pass_counter<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;
+        <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>progress<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.progress_monitor<font face='Lucida Console'>)</font> <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> cinfo<font face='Lucida Console'>)</font>;
+      <b>}</b>
+<font color='#0000FF'>#endif</font>
+    <b>}</b>
+  <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+    <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>row <font color='#5555FF'>=</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height<font color='#5555FF'>-</font><font color='#979000'>1</font>; row <font color='#5555FF'>&gt;</font><font color='#5555FF'>=</font> <font color='#979000'>0</font>; row<font color='#5555FF'>-</font><font color='#5555FF'>-</font><font face='Lucida Console'>)</font> <b>{</b>
+      rle_row <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>rle_pixel <font color='#5555FF'>*</font><font color='#5555FF'>*</font><font face='Lucida Console'>)</font> dest<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>rle_row;
+      output_row <font color='#5555FF'>=</font> <font color='#5555FF'>*</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>access_virt_sarray<font face='Lucida Console'>)</font>
+        <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> cinfo, dest<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>image,
+	 <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> row, <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> <font color='#979000'>1</font>, FALSE<font face='Lucida Console'>)</font>;
+      red <font color='#5555FF'>=</font> rle_row[<font color='#979000'>0</font>];
+      green <font color='#5555FF'>=</font> rle_row[<font color='#979000'>1</font>];
+      blue <font color='#5555FF'>=</font> rle_row[<font color='#979000'>2</font>];
+      <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>col <font color='#5555FF'>=</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width; col <font color='#5555FF'>&gt;</font> <font color='#979000'>0</font>; col<font color='#5555FF'>-</font><font color='#5555FF'>-</font><font face='Lucida Console'>)</font> <b>{</b>
+        <font color='#5555FF'>*</font>red<font color='#5555FF'>+</font><font color='#5555FF'>+</font> <font color='#5555FF'>=</font> <font color='#BB00BB'>GETJSAMPLE</font><font face='Lucida Console'>(</font><font color='#5555FF'>*</font>output_row<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font>;
+        <font color='#5555FF'>*</font>green<font color='#5555FF'>+</font><font color='#5555FF'>+</font> <font color='#5555FF'>=</font> <font color='#BB00BB'>GETJSAMPLE</font><font face='Lucida Console'>(</font><font color='#5555FF'>*</font>output_row<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font>;
+        <font color='#5555FF'>*</font>blue<font color='#5555FF'>+</font><font color='#5555FF'>+</font> <font color='#5555FF'>=</font> <font color='#BB00BB'>GETJSAMPLE</font><font face='Lucida Console'>(</font><font color='#5555FF'>*</font>output_row<font color='#5555FF'>+</font><font color='#5555FF'>+</font><font face='Lucida Console'>)</font>;
+      <b>}</b>
+      <font color='#BB00BB'>rle_putrow</font><font face='Lucida Console'>(</font>rle_row, <font face='Lucida Console'>(</font><font color='#0000FF'><u>int</u></font><font face='Lucida Console'>)</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width, <font color='#5555FF'>&amp;</font>header<font face='Lucida Console'>)</font>;
+<font color='#0000FF'>#ifdef</font> PROGRESS_REPORT
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>progress <font color='#5555FF'>!</font><font color='#5555FF'>=</font> NULL<font face='Lucida Console'>)</font> <b>{</b>
+        progress<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.pass_counter<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;
+        <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>progress<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.progress_monitor<font face='Lucida Console'>)</font> <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> cinfo<font face='Lucida Console'>)</font>;
+      <b>}</b>
+<font color='#0000FF'>#endif</font>
+    <b>}</b>
+  <b>}</b>
+
+<font color='#0000FF'>#ifdef</font> PROGRESS_REPORT
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>progress <font color='#5555FF'>!</font><font color='#5555FF'>=</font> NULL<font face='Lucida Console'>)</font>
+    progress<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>completed_extra_passes<font color='#5555FF'>+</font><font color='#5555FF'>+</font>;
+<font color='#0000FF'>#endif</font>
+
+  <font color='#009900'>/* Emit file trailer */</font>
+  <font color='#BB00BB'>rle_puteof</font><font face='Lucida Console'>(</font><font color='#5555FF'>&amp;</font>header<font face='Lucida Console'>)</font>;
+  <font color='#BB00BB'>fflush</font><font face='Lucida Console'>(</font>dest<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.output_file<font face='Lucida Console'>)</font>;
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#BB00BB'>ferror</font><font face='Lucida Console'>(</font>dest<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.output_file<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>ERREXIT</font><font face='Lucida Console'>(</font>cinfo, JERR_FILE_WRITE<font face='Lucida Console'>)</font>;
+<b>}</b>
+
+
+<font color='#009900'>/*
+ * The module selection routine for RLE format output.
+ */</font>
+
+<b><a name='GLOBAL'></a>GLOBAL</b><font face='Lucida Console'>(</font>djpeg_dest_ptr<font face='Lucida Console'>)</font>
+<b><a name='jinit_write_rle'></a>jinit_write_rle</b> <font face='Lucida Console'>(</font>j_decompress_ptr cinfo<font face='Lucida Console'>)</font>
+<b>{</b>
+  rle_dest_ptr dest;
+
+  <font color='#009900'>/* Create module interface object, fill in method pointers */</font>
+  dest <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font>rle_dest_ptr<font face='Lucida Console'>)</font>
+      <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>alloc_small<font face='Lucida Console'>)</font> <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> cinfo, JPOOL_IMAGE,
+                                  <font color='#BB00BB'>SIZEOF</font><font face='Lucida Console'>(</font>rle_dest_struct<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+  dest<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.start_output <font color='#5555FF'>=</font> start_output_rle;
+  dest<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pub.finish_output <font color='#5555FF'>=</font> finish_output_rle;
+
+  <font color='#009900'>/* Calculate output image dimensions so we can allocate space */</font>
+  <font color='#BB00BB'>jpeg_calc_output_dimensions</font><font face='Lucida Console'>(</font>cinfo<font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* Allocate a work array for output to the RLE library. */</font>
+  dest<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>rle_row <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>alloc_sarray<font face='Lucida Console'>)</font>
+    <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> cinfo, JPOOL_IMAGE,
+     cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width, <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_components<font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* Allocate a virtual array to hold the image. */</font>
+  dest<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>image <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>request_virt_sarray<font face='Lucida Console'>)</font>
+    <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> cinfo, JPOOL_IMAGE, FALSE,
+     <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> <font face='Lucida Console'>(</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_width <font color='#5555FF'>*</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_components<font face='Lucida Console'>)</font>,
+     cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>output_height, <font face='Lucida Console'>(</font>JDIMENSION<font face='Lucida Console'>)</font> <font color='#979000'>1</font><font face='Lucida Console'>)</font>;
+
+  <font color='#0000FF'>return</font> <font face='Lucida Console'>(</font>djpeg_dest_ptr<font face='Lucida Console'>)</font> dest;
+<b>}</b>
+
+<font color='#0000FF'>#endif</font> <font color='#009900'>/* RLE_SUPPORTED */</font>
+
+</pre></body></html>

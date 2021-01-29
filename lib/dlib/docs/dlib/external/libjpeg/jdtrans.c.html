@@ -1,0 +1,143 @@
+<html><!-- Created using the cpp_pretty_printer from the dlib C++ library.  See http://dlib.net for updates. --><head><title>dlib C++ Library - jdtrans.c</title></head><body bgcolor='white'><pre>
+<font color='#009900'>/*
+ * jdtrans.c
+ *
+ * Copyright (C) 1995-1997, Thomas G. Lane.
+ * Modified 2000-2009 by Guido Vollbeding.
+ * This file is part of the Independent JPEG Group's software.
+ * For conditions of distribution and use, see the accompanying README file.
+ *
+ * This file contains library routines for transcoding decompression,
+ * that is, reading raw DCT coefficient arrays from an input JPEG file.
+ * The routines in jdapimin.c will also be needed by a transcoder.
+ */</font>
+
+<font color='#0000FF'>#define</font> JPEG_INTERNALS
+<font color='#0000FF'>#include</font> "<a style='text-decoration:none' href='jinclude.h.html'>jinclude.h</a>"
+<font color='#0000FF'>#include</font> "<a style='text-decoration:none' href='jpeglib.h.html'>jpeglib.h</a>"
+
+
+<font color='#009900'>/* Forward declarations */</font>
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font> transdecode_master_selection <b><a name='JPP'></a>JPP</b><font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_decompress_ptr cinfo<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font>;
+
+
+<font color='#009900'>/*
+ * Read the coefficient arrays from a JPEG file.
+ * jpeg_read_header must be completed before calling this.
+ *
+ * The entire image is read into a set of virtual coefficient-block arrays,
+ * one per component.  The return value is a pointer to the array of
+ * virtual-array descriptors.  These can be manipulated directly via the
+ * JPEG memory manager, or handed off to jpeg_write_coefficients().
+ * To release the memory occupied by the virtual arrays, call
+ * jpeg_finish_decompress() when done with the data.
+ *
+ * An alternative usage is to simply obtain access to the coefficient arrays
+ * during a buffered-image-mode decompression operation.  This is allowed
+ * after any jpeg_finish_output() call.  The arrays can be accessed until
+ * jpeg_finish_decompress() is called.  (Note that any call to the library
+ * may reposition the arrays, so don't rely on access_virt_barray() results
+ * to stay valid across library calls.)
+ *
+ * Returns NULL if suspended.  This case need be checked only if
+ * a suspending data source is used.
+ */</font>
+
+<b><a name='GLOBAL'></a>GLOBAL</b><font face='Lucida Console'>(</font>jvirt_barray_ptr <font color='#5555FF'>*</font><font face='Lucida Console'>)</font>
+<b><a name='jpeg_read_coefficients'></a>jpeg_read_coefficients</b> <font face='Lucida Console'>(</font>j_decompress_ptr cinfo<font face='Lucida Console'>)</font>
+<b>{</b>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>global_state <font color='#5555FF'>=</font><font color='#5555FF'>=</font> DSTATE_READY<font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#009900'>/* First call: initialize active modules */</font>
+    <font color='#BB00BB'>transdecode_master_selection</font><font face='Lucida Console'>(</font>cinfo<font face='Lucida Console'>)</font>;
+    cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>global_state <font color='#5555FF'>=</font> DSTATE_RDCOEFS;
+  <b>}</b>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>global_state <font color='#5555FF'>=</font><font color='#5555FF'>=</font> DSTATE_RDCOEFS<font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#009900'>/* Absorb whole file into the coef buffer */</font>
+    <font color='#0000FF'>for</font> <font face='Lucida Console'>(</font>;;<font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#0000FF'><u>int</u></font> retcode;
+      <font color='#009900'>/* Call progress monitor hook if present */</font>
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>progress <font color='#5555FF'>!</font><font color='#5555FF'>=</font> NULL<font face='Lucida Console'>)</font>
+	<font face='Lucida Console'>(</font><font color='#5555FF'>*</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>progress<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>progress_monitor<font face='Lucida Console'>)</font> <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> cinfo<font face='Lucida Console'>)</font>;
+      <font color='#009900'>/* Absorb some more input */</font>
+      retcode <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>inputctl<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>consume_input<font face='Lucida Console'>)</font> <font face='Lucida Console'>(</font>cinfo<font face='Lucida Console'>)</font>;
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>retcode <font color='#5555FF'>=</font><font color='#5555FF'>=</font> JPEG_SUSPENDED<font face='Lucida Console'>)</font>
+	<font color='#0000FF'>return</font> NULL;
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>retcode <font color='#5555FF'>=</font><font color='#5555FF'>=</font> JPEG_REACHED_EOI<font face='Lucida Console'>)</font>
+	<font color='#0000FF'>break</font>;
+      <font color='#009900'>/* Advance progress counter if appropriate */</font>
+      <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>progress <font color='#5555FF'>!</font><font color='#5555FF'>=</font> NULL <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font>
+	  <font face='Lucida Console'>(</font>retcode <font color='#5555FF'>=</font><font color='#5555FF'>=</font> JPEG_ROW_COMPLETED <font color='#5555FF'>|</font><font color='#5555FF'>|</font> retcode <font color='#5555FF'>=</font><font color='#5555FF'>=</font> JPEG_REACHED_SOS<font face='Lucida Console'>)</font><font face='Lucida Console'>)</font> <b>{</b>
+	<font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font color='#5555FF'>+</font><font color='#5555FF'>+</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>progress<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pass_counter <font color='#5555FF'>&gt;</font><font color='#5555FF'>=</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>progress<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pass_limit<font face='Lucida Console'>)</font> <b>{</b>
+	  <font color='#009900'>/* startup underestimated number of scans; ratchet up one scan */</font>
+	  cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>progress<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pass_limit <font color='#5555FF'>+</font><font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#0000FF'><u>long</u></font><font face='Lucida Console'>)</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>total_iMCU_rows;
+	<b>}</b>
+      <b>}</b>
+    <b>}</b>
+    <font color='#009900'>/* Set state so that jpeg_finish_decompress does the right thing */</font>
+    cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>global_state <font color='#5555FF'>=</font> DSTATE_STOPPING;
+  <b>}</b>
+  <font color='#009900'>/* At this point we should be in state DSTATE_STOPPING if being used
+   * standalone, or in state DSTATE_BUFIMAGE if being invoked to get access
+   * to the coefficients during a full buffered-image-mode decompression.
+   */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>global_state <font color='#5555FF'>=</font><font color='#5555FF'>=</font> DSTATE_STOPPING <font color='#5555FF'>|</font><font color='#5555FF'>|</font>
+       cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>global_state <font color='#5555FF'>=</font><font color='#5555FF'>=</font> DSTATE_BUFIMAGE<font face='Lucida Console'>)</font> <font color='#5555FF'>&amp;</font><font color='#5555FF'>&amp;</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>buffered_image<font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#0000FF'>return</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>coef<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>coef_arrays;
+  <b>}</b>
+  <font color='#009900'>/* Oops, improper usage */</font>
+  <font color='#BB00BB'>ERREXIT1</font><font face='Lucida Console'>(</font>cinfo, JERR_BAD_STATE, cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>global_state<font face='Lucida Console'>)</font>;
+  <font color='#0000FF'>return</font> NULL;			<font color='#009900'>/* keep compiler happy */</font>
+<b>}</b>
+
+
+<font color='#009900'>/*
+ * Master selection of decompression modules for transcoding.
+ * This substitutes for jdmaster.c's initialization of the full decompressor.
+ */</font>
+
+<b><a name='LOCAL'></a>LOCAL</b><font face='Lucida Console'>(</font><font color='#0000FF'><u>void</u></font><font face='Lucida Console'>)</font>
+<b><a name='transdecode_master_selection'></a>transdecode_master_selection</b> <font face='Lucida Console'>(</font>j_decompress_ptr cinfo<font face='Lucida Console'>)</font>
+<b>{</b>
+  <font color='#009900'>/* This is effectively a buffered-image operation. */</font>
+  cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>buffered_image <font color='#5555FF'>=</font> TRUE;
+
+  <font color='#009900'>/* Compute output image dimensions and related values. */</font>
+  <font color='#BB00BB'>jpeg_core_output_dimensions</font><font face='Lucida Console'>(</font>cinfo<font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* Entropy decoding: either Huffman or arithmetic coding. */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>arith_code<font face='Lucida Console'>)</font>
+    <font color='#BB00BB'>jinit_arith_decoder</font><font face='Lucida Console'>(</font>cinfo<font face='Lucida Console'>)</font>;
+  <font color='#0000FF'>else</font> <b>{</b>
+    <font color='#BB00BB'>jinit_huff_decoder</font><font face='Lucida Console'>(</font>cinfo<font face='Lucida Console'>)</font>;
+  <b>}</b>
+
+  <font color='#009900'>/* Always get a full-image coefficient buffer. */</font>
+  <font color='#BB00BB'>jinit_d_coef_controller</font><font face='Lucida Console'>(</font>cinfo, TRUE<font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* We can now tell the memory manager to allocate virtual arrays. */</font>
+  <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>mem<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>realize_virt_arrays<font face='Lucida Console'>)</font> <font face='Lucida Console'>(</font><font face='Lucida Console'>(</font>j_common_ptr<font face='Lucida Console'>)</font> cinfo<font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* Initialize input side of decompressor to consume first scan. */</font>
+  <font face='Lucida Console'>(</font><font color='#5555FF'>*</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>inputctl<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>start_input_pass<font face='Lucida Console'>)</font> <font face='Lucida Console'>(</font>cinfo<font face='Lucida Console'>)</font>;
+
+  <font color='#009900'>/* Initialize progress monitoring. */</font>
+  <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>progress <font color='#5555FF'>!</font><font color='#5555FF'>=</font> NULL<font face='Lucida Console'>)</font> <b>{</b>
+    <font color='#0000FF'><u>int</u></font> nscans;
+    <font color='#009900'>/* Estimate number of scans to set pass_limit. */</font>
+    <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>progressive_mode<font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#009900'>/* Arbitrarily estimate 2 interleaved DC scans + 3 AC scans/component. */</font>
+      nscans <font color='#5555FF'>=</font> <font color='#979000'>2</font> <font color='#5555FF'>+</font> <font color='#979000'>3</font> <font color='#5555FF'>*</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>num_components;
+    <b>}</b> <font color='#0000FF'>else</font> <font color='#0000FF'>if</font> <font face='Lucida Console'>(</font>cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>inputctl<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>has_multiple_scans<font face='Lucida Console'>)</font> <b>{</b>
+      <font color='#009900'>/* For a nonprogressive multiscan file, estimate 1 scan per component. */</font>
+      nscans <font color='#5555FF'>=</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>num_components;
+    <b>}</b> <font color='#0000FF'>else</font> <b>{</b>
+      nscans <font color='#5555FF'>=</font> <font color='#979000'>1</font>;
+    <b>}</b>
+    cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>progress<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pass_counter <font color='#5555FF'>=</font> <font color='#979000'>0</font>L;
+    cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>progress<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>pass_limit <font color='#5555FF'>=</font> <font face='Lucida Console'>(</font><font color='#0000FF'><u>long</u></font><font face='Lucida Console'>)</font> cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>total_iMCU_rows <font color='#5555FF'>*</font> nscans;
+    cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>progress<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>completed_passes <font color='#5555FF'>=</font> <font color='#979000'>0</font>;
+    cinfo<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>progress<font color='#5555FF'>-</font><font color='#5555FF'>&gt;</font>total_passes <font color='#5555FF'>=</font> <font color='#979000'>1</font>;
+  <b>}</b>
+<b>}</b>
+
+</pre></body></html>
