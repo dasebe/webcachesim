@@ -91,7 +91,7 @@ SimpleRequest* LRUCache::evict_return()
 
 void LRUCache::evict()
 {
-    evict_return();
+    delete evict_return();
 }
 
 // const_iterator: a forward iterator to const value_type, where 
